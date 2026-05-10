@@ -1,43 +1,48 @@
-import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, MeshBuilder, Color4 } from '@babylonjs/core';
+import { Vector3, HemisphericLight, MeshBuilder } from '@babylonjs/core';
+import { EngineManager } from './core/EngineManager';
+import { SceneManager } from './core/SceneManager';
+import { RTSCamera } from './core/RTSCamera';
 
-const app = document.getElementById('app');
-if (!app) throw new Error('App container not found');
-const canvas = document.createElement('canvas');
-canvas.id = 'renderCanvas';
-app.appendChild(canvas);
+const bootstrap = (): void => {
+  // ── Engine ──
+  const engineManager = EngineManager.getInstance();
+  engineManager.initialize('app');
 
-const engine = new Engine(canvas, true);
+  // ── Scene ──
+  const sceneManager = SceneManager.getInstance();
+  const scene = sceneManager.initialize();
 
-const createScene = (): Scene => {
-  const scene = new Scene(engine);
-  scene.clearColor = new Color4(0, 0, 0, 1);
+  // ── RTS Camera ──
+  const rtsCamera = new RTSCamera(scene, engineManager.getEngine(), {
+    target: Vector3.Zero(),
+    initialZoom: 50,
+    alpha: -Math.PI / 4,
+    beta: Math.PI / 4,
+  });
 
-  const camera = new ArcRotateCamera('camera', -Math.PI / 2, Math.PI / 3, 15, Vector3.Zero(), scene);
-  camera.attachControl(canvas, true);
-
+  // ── Light ──
   const light = new HemisphericLight('light', new Vector3(0, 1, 0), scene);
   light.intensity = 0.7;
 
-  // Ground plane for reference
+  // ── Reference geometry ──
   const ground = MeshBuilder.CreateGround('ground', { width: 20, height: 20 }, scene);
   ground.position.y = -0.01;
 
-  // A simple box to confirm 3D rendering works
   const box = MeshBuilder.CreateBox('box', { size: 1 }, scene);
   box.position.y = 0.5;
 
-  return scene;
+  // ── Render loop ──
+  sceneManager.runRenderLoop();
+
+  // ── Lifecycle cleanup ──
+  window.addEventListener('beforeunload', () => {
+    rtsCamera.dispose();
+    sceneManager.dispose();
+    engineManager.dispose();
+  });
 };
 
-const scene = createScene();
-
-engine.runRenderLoop(() => {
-  scene.render();
-});
-
-window.addEventListener('resize', () => {
-  engine.resize();
-});
+bootstrap();
 
 // eslint-disable-next-line no-console
-console.info('C&C Remake — Babylon.js scene initialized');
+console.info('C&C Remake — Engine & Scene managers initialised');

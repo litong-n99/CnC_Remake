@@ -80,13 +80,13 @@
 - **目标**：每次 Push / PR 时自动运行类型检查与 ESLint。
 - **文件**：`.github/workflows/ci.yml`
 - **验收**：PR 页面显示绿色对勾，类型错误阻断合并。
-- **状态**：[ ] `ready` / `done`
+- **状态**：[x] `done`
 
 ### Task 5: GitHub Actions CD — 自动部署到 GitHub Pages
 - **目标**：`main` 分支合并后自动构建并发布到 `gh-pages`。
 - **文件**：`.github/workflows/deploy.yml`
 - **验收**：访问 `https://<user>.github.io/CnC_Remake/` 能看到最新版本。
-- **状态**：[ ] `ready` / `done`
+- **状态**：[~] `skipped`（无 GitHub 访问权限，待后续手动创建）
 
 ---
 
@@ -97,7 +97,7 @@
 - **参考 C++**：`WIN32LIB/` 中的初始化与消息循环。
 - **文件**：`src/core/EngineManager.ts`, `src/core/SceneManager.ts`
 - **验收**：页面刷新/调整窗口大小后引擎稳定运行，内存无泄漏。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 7: RTS 相机系统（俯视角 + 边缘滚动 + 缩放）
 - **目标**：实现红警经典相机：默认俯视角 45°、鼠标移到屏幕边缘平移、滚轮缩放、右键拖拽平移。
@@ -105,7 +105,7 @@
 - **文件**：`src/core/RTSCamera.ts`
 - **数值沿用**：缩放范围 20-100（世界单位），边缘阈值 20px。
 - **验收**：鼠标移到屏幕左边缘，相机向左平滑移动；滚轮缩放有阻尼感。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 8: 光照与阴影系统
 - **目标**：`DirectionalLight` 模拟太阳，`HemisphericLight` 环境光，`ShadowGenerator` 生成动态阴影。
