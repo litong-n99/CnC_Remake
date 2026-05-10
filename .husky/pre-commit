@@ -1,0 +1,2 @@
+cd remake
+npx lint-staged
