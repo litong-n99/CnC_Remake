@@ -58,14 +58,23 @@
 
 ### Task 2: ESLint + Prettier + Git 钩子
 - **目标**：统一代码风格，提交前自动格式化与类型检查。
-- **文件**：`.eslintrc.cjs`, `.prettierrc`, `.husky/pre-commit`
+- **文件**：`remake/eslint.config.js`, `remake/.prettierrc`, `.husky/pre-commit`, `remake/lint-staged.config.js`
 - **验收**：提交代码时自动触发 `lint-staged` + `tsc --noEmit`。
-- **状态**：[ ] `ready` / `done`
+- **状态**：[x] `done`
 
 ### Task 3: GitHub 仓库初始化与分支保护
 - **目标**：创建仓库，设置 `main`（发布）与 `dev`（开发）分支，配置分支保护规则。
+- **已完成（本地）**：
+  - Git 仓库初始化，`master` 重命名为 `main`
+  - `dev` 分支已创建
+  - 操作手册已写入 `harness/03_SETUP_AND_DEPLOYMENT.md` §5
+- **待手动完成（需你的 GitHub 账号）**：
+  1. 在 https://github.com/new 创建 `CnC_Remake` 空仓库
+  2. `git remote add origin https://github.com/<USER>/CnC_Remake.git`
+  3. `git push -u origin main && git push -u origin dev`
+  4. 在 Settings → Branches 中为 `main` 和 `dev` 添加保护规则
 - **验收**：`main` 分支需 PR + CI 通过才能合并。
-- **状态**：[ ] `ready` / `done`
+- **状态**：[x] `done`（本地部分）/ `ready`（GitHub 部分待手动执行）
 
 ### Task 4: GitHub Actions CI — Type Check & Lint
 - **目标**：每次 Push / PR 时自动运行类型检查与 ESLint。

@@ -308,7 +308,76 @@ CnC_Remake/
 
 ---
 
-## 5. 常见问题（FAQ）
+## 5. GitHub 仓库初始化与分支保护（Task 3）
+
+### 5.1 创建 GitHub 仓库
+
+> **注意**：以下步骤需要在 GitHub Web UI 上手动完成（或安装 `gh` CLI 后执行）。
+
+**步骤 1：在 GitHub 上创建空仓库**
+- 访问 https://github.com/new
+- Repository name: `CnC_Remake`
+- Visibility: `Public`（GitHub Pages 免费版需要 Public）
+- **不要**勾选 "Initialize this repository with a README"（本地已有）
+- 点击 **Create repository**
+
+**步骤 2：本地推送代码**
+```bash
+cd E:\CnC_Remake
+git remote add origin https://github.com/<YOUR_USERNAME>/CnC_Remake.git
+git push -u origin main
+git push -u origin dev
+```
+
+**步骤 3：验证分支**
+```bash
+git branch -a
+# 应显示：
+#   dev
+#   main
+#   remotes/origin/dev
+#   remotes/origin/main
+```
+
+### 5.2 配置分支保护规则
+
+**`main` 分支保护（强制）**：
+1. 进入仓库 → **Settings** → **Branches**
+2. 点击 **Add branch protection rule**
+3. Branch name pattern: `main`
+4. 勾选以下选项：
+   - ☑ **Require a pull request before merging**
+     - ☑ **Require approvals**（建议至少 1 人）
+   - ☑ **Require status checks to pass before merging**
+     - 搜索并勾选 `type-check` 和 `lint`（需先完成 Task 4 并至少推送一次 CI 配置）
+   - ☑ **Restrict pushes that create files larger than 100 MB**
+   - ☑ **Require linear history**（可选，保持提交历史整洁）
+5. 点击 **Create**
+
+**`dev` 分支保护（建议）**：
+1. 重复上述步骤，Branch name pattern: `dev`
+2. 勾选：
+   - ☑ **Require a pull request before merging**
+   - ☑ **Require status checks to pass before merging**
+     - 勾选 `type-check` 和 `lint`
+3. 点击 **Create**
+
+### 5.3 开发工作流约定
+
+```
+feature/xxx  →  dev  →  main  →  gh-pages (auto)
+     ↑           ↑        ↑
+   开发分支    集成测试   生产发布
+```
+
+- 所有功能开发从 `dev` 切出 `feature/xxx` 分支
+- 通过 PR 合并到 `dev`
+- `dev` 稳定后通过 PR 合并到 `main`
+- `main` 合并后自动触发 GitHub Actions 部署到 `gh-pages`
+
+---
+
+## 6. 常见问题（FAQ）
 
 **Q: `npm run type-check` 报错，但 `npm run dev` 能跑，可以提交吗？**  
 A: **不可以**。CI 会阻断合并，必须先修复类型错误。
