@@ -1,8 +1,8 @@
 # Dependencies
 node_modules/
-package-lock.json
 yarn.lock
 pnpm-lock.yaml
+# package-lock.json is tracked in remake/ for reproducible CI builds
 
 # Build outputs
 dist/
