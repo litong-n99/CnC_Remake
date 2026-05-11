@@ -1,4 +1,4 @@
-# 项目任务分解表（35 Tasks）
+# 项目任务分解表（100 Tasks）
 
 > **调试约定**：每个 Task 完成后，请在右侧 `[ ]` 打勾，并在对应行末尾追加 `ready` 表示资源到位或 `done` 表示代码完成。  
 > **类型检查**：每个 Task 提交前运行 `npm run type-check`，通过即可，不强制 `build`。
@@ -201,7 +201,7 @@
 - **目标**：单位之间保持最小间距，路径被阻挡时重新寻路或等待。
 - **文件**：`src/game/unit/UnitCollision.ts`
 - **验收**：两个单位相向而行时，不会重叠，其中一个会暂停或绕行。
-- **状态**：[x] `done`
+- **状态**：[ ] `pending`
 
 ---
 
@@ -335,6 +335,449 @@
 
 ---
 
+## Phase 9: UI Shell 与页面导航（Game Shell）
+
+> 参考 OpenRA：`mods/*/chrome/*.yaml` + `ChromeLogic` 分离布局与逻辑。  
+> 我们的方案：HTML/CSS/TS 实现 Shell 页面（主菜单、设置等），Babylon.GUI 或 HTML Overlay 实现 HUD。
+
+### Task 36: 主菜单页面（Main Menu）
+- **目标**：游戏启动后显示主菜单：背景滚动地图/视频、Logo、Singleplayer / Multiplayer / Settings / Exit 按钮。
+- **参考 OpenRA**：`mods/cnc/chrome/mainmenu.yaml` + `MainMenuLogic.cs`
+- **文件**：`src/ui/shell/MainMenu.ts`, `src/ui/shell/MainMenu.css`
+- **验收**：启动游戏后看到主菜单，点击按钮有视觉反馈，背景不是黑屏。
+- **状态**：[ ] `done`
+
+### Task 37: 页面路由与过渡动画
+- **目标**：主菜单 → 子页面（战役选择、遭遇战设置、多人游戏、设置）的切换动画（淡入淡出/滑动）。
+- **文件**：`src/ui/shell/ShellRouter.ts`
+- **验收**：页面切换流畅，无白屏闪烁，浏览器前进/后退不影响游戏状态。
+- **状态**：[ ] `done`
+
+### Task 38: 战役选择页面（Campaign）
+- **目标**：列出所有战役（GDI / Nod / Allies / Soviet），显示任务缩略图、名称、完成状态（锁定/解锁/已完成）。
+- **参考 OpenRA**：`mods/cnc/maps/` 目录结构 + 战役配置
+- **文件**：`src/ui/shell/CampaignMenu.ts`, `src/game/campaign/CampaignData.ts`
+- **验收**：点击战役展开任务列表，未完成任务显示锁定图标，已完成显示星星。
+- **状态**：[ ] `done`
+
+### Task 39: 遭遇战设置页面（Skirmish Setup）
+- **目标**：选择地图、玩家数（含 AI）、起始资金、游戏速度、科技等级、胜利条件。AI 难度下拉框。
+- **参考 OpenRA**：遭遇战大厅 UI
+- **文件**：`src/ui/shell/SkirmishSetup.ts`
+- **验收**：配置完成后点击"开始"进入游戏，配置参数传入 `GameLoop`。
+- **状态**：[ ] `done`
+
+### Task 40: 多人游戏大厅（Multiplayer Lobby）
+- **目标**：房间列表（显示主机、地图、玩家数/最大数）、创建房间、加入房间、聊天框。
+- **参考 OpenRA**：`OpenRA.Game/Network/Connection.cs` + Lobby UI
+- **文件**：`src/ui/shell/MultiplayerLobby.ts`, `src/network/LobbyClient.ts`
+- **验收**：能创建房间并显示在列表中，其他客户端可见。
+- **状态**：[ ] `done`
+
+### Task 41: 设置/选项页面（Settings）
+- **目标**：Tab 分组：Display（分辨率/全屏/画质）、Audio（主音量/音乐/音效）、Controls（快捷键绑定）、Game（滚动速度/难度）。
+- **参考 OpenRA**：`mods/*/chrome/settings.yaml`
+- **文件**：`src/ui/shell/SettingsMenu.ts`, `src/core/SettingsManager.ts`
+- **验收**：修改设置后即时生效，刷新页面后设置持久化（localStorage）。
+- **状态**：[ ] `done`
+
+### Task 42: 加载画面（Load Screen）
+- **目标**：显示进度条、加载提示文字、Mod Logo。加载完成后淡入到游戏场景。
+- **文件**：`src/ui/shell/LoadScreen.ts`
+- **验收**：加载地图资源时进度条平滑增长，加载完成后无卡顿进入游戏。
+- **状态**：[ ] `done`
+
+---
+
+## Phase 10: 游戏交互增强（Interaction Polish）
+
+> 参考 OpenRA：`IOrderGenerator` 输入模式切换、`UnitOrders` 命令分发。  
+> 当前已实现：左键选择、右键移动。本 Phase 补充所有 RTS 标准交互。
+
+### Task 43: 鼠标光标系统（Cursors）
+- **目标**：根据上下文切换光标：默认、选择（悬停友方）、移动（悬停地面）、攻击（悬停敌方）、建造（放置建筑时）、加载（悬停运输载具）。
+- **参考 OpenRA**：`mods/*/cursors.yaml` + `HardwareCursor`
+- **文件**：`src/core/CursorManager.ts`
+- **Dummy 资源**：CSS `cursor: url(...)` 指向自定义 PNG 光标（32×32）。
+- **验收**：光标在不同目标上正确变化，无系统默认光标闪烁。
+- **状态**：[ ] `done`
+
+### Task 44: Sidebar 生产队列 UI
+- **目标**：右侧/左侧边栏显示可建造的建筑和单位，带图标、价格、冷却遮罩。点击后进入"准备放置"状态（建筑）或立即开始生产（单位）。
+- **参考 OpenRA**：`mods/*/chrome/ingame-*.yaml` + `ProductionPaletteWidget.cs`
+- **文件**：`src/renderer/ui/Sidebar.ts`, `src/renderer/ui/Sidebar.css`
+- **验收**：点击电厂图标，图标变灰并显示进度条；完成后图标高亮，再次点击进入放置预览。
+- **状态**：[ ] `done`
+
+### Task 45: 建筑放置预览与合法性检查
+- **目标**：选择建筑后，鼠标跟随显示建筑幽灵轮廓（半透明）。合法位置绿色，非法位置红色（地形不可建造、与其他建筑重叠、距离不足）。
+- **参考 OpenRA**：`PlaceBuildingOrderGenerator.cs`
+- **文件**：`src/game/building/BuildingPlacement.ts`
+- **验收**：在水上放置电厂显示红色；在合法平地显示绿色；点击后扣除资金并开始建造。
+- **状态**：[ ] `done`
+
+### Task 46: 命令队列（Shift Queue）
+- **目标**：按住 Shift 下达多个移动/攻击命令，单位按顺序执行，路径点用虚线和小圆点显示。
+- **参考 OpenRA**：`Order.Queued` 字段 + `UnitOrderGenerator`
+- **文件**：`src/game/CommandQueue.ts`
+- **验收**：Shift+右键点击 3 个不同位置，单位依次经过，地面上显示 3 个虚线路径点。
+- **状态**：[ ] `done`
+
+### Task 47: 攻击移动（Attack-Move）
+- **目标**：A + 左键 或 右键点击敌方单位/地面时，单位向目标移动，途中自动攻击遇到的敌人。
+- **参考 OpenRA**：`AttackMove` Activity
+- **文件**：`src/game/unit/AttackMoveBehavior.ts`
+- **验收**：坦克攻击移动到地图另一端，途中遇到敌方步兵会自动停下开火，消灭后继续前进。
+- **状态**：[ ] `done`
+
+### Task 48: 巡逻（Patrol）
+- **目标**：Shift+Z 或右键点击两个点之间来回巡逻，自动攻击遇到的敌人。
+- **文件**：`src/game/unit/PatrolBehavior.ts`
+- **验收**：设置巡逻路径后，单位在两点之间循环移动，遇敌则攻击。
+- **状态**：[ ] `done`
+
+### Task 49: 单位编组（Ctrl+Number）
+- **目标**：Ctrl+1~0 将选中单位编组，按数字键恢复选中。双击数字键将视角跳到编组中心。
+- **参考 OpenRA**：`Selection` Trait 中的编组逻辑
+- **文件**：`src/game/SelectionManager.ts` 扩展
+- **验收**：选中 5 辆坦克按 Ctrl+1，之后按 1 恢复选中；双击 1 视角跳到坦克群。
+- **状态**：[ ] `done`
+
+### Task 50: 双击选中同类单位 + 框选优化
+- **目标**：双击一个单位选中屏幕上所有可见的同类单位。框选时显示半透明绿色矩形。
+- **文件**：`src/core/InputManager.ts`
+- **验收**：双击一个步枪兵，选中屏幕内所有步枪兵；框选时矩形不闪烁。
+- **状态**：[ ] `done`
+
+### Task 51: Sell / Repair / Power 工具按钮
+- **目标**：Sidebar 底部添加 Sell（$ 光标，点击建筑卖出）、Repair（扳手光标，点击建筑维修）、Power（闪电，开关电力）。
+- **参考 OpenRA**：`SupportPowerManager` + `RepairOrderGenerator`
+- **文件**：`src/game/building/BuildingTools.ts`
+- **验收**：点击 Sell 后光标变 $，点击兵营获得一半资金，兵营消失。
+- **状态**：[ ] `done`
+
+---
+
+## Phase 11: 战役系统（Campaign & Scripting）
+
+> 参考 OpenRA：`ScriptContext.cs`（Lua 沙箱）+ `mods/*/maps/*/*.lua`。  
+> 我们的方案：`fengari-web`（Lua 5.3 WASM）或直接用 JS 脚本引擎。
+
+### Task 52: 战役数据层
+- **目标**：定义 `CampaignData`（战役列表）和 `MissionData`（单个任务：地图、简报、目标、脚本路径、解锁条件）。
+- **文件**：`src/game/campaign/CampaignData.ts`, `src/game/campaign/MissionData.ts`
+- **验收**：JSON 配置加载后，CampaignMenu 正确显示任务列表和完成状态。
+- **状态**：[ ] `done`
+
+### Task 53: 战役进度保存
+- **目标**：localStorage 保存每个战役的完成状态、最佳时间、困难度通关标记。
+- **文件**：`src/game/campaign/CampaignProgress.ts`
+- **验收**：通关第一个任务后刷新页面，该任务显示"已完成"，下一个任务解锁。
+- **状态**：[ ] `done`
+
+### Task 54: 任务简报页面
+- **目标**：进入战役前显示简报：背景图、任务描述文字（打字机效果）、语音旁白、目标列表。
+- **参考 OpenRA**：`BriefingLogic.cs` + `Media.PlaySoundNotification`
+- **文件**：`src/ui/shell/BriefingScreen.ts`
+- **验收**：文字逐字显示，语音同步播放，点击 Skip 跳过。
+- **状态**：[ ] `done`
+
+### Task 55: 脚本运行时集成（Lua 或 JS）
+- **目标**：集成脚本引擎。推荐 `fengari-web`（Lua 5.3 的 WASM 实现），或自建轻量 JS 脚本系统。
+- **参考 OpenRA**：`ScriptContext.cs` + `MemoryConstrainedLuaRuntime`
+- **文件**：`src/game/scripting/ScriptRuntime.ts`
+- **验收**：引擎能加载并执行 `mission01.lua`，调用 `console.log` 输出测试字符串。
+- **状态**：[ ] `done`
+
+### Task 56: 脚本全局 API（ScriptGlobals）
+- **目标**：向脚本暴露引擎 API：`Map`（地图信息）、`Player`（玩家属性/资金）、`Actor`（创建/销毁/查找单位）、`Media`（播放语音/音效/音乐）、`UI`（显示消息/倒计时）、`Trigger`（触发器）。
+- **参考 OpenRA**：`ScriptGlobal` 子类（`MediaGlobal`, `MapGlobal`, `PlayerGlobal`）
+- **文件**：`src/game/scripting/ScriptGlobals.ts`
+- **验收**：Lua 脚本中可调用 `Map.Reveal(Player, CPos, radius)` 揭示地图黑雾。
+- **状态**：[ ] `done`
+
+### Task 57: 触发器系统（Triggers）
+- **目标**：支持区域触发（单位进入/离开区域）、时间触发（N 秒后）、条件触发（资金达到 X / 单位死亡 / 建筑被摧毁）。
+- **参考 OpenRA**：`Trigger.OnEnteredFootprint`, `Trigger.AfterDelay`, `Trigger.OnKilled`
+- **文件**：`src/game/scripting/TriggerSystem.ts`
+- **验收**：Lua 脚本中 `Trigger.OnEnteredFootprint(cells, callback)` 在 MCV 进入目标区域时触发胜利。
+- **状态**：[ ] `done`
+
+### Task 58: 任务目标系统（Objectives）
+- **目标**：主要目标（必须完成）和次要目标（可选）。HUD 右上角显示目标列表，完成时打勾，失败时红叉。
+- **参考 OpenRA**：`MissionObjectives` Trait
+- **文件**：`src/game/campaign/ObjectiveSystem.ts`
+- **验收**：战役开始时显示 2 个主要目标 + 1 个次要目标；摧毁敌方建造厂后主要目标 1 打勾。
+- **状态**：[ ] `done`
+
+### Task 59: 胜利/失败条件与结算
+- **目标**：检测胜利/失败条件（全灭、目标达成、超时、关键单位死亡），弹出结算画面（胜利/失败动画 + 统计：时间、损失、击杀）。
+- **文件**：`src/game/campaign/MissionEndScreen.ts`
+- **验收**：摧毁所有敌方建筑后弹出"Mission Accomplished"，点击返回战役选择。
+- **状态**：[ ] `done`
+
+### Task 60: 战役过场动画（Video Playback）
+- **目标**：支持播放战役开场/结尾视频。优先 WebM/MP4（HTML5 `<video>`），远期支持 VQA 解码。
+- **参考 OpenRA**：`VqaLoader.cs`
+- **文件**：`src/ui/shell/VideoPlayer.ts`
+- **验收**：简报前自动播放 10 秒测试视频，可 Skip。
+- **状态**：[ ] `done`
+
+---
+
+## Phase 12: 网络对战（Multiplayer & Networking）
+
+> 参考 OpenRA：`OrderManager.cs` + `Server.cs` + `Connection.cs`（Lockstep 确定性模拟）。  
+> 我们的方案：WebSocket（客户端↔服务器）+ 确定性模拟 + SyncHash。
+
+### Task 61: 网络架构设计与协议定义
+- **目标**：设计客户端-服务器协议：Handshake、RoomState、GameStart、OrderFrame、SyncHash、Chat、Disconnect。
+- **文件**：`docs/NETWORK_PROTOCOL.md`, `src/network/NetworkProtocol.ts`
+- **验收**：文档包含完整的消息格式（TypeScript interface + 二进制序列化方案）。
+- **状态**：[ ] `done`
+
+### Task 62: Order 序列化与反序列化
+- **目标**：定义 `GameOrder` 接口（Move / Attack / Build / Sell / Stop / Deploy 等），支持二进制序列化（紧凑、版本兼容）。
+- **参考 OpenRA**：`Order.cs` + `Order.Serialize` / `Order.Deserialize`
+- **文件**：`src/network/GameOrder.ts`, `src/network/OrderSerializer.ts`
+- **验收**：一个 MoveOrder 序列化后 < 32 字节，反序列化后字段完全还原。
+- **状态**：[ ] `done`
+
+### Task 63: 本地服务器（Headless Relay Server）
+- **目标**：Node.js 实现的轻量中继服务器：接收客户端 Order，按帧广播给所有客户端。不运行游戏逻辑。
+- **参考 OpenRA**：`OpenRA.Game/Server/Server.cs`
+- **文件**：`server/src/GameServer.ts`, `server/src/PlayerSlot.ts`
+- **验收**：2 个客户端连接后，服务器每帧转发 Order，无游戏逻辑计算。
+- **状态**：[ ] `done`
+
+### Task 64: 客户端连接与房间管理
+- **目标**：客户端通过 WebSocket 连接服务器，加入/创建房间，选择阵营/颜色/起始位置，Ready/Unready，房主点击 Start。
+- **文件**：`src/network/RoomClient.ts`, `src/network/NetworkManager.ts`
+- **验收**：客户端 A 创建房间，客户端 B 加入并 Ready，房主开始游戏，双方同时进入加载画面。
+- **状态**：[ ] `done`
+
+### Task 65: Lockstep 确定性模拟
+- **目标**：游戏开始后，所有客户端固定 timestep 模拟。每帧收集本地输入，发送 Order 到服务器，等待服务器返回该帧所有玩家的 Order 后再推进下一帧。
+- **参考 OpenRA**：`OrderManager.TryTick()`
+- **文件**：`src/game/GameLoop.ts` 扩展
+- **验收**：2 个客户端同时运行 60 秒，双方单位位置完全一致（SyncHash 匹配）。
+- **状态**：[ ] `done`
+
+### Task 66: 同步检测与防作弊（SyncHash）
+- **目标**：每 N 帧（如 30 帧）计算世界状态的哈希值（单位位置、血量、随机种子），客户端上报服务器比对。不匹配则标记 Desync。
+- **参考 OpenRA**：`OrderManager` 中的 `SyncHash`
+- **文件**：`src/game/SyncHash.ts`
+- **验收**：故意修改一个客户端的随机种子，30 帧内服务器检测到 SyncHash 不匹配。
+- **状态**：[ ] `done`
+
+### Task 67: 断线重连与观战
+- **目标**：玩家掉线后可重新连接，服务器发送完整世界快照（或从最近 checkpoint 重放 Order）。支持观战者加入。
+- **文件**：`src/network/ReconnectHandler.ts`, `src/network/SpectatorManager.ts`
+- **验收**：客户端断线 10 秒后重连，恢复到当前游戏状态，无可见卡顿。
+- **状态**：[ ] `done`
+
+### Task 68: 回放系统（Replay）
+- **目标**：游戏开始时录制所有 `GameOrder[]` + 初始种子 + 地图信息到 `.cncreplay` 文件。回放时加载地图并按 Order 重新模拟。
+- **参考 OpenRA**：`ReplayConnection.cs`
+- **文件**：`src/replay/ReplayRecorder.ts`, `src/replay/ReplayPlayer.ts`
+- **验收**：保存回放文件后，刷新页面加载回放，战斗过程与原始完全一致。
+- **状态**：[ ] `done`
+
+---
+
+## Phase 13: 资源与内容系统（Assets & Content）
+
+> 参考 OpenRA：`ISpriteLoader` / `ISoundLoader` 插件系统 + `mods/*/mod.yaml` 资源清单。  
+> 目标：支持加载原始 C&C 资源（MIX/SHP/AUD/VQA），并支持 Mod 覆盖。
+
+### Task 69: 资源包加载系统（MIX/MPR 解析）
+- **目标**：浏览器端解析 Westwood MIX 包格式，提取内部文件列表。支持 `CONQUER.MIX`, `GENERAL.MIX`, `SCORES.MIX` 等。
+- **参考 OpenRA**：`OpenRA.Mods.Cnc/FileSystem/MixFile.cs`
+- **文件**：`src/assets/loaders/MixLoader.ts`
+- **验收**：上传一个 `.mix` 文件，控制台列出内部所有文件名和大小。
+- **状态**：[ ] `done`
+
+### Task 70: 精灵序列系统（SHP 解析与 Sprite Sheet）
+- **目标**：解析 Westwood SHP 格式（帧动画、32/64 方向、调色板映射），构建时预处理为 PNG sprite sheet + JSON metadata。运行时按 actor + sequence + frame 索引。
+- **参考 OpenRA**：`ShpTSLoader.cs` + `SequenceProvider.cs`
+- **文件**：`tools/shp-to-spritesheet/`（Node.js CLI 工具）, `src/assets/loaders/ShpLoader.ts`
+- **验收**：一个坦克 SHP 转换为 sprite sheet 后，Babylon.js 正确显示 32 方向行走动画。
+- **状态**：[ ] `done`
+
+### Task 71: 调色板系统（Palette & Remap）
+- **目标**：加载 DOS/Win `.pal` 调色板文件。支持 remap（将调色板中的特定索引替换为阵营色，如 GDI 黄、Nod 红）。
+- **参考 OpenRA**：`PaletteFromFile.cs` + `PlayerColorPalette.cs`
+- **文件**：`src/assets/PaletteManager.ts`
+- **验收**：同一辆坦克的 sprite，GDI 玩家显示为黄色，Nod 玩家显示为红色。
+- **状态**：[ ] `done`
+
+### Task 72: 语音与通知系统
+- **目标**：将 AUD 格式语音预转换为 OGG/MP3。`AudioManager` 按分类（UnitVoice / Notification / Weapon / Ambient）播放。支持队列（通知不重叠）。
+- **参考 OpenRA**：`Sound.cs` + `ISoundLoader`
+- **文件**：`src/core/AudioManager.ts`, `tools/aud-converter/`
+- **验收**：选中中坦播放 "Medium tank reporting"，建造完成播放 "Building"。
+- **状态**：[ ] `done`
+
+### Task 73: 背景音乐系统
+- **目标**：战役/遭遇战背景音乐播放列表，支持淡入淡出，按游戏节奏切换（平静时慢节奏，战斗时快节奏）。
+- **参考 OpenRA**：`MusicPlaylist.cs`
+- **文件**：`src/core/MusicManager.ts`
+- **验收**：游戏开始时播放 Act on Instinct，进入战斗后平滑切换到 Target。
+- **状态**：[ ] `done`
+
+### Task 74: 视频播放（VQA 或 WebM）
+- **目标**：优先支持 WebM/MP4（预转换），远期支持浏览器端 VQA 解码。HTML5 `<video>` 全屏播放，可 Skip。
+- **参考 OpenRA**：`VqaLoader.cs`
+- **文件**：`src/ui/shell/VideoPlayer.ts`
+- **验收**：战役开始前播放 15 秒 briefing 视频，Skip 后直接进入游戏。
+- **状态**：[ ] `done`
+
+### Task 75: 本地化系统（i18n）
+- **目标**：所有 UI 文本、单位名称、提示语音支持多语言。初期中英文，远期扩展。使用 `i18next` + JSON 翻译文件，或 Fluent 格式。
+- **参考 OpenRA**：`mods/*/fluent/*.ftl`（Mozilla Fluent）
+- **文件**：`src/core/LocalizationManager.ts`, `public/locales/zh-CN.json`, `public/locales/en-US.json`
+- **验收**：设置中切换语言后，主菜单所有文字即时变为中文/英文。
+- **状态**：[ ] `done`
+
+---
+
+## Phase 14: 性能优化（Performance）
+
+> 目标：200+ 单位 + 50+ 建筑 + 100+ 子弹仍保持 60FPS。
+
+### Task 76: 地形 LOD 与动态细分
+- **目标**：远距离地形降低顶点密度，近景保持高细节。Babylon.js `LOD` 系统或自定义 shader。
+- **文件**：`src/game/terrain/TerrainLOD.ts`
+- **验收**：相机 zoom 到 100 时，地形 mesh 顶点数减少 50% 以上，视觉无明显差异。
+- **状态**：[ ] `done`
+
+### Task 77: 单位实例化渲染（InstancedMesh）
+- **目标**：相同模型（如大量步兵、坦克）使用 `InstancedMesh` 批量渲染，减少 draw call。
+- **文件**：`src/renderer/InstancedUnitRenderer.ts`
+- **验收**：200 辆相同坦克的 draw call 从 200 降至 1，帧率提升 > 30%。
+- **状态**：[ ] `done`
+
+### Task 78: 视锥剔除（Frustum Culling）
+- **目标**：Babylon.js 自动视锥剔除已启用，但自定义逻辑（如 UI 元素、特效）需手动剔除。确保屏幕外单位不更新逻辑（可选）。
+- **文件**：`src/core/PerformanceManager.ts`
+- **验收**：相机只显示地图 1/4 区域时，剩余 3/4 单位的逻辑更新可跳过（如果不影响网络同步）。
+- **状态**：[ ] `done`
+
+### Task 79: 对象池（Object Pool）
+- **目标**：子弹、爆炸粒子、伤害数字等高频创建/销毁的对象使用对象池复用，避免 GC 抖动。
+- **文件**：`src/core/ObjectPool.ts`
+- **验收**：连续发射 100 发子弹，内存曲线平稳，无锯齿状 GC 峰值。
+- **状态**：[ ] `done`
+
+### Task 80: 特效合批与 GPU 粒子
+- **目标**：爆炸、烟雾等特效使用 Babylon.js `ParticleSystem` 或 `GPUParticleSystem`，而非独立 Mesh。
+- **文件**：`src/renderer/effects/ParticleManager.ts`
+- **验收**：50 个同时爆炸的特效帧率 > 55FPS。
+- **状态**：[ ] `done`
+
+### Task 81: 纹理图集（Texture Atlas）
+- **目标**：将大量小纹理（UI 图标、单位图标、地形贴图）合并为少数几张大 texture atlas，减少纹理切换。
+- **文件**：`tools/texture-atlas-builder/`
+- **验收**：UI 渲染 draw call 从 50+ 降至 5 以下。
+- **状态**：[ ] `done`
+
+---
+
+## Phase 15: AI 与高级系统（AI & Advanced）
+
+### Task 82: 基础 AI Bot（建造与扩张）
+- **目标**：AI 自动建造基地（电厂→兵营→矿厂→战车工厂→防御），派出侦察单位，发现玩家后组织攻击。
+- **参考 OpenRA**：`OpenRA.Mods.Common/Traits/BotModules/`
+- **文件**：`src/game/ai/BaseBuilderAI.ts`, `src/game/ai/AttackAI.ts`
+- **验收**：AI 在 5 分钟内建成完整基地并派出第一波攻击部队。
+- **状态**：[ ] `done`
+
+### Task 83: AI 难度等级
+- **目标**：Easy / Normal / Hard / Brutal。影响：建造速度、资源作弊、微操精度、是否预瞄。
+- **文件**：`src/game/ai/DifficultyScaler.ts`
+- **验收**：Brutal AI 在 3 分钟内发起攻击，Easy AI 在 10 分钟后才发起。
+- **状态**：[ ] `done`
+
+### Task 84: 超级武器（Nuke / Ion Cannon）
+- **目标**：核弹/离子炮蓄力倒计时（10 分钟），UI 显示倒计时，发射时全屏震动 + 特效 + 大范围伤害。
+- **参考 OpenRA**：`NukePower.cs`, `IonCannonPower.cs`
+- **文件**：`src/game/combat/SupportPowers.ts`
+- **验收**：点击超级武器按钮，选择目标区域，10 秒倒计时后蘑菇云特效 + 中心区域建筑全毁。
+- **状态**：[ ] `done`
+
+### Task 85: 间谍/渗透系统
+- **目标**：间谍进入敌方建筑窃取科技（显示敌方建造队列）、进入矿厂偷资金、进入电厂断电。
+- **文件**：`src/game/unit/InfiltrationSystem.ts`
+- **验收**：间谍进入敌方战车工厂后，玩家 Sidebar 可建造敌方单位。
+- **状态**：[ ] `done`
+
+### Task 86: 空军与运输系统
+- **目标**：飞机从地图边缘飞入（非实体，不可选中），投弹后飞出。运输直升机装载/卸载步兵。空域不受地形阻挡。
+- **参考 OpenRA**：`Aircraft` Trait + `Cargo` Trait
+- **文件**：`src/game/unit/AircraftMovement.ts`, `src/game/unit/CargoSystem.ts`
+- **验收**：A10 空袭从屏幕顶部飞入，投弹后飞出；运输直升机悬停卸载 5 名步兵。
+- **状态**：[ ] `done`
+
+### Task 87: 桥梁系统
+- **目标**：桥梁可炸毁（断裂，下方变为水域/不可通行），可修复（工程师进入后重建）。
+- **参考 OpenRA**：`BridgeHut.cs` + `Bridge.cs`
+- **文件**：`src/game/terrain/BridgeSystem.ts`
+- **验收**：坦克炸毁桥梁后，桥断裂，水面可见；工程师修复后恢复通行。
+- **状态**：[ ] `done`
+
+### Task 88: 中立单位与野生动物
+- **目标**：地图上的中立建筑（医院、加油站，占领后提供增益）、野生动物（自动游走，被攻击后反击或逃跑）。
+- **文件**：`src/game/neutral/NeutralBuilding.ts`, `src/game/neutral/WildlifeAI.ts`
+- **验收**：占领医院后，所有步兵自动缓慢回血；奶牛在地图上随机游走。
+- **状态**：[ ] `done`
+
+---
+
+## Phase 16: 编辑器与工具（Editor & Tools）
+
+### Task 89: 内置地图编辑器（Tile Brush）
+- **目标**：浏览器内置地图编辑器：选择地形笔刷（草地/道路/水域/悬崖），在网格上绘制。支持多层（地形层、覆盖层、资源层）。
+- **参考 OpenRA**：`OpenRA.Mods.Common/EditorBrushes/`
+- **文件**：`src/editor/MapEditor.ts`, `src/editor/TileBrush.ts`
+- **验收**：编辑器中绘制 64×64 混合地形地图，导出 JSON 后 `MapLoader` 可直接加载。
+- **状态**：[ ] `done`
+
+### Task 90: 编辑器 Actor 放置与触发器编辑
+- **目标**：在编辑器中放置单位、建筑、资源矿场。可视化编辑触发器（区域框选、目标配置）。
+- **文件**：`src/editor/ActorPlacer.ts`, `src/editor/TriggerEditor.ts`
+- **验收**：放置 5 辆敌方坦克 + 1 个 MCV，设置触发器"MCV 进入区域则胜利"。
+- **状态**：[ ] `done`
+
+### Task 91: 单位测试/平衡工具
+- **目标**：沙盒模式：自由放置任意单位，测试对打，实时显示 DPS、伤害统计。
+- **文件**：`src/game/sandbox/SandboxMode.ts`
+- **验收**：放置 10 辆中坦 vs 10 辆轻坦，自动统计击杀时间和剩余血量。
+- **状态**：[ ] `done`
+
+---
+
+## Phase 17: 发布与跨平台（Release & Platform）
+
+### Task 92: 桌面应用打包（Electron / Tauri）
+- **目标**：将 Web 应用打包为 Windows / macOS / Linux 桌面应用。支持全屏、无边框窗口、本地文件读取（直接加载 MIX 资源）。
+- **文件**：`desktop/electron-main.js` 或 `desktop/src-tauri/`
+- **验收**：双击 `.exe` 启动全屏游戏，无需浏览器，可直接读取 `C:\CNC\*.MIX`。
+- **状态**：[ ] `done`
+
+### Task 93: 移动端触控适配
+- **目标**：支持触控操作：单指拖拽平移、双指缩放、点击选择、长按弹出命令菜单、框选手势。
+- **文件**：`src/core/TouchInputManager.ts`
+- **验收**：在 iPad Safari 上流畅运行，所有核心操作可用触控完成。
+- **状态**：[ ] `done`
+
+### Task 94: Steam 集成（远期）
+- **目标**：Steam API 集成：成就、排行榜、云存档、多人匹配（Steam P2P）。
+- **文件**：`src/platform/SteamIntegration.ts`
+- **验收**：通过 Steam 启动游戏，解锁"First Blood"成就，云存档同步。
+- **状态**：[ ] `done`
+
+---
+
 ## 附录 A：预留模块（WIP）
 
 > 以下模块不在 35 个核心 Task 之内，但已在代码结构中预留入口，Phase 8 后视需求开发。
@@ -365,12 +808,21 @@
 | Phase 1 基建 | 5 | 5 | |
 | Phase 2 3D核心 | 5 | 5 | |
 | Phase 3 数据层 | 4 | 4 | |
-| Phase 4 单位系统 | 5 | 4 | |
+| Phase 4 单位系统 | 5 | 3 | Task 18–19 待开发 |
 | Phase 5 建筑系统 | 4 | 0 | |
-| Phase 6 交互 | 4 | 0 | |
+| Phase 6 交互 | 4 | 0 | 选择环已存在（SelectionManager.ts），框选/编队待开发 |
 | Phase 7 战斗经济 | 4 | 0 | |
 | Phase 8 循环发布 | 4 | 0 | |
-| **总计** | **41** | **24** | |
+| Phase 9 UI Shell | 7 | 0 | 主菜单、战役、遭遇战、多人、设置、加载 |
+| Phase 10 交互增强 | 9 | 0 | 光标、Sidebar、Shift队列、攻击移动、编组 |
+| Phase 11 战役系统 | 9 | 0 | Lua脚本、触发器、目标、过场 |
+| Phase 12 网络对战 | 8 | 0 | Lockstep、WebSocket、房间、回放 |
+| Phase 13 资源内容 | 7 | 0 | MIX/SHP解析、音频、视频、本地化 |
+| Phase 14 性能优化 | 6 | 0 | LOD、实例化、视锥剔除、对象池 |
+| Phase 15 AI高级 | 7 | 0 | Bot、超级武器、空军、桥梁 |
+| Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
+| Phase 17 发布平台 | 3 | 0 | 桌面打包、移动端、Steam |
+| **总计** | **100** | **23** | |
 
 ---
 
