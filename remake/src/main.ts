@@ -16,6 +16,7 @@ import { GameObjectManager } from './game/objects/GameObjectManager';
 import { GameObjectType } from './game/objects/GameObject';
 import { SelectionManager } from './game/SelectionManager';
 import { Unit } from './game/objects/Unit';
+import { UnitState } from './game/unit/UnitState';
 
 const bootstrap = async (): Promise<void> => {
   // ── Engine ──
@@ -187,7 +188,7 @@ const bootstrap = async (): Promise<void> => {
     }
   };
 
-  // 右键：移动选中的单位到地面
+  // 右键：对选中单位下达命令（移动 / 攻击）
   rtsCamera.onRightClick = (screenX, screenY) => {
     console.warn('Right-click detected at', screenX, screenY);
 
@@ -211,13 +212,29 @@ const bootstrap = async (): Promise<void> => {
       return;
     }
 
+    // 检查是否右键点击了某个单位（攻击目标）
+    const targetUnit = pickUnitAt(screenX, screenY);
+    const isEnemyTarget = targetUnit && targetUnit.house !== selected[0].house;
+
     for (const unit of selected) {
-      const success = unit.logic.moveTo(cell.x, cell.y, pathfinder);
-      if (success) {
+      if (isEnemyTarget && targetUnit) {
+        // 攻击命令：设置攻击目标，有炮塔的单位进入 TurretTracking
+        unit.logic.attackTarget = { x: targetUnit.x, y: targetUnit.y };
+        if (unit.definition.hasTurret) {
+          unit.logic.stateMachine.transition(UnitState.TurretTracking);
+        }
         // eslint-disable-next-line no-console
-        console.info(`Move order: ${unit.definition.name} → (${cell.x}, ${cell.y})`);
+        console.info(`Attack order: ${unit.definition.name} → ${targetUnit.definition.name}`);
       } else {
-        console.warn(`Move failed for ${unit.definition.name} → (${cell.x}, ${cell.y})`);
+        // 移动命令：清除攻击目标
+        unit.logic.attackTarget = undefined;
+        const success = unit.logic.moveTo(cell.x, cell.y, pathfinder);
+        if (success) {
+          // eslint-disable-next-line no-console
+          console.info(`Move order: ${unit.definition.name} → (${cell.x}, ${cell.y})`);
+        } else {
+          console.warn(`Move failed for ${unit.definition.name} → (${cell.x}, ${cell.y})`);
+        }
       }
     }
   };

@@ -64,7 +64,7 @@ export class UnitMovement {
 
     controller.x += dx * ratio;
     controller.y += dy * ratio;
-    controller.bodyFacing = this.dirToFacing(dx, dy);
+    controller.targetBodyFacing = this.dirToFacing(dx, dy);
   }
 
   private stop(controller: UnitController): void {

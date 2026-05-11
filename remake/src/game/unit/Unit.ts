@@ -3,6 +3,7 @@ import type { UnitDefinition } from '../rules/UnitDefinitions';
 import type { House } from '../house/House';
 import type { ArmorType } from '../rules/UnitDefinitions';
 import { UnitMovement } from './UnitMovement';
+import { UnitRotation } from './UnitRotation';
 import type { Pathfinder } from '../terrain/Pathfinder';
 
 /**
@@ -56,6 +57,7 @@ export class UnitController {
 
   // ── 朝向（0–255，对应 C++ DirType）──
   bodyFacing = 0;
+  targetBodyFacing = 0;
   turretFacing = 0;
 
   // ── 标志位（FootClass / DriveClass / UnitClass）──
@@ -116,6 +118,11 @@ export class UnitController {
    * Source: REDALERT/UNIT.CPP, Line 421
    */
   tick(deltaTime: number): void {
+    // 炮塔追踪独立于状态 — 只要有攻击目标就持续更新
+    if (this.definition.hasTurret && this.attackTarget) {
+      UnitRotation.updateTurretFacing(this, deltaTime, this.attackTarget);
+    }
+
     const state = this.stateMachine.state;
     switch (state) {
       case UnitState.Idle:
@@ -131,7 +138,7 @@ export class UnitController {
         this.tickDying();
         break;
       case UnitState.TurretTracking:
-        this.tickTurretTracking();
+        this.tickTurretTracking(deltaTime);
         break;
     }
   }
@@ -153,6 +160,8 @@ export class UnitController {
 
   private tickMoving(deltaTime: number): void {
     this.movement.update(this, deltaTime);
+    // 移动过程中车身平滑转向目标方向
+    UnitRotation.updateBodyFacing(this, deltaTime);
   }
 
   private tickAttacking(): void {
@@ -163,7 +172,7 @@ export class UnitController {
     // TODO: Phase 4+ — 死亡动画、爆炸、资源清理
   }
 
-  private tickTurretTracking(): void {
-    // TODO: Phase 4+ — Rotation_AI() 炮塔独立旋转
+  private tickTurretTracking(deltaTime: number): void {
+    UnitRotation.updateTurretFacing(this, deltaTime, this.attackTarget);
   }
 }

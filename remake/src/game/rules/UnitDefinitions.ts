@@ -63,6 +63,8 @@ export interface UnitDefinition {
   readonly isCrusher: boolean;
   /** Whether the unit detects cloaked objects. */
   readonly isScanner: boolean;
+  /** Body rotation speed in DirType per millisecond (0–255 scale). */
+  readonly rotationSpeed: number;
 }
 
 /** Classic Red Alert unit roster. */
@@ -84,6 +86,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     isCloakable: false,
     isCrusher: true,
     isScanner: false,
+    rotationSpeed: 0.12,
   },
   MediumTank: {
     id: 'UNIT_MTANK2',
@@ -102,6 +105,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     isCloakable: false,
     isCrusher: true,
     isScanner: false,
+    rotationSpeed: 0.1,
   },
   HeavyTank: {
     id: 'UNIT_MTANK',
@@ -120,6 +124,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     isCloakable: false,
     isCrusher: true,
     isScanner: false,
+    rotationSpeed: 0.08,
   },
   MammothTank: {
     id: 'UNIT_HTANK',
@@ -138,6 +143,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     isCloakable: false,
     isCrusher: true,
     isScanner: false,
+    rotationSpeed: 0.06,
   },
   Harvester: {
     id: 'UNIT_HARVESTER',
@@ -156,6 +162,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     isCloakable: false,
     isCrusher: false,
     isScanner: false,
+    rotationSpeed: 0.1,
   },
   MCV: {
     id: 'UNIT_MCV',
@@ -174,6 +181,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     isCloakable: false,
     isCrusher: false,
     isScanner: false,
+    rotationSpeed: 0.08,
   },
   Jeep: {
     id: 'UNIT_JEEP',
@@ -192,6 +200,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     isCloakable: false,
     isCrusher: false,
     isScanner: true,
+    rotationSpeed: 0.18,
   },
   APC: {
     id: 'UNIT_APC',
@@ -210,6 +219,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     isCloakable: false,
     isCrusher: true,
     isScanner: false,
+    rotationSpeed: 0.1,
   },
   Artillery: {
     id: 'UNIT_ARTY',
@@ -228,6 +238,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     isCloakable: false,
     isCrusher: false,
     isScanner: false,
+    rotationSpeed: 0.08,
   },
   V2Rocket: {
     id: 'UNIT_V2_LAUNCHER',
@@ -246,6 +257,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     isCloakable: false,
     isCrusher: false,
     isScanner: false,
+    rotationSpeed: 0.08,
   },
 } as const;
 
