@@ -44,6 +44,7 @@ export class RTSCamera {
 
   private targetZoom: number;
   private isRightDragging = false;
+  private isMouseOverCanvas = false;
   private mouseX = 0;
   private mouseY = 0;
   private panningStartPoint: Vector3 | null = null;
@@ -52,6 +53,9 @@ export class RTSCamera {
   private boundMouseMove: (e: MouseEvent) => void;
   private boundMouseDown: (e: MouseEvent) => void;
   private boundMouseUp: (e: MouseEvent) => void;
+  private boundMouseEnter: (e: MouseEvent) => void;
+  private boundMouseLeave: (e: MouseEvent) => void;
+  private boundWindowBlur: () => void;
   private boundContextMenu: (e: MouseEvent) => void;
   private boundWheel: (e: WheelEvent) => void;
 
@@ -93,6 +97,9 @@ export class RTSCamera {
     this.boundMouseMove = this.handleMouseMove.bind(this);
     this.boundMouseDown = this.handleMouseDown.bind(this);
     this.boundMouseUp = this.handleMouseUp.bind(this);
+    this.boundMouseEnter = this.handleMouseEnter.bind(this);
+    this.boundMouseLeave = this.handleMouseLeave.bind(this);
+    this.boundWindowBlur = this.handleWindowBlur.bind(this);
     this.boundContextMenu = this.handleContextMenu.bind(this);
     this.boundWheel = this.handleWheel.bind(this);
 
@@ -111,6 +118,9 @@ export class RTSCamera {
     canvas.addEventListener('mousemove', this.boundMouseMove);
     canvas.addEventListener('mousedown', this.boundMouseDown);
     window.addEventListener('mouseup', this.boundMouseUp);
+    canvas.addEventListener('mouseenter', this.boundMouseEnter);
+    canvas.addEventListener('mouseleave', this.boundMouseLeave);
+    window.addEventListener('blur', this.boundWindowBlur);
     canvas.addEventListener('contextmenu', this.boundContextMenu);
     canvas.addEventListener('wheel', this.boundWheel, { passive: false });
   }
@@ -139,6 +149,25 @@ export class RTSCamera {
       this.panningStartPoint = null;
       this.panningStartTarget = null;
     }
+  }
+
+  private handleMouseEnter(): void {
+    this.isMouseOverCanvas = true;
+  }
+
+  private handleMouseLeave(): void {
+    this.isMouseOverCanvas = false;
+    // Release any stuck drag when the cursor leaves the canvas.
+    this.isRightDragging = false;
+    this.panningStartPoint = null;
+    this.panningStartTarget = null;
+  }
+
+  private handleWindowBlur(): void {
+    this.isMouseOverCanvas = false;
+    this.isRightDragging = false;
+    this.panningStartPoint = null;
+    this.panningStartTarget = null;
   }
 
   private handleContextMenu(e: MouseEvent): void {
@@ -194,6 +223,7 @@ export class RTSCamera {
 
     // Edge scrolling
     if (this.isRightDragging) return;
+    if (!this.isMouseOverCanvas) return;
 
     const canvas = this.engine.getRenderingCanvas();
     if (!canvas) return;
@@ -272,10 +302,13 @@ export class RTSCamera {
     if (canvas) {
       canvas.removeEventListener('mousemove', this.boundMouseMove);
       canvas.removeEventListener('mousedown', this.boundMouseDown);
+      canvas.removeEventListener('mouseenter', this.boundMouseEnter);
+      canvas.removeEventListener('mouseleave', this.boundMouseLeave);
       canvas.removeEventListener('contextmenu', this.boundContextMenu);
       canvas.removeEventListener('wheel', this.boundWheel);
     }
     window.removeEventListener('mouseup', this.boundMouseUp);
+    window.removeEventListener('blur', this.boundWindowBlur);
 
     this.camera.dispose();
   }
