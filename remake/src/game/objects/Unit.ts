@@ -1,9 +1,10 @@
-import { MeshBuilder, Scene, Color3, StandardMaterial } from '@babylonjs/core';
+import { Scene } from '@babylonjs/core';
 import { GameObject, GameObjectType } from './GameObject';
 import type { UnitDefinition } from '../rules/UnitDefinitions';
 import type { House } from '../house/House';
 import { UnitController } from '../unit/Unit';
 import { UnitState } from '../unit/UnitState';
+import { UnitMeshFactory } from '../../renderer/meshes/UnitMeshFactory';
 
 /** 运行时单位实例。
  *
@@ -26,17 +27,9 @@ export class Unit extends GameObject {
   }
 
   createMesh(scene: Scene): void {
-    const size = 0.6;
-    this.mesh = MeshBuilder.CreateBox(`unit_${this.id}`, { size, height: size * 0.5 }, scene);
-
+    this.mesh = UnitMeshFactory.create(this.definition, this.house, scene, `unit_${this.id}`);
     const pos = this.getPosition();
-    pos.y = size * 0.25;
     this.mesh.position = pos;
-
-    const mat = new StandardMaterial(`unitMat_${this.id}`, scene);
-    mat.diffuseColor = Color3.FromHexString(this.house.color);
-    mat.specularColor = Color3.Black();
-    this.mesh.material = mat;
   }
 
   /** 每帧同步 logic 状态到视觉表现。 */

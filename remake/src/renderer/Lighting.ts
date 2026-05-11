@@ -100,6 +100,9 @@ export class Lighting {
    */
   enableShadowsOnMesh(mesh: AbstractMesh): void {
     mesh.receiveShadows = true;
+    for (const child of mesh.getChildMeshes(true)) {
+      child.receiveShadows = true;
+    }
   }
 
   /** Repoint the sun and update its shadow frustum. */
