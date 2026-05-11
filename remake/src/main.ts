@@ -12,6 +12,7 @@ import { HouseManager } from './game/house/HouseManager';
 import { HouseType } from './game/house/House';
 import { GameObjectFactory } from './game/objects/GameObjectFactory';
 import { GameObjectManager } from './game/objects/GameObjectManager';
+import { UnitState } from './game/unit/UnitState';
 
 const bootstrap = async (): Promise<void> => {
   // ── Engine ──
@@ -129,6 +130,10 @@ const bootstrap = async (): Promise<void> => {
     }
   }
 
+  // ── State machine demo ──
+  gdiTank.logic.stateMachine.transition(UnitState.Moving);
+  nodTank.logic.stateMachine.transition(UnitState.TurretTracking);
+
   // ── Render loop ──
   sceneManager.runRenderLoop();
 
@@ -158,9 +163,31 @@ const bootstrap = async (): Promise<void> => {
     '| Buildings:',
     goManager.getBuildings().length
   );
+
+  // ── Task 15: UnitClass property verification ──
+  // eslint-disable-next-line no-console
+  console.info('Task 15 — GDI MediumTank:', {
+    health: gdiTank.logic.currentHealth,
+    maxHealth: gdiTank.logic.maxHealth,
+    speed: gdiTank.logic.speed,
+    armor: gdiTank.logic.armor,
+    ammo: gdiTank.logic.currentAmmo,
+    state: gdiTank.logic.stateMachine.state,
+    prevState: gdiTank.logic.stateMachine.previousState,
+  });
+  // eslint-disable-next-line no-console
+  console.info('Task 15 — Nod LightTank:', {
+    health: nodTank.logic.currentHealth,
+    maxHealth: nodTank.logic.maxHealth,
+    speed: nodTank.logic.speed,
+    armor: nodTank.logic.armor,
+    ammo: nodTank.logic.currentAmmo,
+    state: nodTank.logic.stateMachine.state,
+    prevState: nodTank.logic.stateMachine.previousState,
+  });
 };
 
 bootstrap();
 
 // eslint-disable-next-line no-console
-console.info('C&C Remake — GameObject Factory initialised');
+console.info('C&C Remake — Unit State Machine initialised');
