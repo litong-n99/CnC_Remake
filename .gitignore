@@ -20,6 +20,7 @@ build/
 
 # origin
 origin/
+OpenRA/
 
 # OS
 .DS_Store
