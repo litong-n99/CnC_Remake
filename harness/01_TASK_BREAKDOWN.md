@@ -144,7 +144,7 @@
 - **目标**：翻译 `HOUSE.CPP`，管理玩家、AI、中立阵营的属性（资金、电力、已建造单位列表）。
 - **文件**：`src/game/house/House.ts`, `src/game/house/HouseManager.ts`
 - **验收**：创建两个 House（GDI 与 Nod），各自拥有独立资金与单位列表。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 13: 地图加载器与序列化
 - **目标**：定义地图数据结构（二维 Cell 数组），支持从 JSON 加载地图。先使用 Dummy 地图数据。

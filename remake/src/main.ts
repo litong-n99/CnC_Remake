@@ -7,6 +7,8 @@ import { TerrainGrid } from './game/terrain/TerrainGrid';
 import { GameRules } from './game/rules/GameRules';
 import { UNIT_DEFINITIONS } from './game/rules/UnitDefinitions';
 import { BUILDING_DEFINITIONS } from './game/rules/BuildingDefinitions';
+import { HouseManager } from './game/house/HouseManager';
+import { HouseType } from './game/house/House';
 
 const bootstrap = (): void => {
   // ── Engine ──
@@ -38,11 +40,47 @@ const bootstrap = (): void => {
   lighting.addShadowCaster(box);
   lighting.enableShadowsOnMesh(box);
 
+  // ── Houses (Task 12 acceptance demo) ──
+  const houseManager = HouseManager.getInstance();
+
+  const gdi = houseManager.createHouse(HouseType.GDI, {
+    isHuman: true,
+    credits: GameRules.mpDefaultMoney,
+    capacity: 2000,
+    firepowerBias: 1,
+    armorBias: 1,
+  });
+
+  const nod = houseManager.createHouse(HouseType.Nod, {
+    isHuman: false,
+    credits: GameRules.mpDefaultMoney,
+    capacity: 2000,
+    firepowerBias: 1.1,
+    armorBias: 0.9,
+    buildSpeedBias: 1.1,
+    costBias: 0.9,
+  });
+
+  // Simulate some production
+  gdi.addBuilding(BUILDING_DEFINITIONS.PowerPlant.id);
+  gdi.addBuilding(BUILDING_DEFINITIONS.Barracks.id);
+  gdi.addUnit(UNIT_DEFINITIONS.MediumTank.id);
+  gdi.addUnit(UNIT_DEFINITIONS.MediumTank.id);
+  gdi.addUnit(UNIT_DEFINITIONS.Jeep.id);
+
+  nod.addBuilding(BUILDING_DEFINITIONS.PowerPlant.id);
+  nod.addBuilding(BUILDING_DEFINITIONS.OreRefinery.id);
+  nod.addUnit(UNIT_DEFINITIONS.LightTank.id);
+  nod.addUnit(UNIT_DEFINITIONS.LightTank.id);
+  nod.addUnit(UNIT_DEFINITIONS.LightTank.id);
+  nod.addUnit(UNIT_DEFINITIONS.V2Rocket.id);
+
   // ── Render loop ──
   sceneManager.runRenderLoop();
 
   // ── Lifecycle cleanup ──
   window.addEventListener('beforeunload', () => {
+    houseManager.dispose();
     terrain.dispose();
     lighting.dispose();
     rtsCamera.dispose();
@@ -50,16 +88,18 @@ const bootstrap = (): void => {
     engineManager.dispose();
   });
 
-  // ── Verify Task 11 acceptance criteria ──
+  // ── Verification logs ──
   // eslint-disable-next-line no-console
-  console.info('GameRules.buildSpeedBias =', GameRules.buildSpeedBias);
+  console.info('GDI — Credits:', gdi.credits, '| Buildings:', gdi.curBuildings, '| Units:', gdi.curUnits);
   // eslint-disable-next-line no-console
-  console.info('UNIT_DEFINITIONS.MediumTank.speed =', UNIT_DEFINITIONS.MediumTank.speed);
+  console.info('Nod — Credits:', nod.credits, '| Buildings:', nod.curBuildings, '| Units:', nod.curUnits);
   // eslint-disable-next-line no-console
-  console.info('BUILDING_DEFINITIONS.PowerPlant.power =', BUILDING_DEFINITIONS.PowerPlant.power);
+  console.info('GDI has PowerPlant?', gdi.hasBuilding('STRUCT_POWER'));
+  // eslint-disable-next-line no-console
+  console.info('Nod has Barracks?', nod.hasBuilding('STRUCT_BARRACKS'));
 };
 
 bootstrap();
 
 // eslint-disable-next-line no-console
-console.info('C&C Remake — Rules & Definitions initialised');
+console.info('C&C Remake — House system initialised');
