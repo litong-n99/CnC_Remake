@@ -1,4 +1,6 @@
-import { Scene, Mesh, MeshBuilder, StandardMaterial, Color3 } from '@babylonjs/core';
+import { Scene, Mesh, Vector3, VertexBuffer, Color3, Color4 } from '@babylonjs/core';
+import { MeshBuilder } from '@babylonjs/core';
+import { TerrainMaterial } from '../../renderer/materials/TerrainMaterial';
 
 /**
  * Terrain types translated from the original C&C `LandType` enum
@@ -22,35 +24,34 @@ export interface CellData {
 }
 
 /**
- * Cell-based terrain grid.
+ * Cell-based terrain grid rendered as a **single unified mesh** with vertex
+ * colours.  This eliminates the inter-cell gaps that appear when using
+ * thousands of individual GroundMesh tiles.
  *
- * Creates a `width × height` array of 1×1 ground meshes, each assigned a
- * {@link StandardMaterial} coloured according to its {@link LandType}.
- * Materials are cached and shared across cells of the same type.
- *
- * The grid is centred on the origin: cell `(0,0)` sits at world
- * `(-width/2+0.5, 0, -height/2+0.5)` and cell `(width-1, height-1)` at
- * `(width/2-0.5, 0, height/2-0.5)`.
+ * Each cell owns 4 independent vertices (not shared with neighbours) so
+ * colour boundaries are perfectly sharp.  A wireframe line-grid overlay
+ * can optionally be shown for debugging.
  */
 export class TerrainGrid {
   private width: number;
   private height: number;
   private cells: CellData[][];
-  private cellMeshes: Map<string, Mesh>;
-  private materials: Map<LandType, StandardMaterial>;
+  private terrainMesh: Mesh | null = null;
+  private gridLines: Mesh | null = null;
+  private terrainMaterial: TerrainMaterial;
 
   constructor(scene: Scene, width = 64, height = 64) {
     this.width = width;
     this.height = height;
     this.cells = [];
-    this.cellMeshes = new Map();
-    this.materials = new Map();
+    this.terrainMaterial = new TerrainMaterial(scene);
 
     this.initializeCells();
-    this.createMeshes(scene);
+    this.createMesh(scene);
+    this.createGridLines(scene);
   }
 
-  // ── Initialisation ──
+  // ── Cell data ──
 
   private initializeCells(): void {
     for (let y = 0; y < this.height; y++) {
@@ -62,32 +63,80 @@ export class TerrainGrid {
     }
   }
 
-  private createMeshes(scene: Scene): void {
+  // ── Geometry construction ──
+
+  private createMesh(scene: Scene): void {
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const colors: number[] = [];
+
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
-        const mesh = MeshBuilder.CreateGround(`cell_${x}_${y}`, { width: 1, height: 1, subdivisions: 1 }, scene);
-        mesh.position.x = x - this.width / 2 + 0.5;
-        mesh.position.z = y - this.height / 2 + 0.5;
-        mesh.position.y = 0;
+        const x0 = x - this.width / 2;
+        const x1 = x0 + 1;
+        const z0 = y - this.height / 2;
+        const z1 = z0 + 1;
 
-        mesh.material = this.getMaterialForLandType(this.cells[y][x].landType, scene);
-        this.cellMeshes.set(`${x},${y}`, mesh);
+        const baseIndex = positions.length / 3;
+
+        // 4 independent vertices per cell (no sharing → sharp colour boundaries)
+        positions.push(
+          x0,
+          0,
+          z0, // bottom-left
+          x1,
+          0,
+          z0, // bottom-right
+          x1,
+          0,
+          z1, // top-right
+          x0,
+          0,
+          z1 // top-left
+        );
+
+        // 2 triangles per cell
+        indices.push(baseIndex, baseIndex + 1, baseIndex + 2, baseIndex, baseIndex + 2, baseIndex + 3);
+
+        const color = this.getColorForLandType(this.cells[y][x].landType);
+        for (let i = 0; i < 4; i++) {
+          colors.push(color.r, color.g, color.b, 1);
+        }
       }
     }
+
+    this.terrainMesh = new Mesh('terrain', scene);
+    this.terrainMesh.setVerticesData(VertexBuffer.PositionKind, positions);
+    this.terrainMesh.setVerticesData(VertexBuffer.ColorKind, colors);
+    this.terrainMesh.setIndices(indices);
+    this.terrainMesh.useVertexColors = true;
+    this.terrainMesh.material = this.terrainMaterial.getMaterial();
+    this.terrainMesh.createNormals(true);
   }
 
-  // ── Materials ──
+  private createGridLines(scene: Scene): void {
+    const lines: Vector3[][] = [];
+    const lineColor = new Color4(0.3, 0.3, 0.3, 0.4);
+    const colors: Color4[][] = [];
 
-  private getMaterialForLandType(type: LandType, scene: Scene): StandardMaterial {
-    const existing = this.materials.get(type);
-    if (existing) return existing;
+    // Vertical grid lines
+    for (let x = 0; x <= this.width; x++) {
+      const wx = x - this.width / 2;
+      lines.push([new Vector3(wx, 0.005, -this.height / 2), new Vector3(wx, 0.005, this.height / 2)]);
+      colors.push([lineColor, lineColor]);
+    }
 
-    const mat = new StandardMaterial(`mat_land_${LandType[type]}`, scene);
-    mat.diffuseColor = this.getColorForLandType(type);
-    mat.specularColor = new Color3(0.05, 0.05, 0.05);
-    this.materials.set(type, mat);
-    return mat;
+    // Horizontal grid lines
+    for (let y = 0; y <= this.height; y++) {
+      const wz = y - this.height / 2;
+      lines.push([new Vector3(-this.width / 2, 0.005, wz), new Vector3(this.width / 2, 0.005, wz)]);
+      colors.push([lineColor, lineColor]);
+    }
+
+    this.gridLines = MeshBuilder.CreateLineSystem('terrainGrid', { lines, colors }, scene);
   }
+
+  // ── Colour mapping ──
 
   private getColorForLandType(type: LandType): Color3 {
     switch (type) {
@@ -116,18 +165,11 @@ export class TerrainGrid {
 
   // ── Public API ──
 
-  /** Change the terrain type of a cell and update its mesh material. */
+  /** Change the terrain type of a cell and update its vertex colour. */
   setCellLandType(x: number, y: number, landType: LandType): void {
     if (x < 0 || x >= this.width || y < 0 || y >= this.height) return;
     this.cells[y][x].landType = landType;
-
-    const mesh = this.cellMeshes.get(`${x},${y}`);
-    if (mesh) {
-      const scene = mesh.getScene();
-      if (scene) {
-        mesh.material = this.getMaterialForLandType(landType, scene);
-      }
-    }
+    this.updateCellColor(x, y);
   }
 
   /** Read the terrain type of a cell. */
@@ -148,8 +190,6 @@ export class TerrainGrid {
    * - top-left: Water, top-right: Road
    * - bottom-left: Rock, bottom-right: Tiberium
    * - centre circle: Clear
-   *
-   * Useful for visually verifying that material switching works.
    */
   generateTestPattern(): void {
     const cx = Math.floor(this.width / 2);
@@ -169,7 +209,6 @@ export class TerrainGrid {
           type = LandType.Tiberium;
         }
 
-        // Carve a circular Clear area in the middle.
         const dx = x - cx + 0.5;
         const dy = y - cy + 0.5;
         if (Math.sqrt(dx * dx + dy * dy) < 8) {
@@ -181,18 +220,34 @@ export class TerrainGrid {
     }
   }
 
+  // ── Internal helpers ──
+
+  private updateCellColor(x: number, y: number): void {
+    if (!this.terrainMesh) return;
+
+    const colors = this.terrainMesh.getVerticesData(VertexBuffer.ColorKind);
+    if (!colors) return;
+
+    const color = this.getColorForLandType(this.cells[y][x].landType);
+    const cellIndex = (y * this.width + x) * 4 * 4; // 4 verts × 4 components
+
+    for (let i = 0; i < 4; i++) {
+      colors[cellIndex + i * 4] = color.r;
+      colors[cellIndex + i * 4 + 1] = color.g;
+      colors[cellIndex + i * 4 + 2] = color.b;
+    }
+
+    this.terrainMesh.updateVerticesData(VertexBuffer.ColorKind, colors);
+  }
+
   // ── Lifecycle ──
 
-  /** Dispose every cell mesh and cached material. */
+  /** Dispose terrain mesh, grid lines, and material. */
   dispose(): void {
-    for (const mesh of this.cellMeshes.values()) {
-      mesh.dispose();
-    }
-    this.cellMeshes.clear();
-
-    for (const material of this.materials.values()) {
-      material.dispose();
-    }
-    this.materials.clear();
+    this.terrainMesh?.dispose();
+    this.terrainMesh = null;
+    this.gridLines?.dispose();
+    this.gridLines = null;
+    this.terrainMaterial.dispose();
   }
 }

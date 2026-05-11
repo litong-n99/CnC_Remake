@@ -127,7 +127,7 @@
 - **文件**：`src/renderer/materials/TerrainMaterial.ts`
 - **Dummy 资源**：纯色材质 + 网格线框，真实纹理待 `ready` 后替换。
 - **验收**：同一地图中三种地形同时可见，边界清晰。
-- **状态**：[ ] `ready` / `done`
+- **状态**：[x] `done`
 
 ---
 
