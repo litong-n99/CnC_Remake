@@ -1,4 +1,4 @@
-import { Vector3, MeshBuilder } from '@babylonjs/core';
+import { Vector3 } from '@babylonjs/core';
 import { EngineManager } from './core/EngineManager';
 import { SceneManager } from './core/SceneManager';
 import { RTSCamera } from './core/RTSCamera';
@@ -10,6 +10,8 @@ import { UNIT_DEFINITIONS } from './game/rules/UnitDefinitions';
 import { BUILDING_DEFINITIONS } from './game/rules/BuildingDefinitions';
 import { HouseManager } from './game/house/HouseManager';
 import { HouseType } from './game/house/House';
+import { GameObjectFactory } from './game/objects/GameObjectFactory';
+import { GameObjectManager } from './game/objects/GameObjectManager';
 
 const bootstrap = async (): Promise<void> => {
   // ── Engine ──
@@ -45,12 +47,6 @@ const bootstrap = async (): Promise<void> => {
     terrain.generateTestPattern();
   }
 
-  // ── Test geometry ──
-  const box = MeshBuilder.CreateBox('box', { size: 1 }, scene);
-  box.position.y = 0.5;
-  lighting.addShadowCaster(box);
-  lighting.enableShadowsOnMesh(box);
-
   // ── Houses ──
   const houseManager = HouseManager.getInstance();
 
@@ -66,21 +62,79 @@ const bootstrap = async (): Promise<void> => {
     capacity: 2000,
   });
 
-  gdi.addBuilding(BUILDING_DEFINITIONS.PowerPlant.id);
-  gdi.addBuilding(BUILDING_DEFINITIONS.Barracks.id);
-  gdi.addUnit(UNIT_DEFINITIONS.MediumTank.id);
-  gdi.addUnit(UNIT_DEFINITIONS.Jeep.id);
+  // ── Spawn game objects via Factory ──
+  const gdiPowerPlant = GameObjectFactory.createBuilding({
+    definition: BUILDING_DEFINITIONS.PowerPlant,
+    house: gdi,
+    x: 40,
+    y: 10,
+    scene,
+  });
+  const gdiBarracks = GameObjectFactory.createBuilding({
+    definition: BUILDING_DEFINITIONS.Barracks,
+    house: gdi,
+    x: 44,
+    y: 10,
+    scene,
+  });
+  const gdiTank = GameObjectFactory.createUnit({
+    definition: UNIT_DEFINITIONS.MediumTank,
+    house: gdi,
+    x: 42,
+    y: 14,
+    scene,
+  });
+  const gdiJeep = GameObjectFactory.createUnit({
+    definition: UNIT_DEFINITIONS.Jeep,
+    house: gdi,
+    x: 45,
+    y: 15,
+    scene,
+  });
 
-  nod.addBuilding(BUILDING_DEFINITIONS.PowerPlant.id);
-  nod.addBuilding(BUILDING_DEFINITIONS.OreRefinery.id);
-  nod.addUnit(UNIT_DEFINITIONS.LightTank.id);
-  nod.addUnit(UNIT_DEFINITIONS.V2Rocket.id);
+  const nodPowerPlant = GameObjectFactory.createBuilding({
+    definition: BUILDING_DEFINITIONS.PowerPlant,
+    house: nod,
+    x: 50,
+    y: 45,
+    scene,
+  });
+  const nodRefinery = GameObjectFactory.createBuilding({
+    definition: BUILDING_DEFINITIONS.OreRefinery,
+    house: nod,
+    x: 46,
+    y: 45,
+    scene,
+  });
+  const nodTank = GameObjectFactory.createUnit({
+    definition: UNIT_DEFINITIONS.LightTank,
+    house: nod,
+    x: 48,
+    y: 42,
+    scene,
+  });
+  const nodRocket = GameObjectFactory.createUnit({
+    definition: UNIT_DEFINITIONS.V2Rocket,
+    house: nod,
+    x: 45,
+    y: 40,
+    scene,
+  });
+
+  // Enable shadows on all spawned objects
+  for (const obj of [gdiPowerPlant, gdiBarracks, gdiTank, gdiJeep, nodPowerPlant, nodRefinery, nodTank, nodRocket]) {
+    if (obj.mesh) {
+      lighting.addShadowCaster(obj.mesh);
+      lighting.enableShadowsOnMesh(obj.mesh);
+    }
+  }
 
   // ── Render loop ──
   sceneManager.runRenderLoop();
 
   // ── Lifecycle cleanup ──
   window.addEventListener('beforeunload', () => {
+    GameObjectManager.getInstance().dispose();
     houseManager.dispose();
     terrain.dispose();
     lighting.dispose();
@@ -90,13 +144,23 @@ const bootstrap = async (): Promise<void> => {
   });
 
   // ── Verification ──
+  const goManager = GameObjectManager.getInstance();
   // eslint-disable-next-line no-console
   console.info('GDI — Credits:', gdi.credits, '| Buildings:', gdi.curBuildings, '| Units:', gdi.curUnits);
   // eslint-disable-next-line no-console
   console.info('Nod — Credits:', nod.credits, '| Buildings:', nod.curBuildings, '| Units:', nod.curUnits);
+  // eslint-disable-next-line no-console
+  console.info(
+    'Total objects:',
+    goManager.getAll().length,
+    '| Units:',
+    goManager.getUnits().length,
+    '| Buildings:',
+    goManager.getBuildings().length
+  );
 };
 
 bootstrap();
 
 // eslint-disable-next-line no-console
-console.info('C&C Remake — Map Loader initialised');
+console.info('C&C Remake — GameObject Factory initialised');
