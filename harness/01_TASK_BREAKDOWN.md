@@ -152,13 +152,13 @@
 - **文件**：`src/game/terrain/MapLoader.ts`, `src/game/terrain/GameMap.ts`
 - **Dummy 资源**：`public/maps/dummy_map.json` — 64x64 的 JSON 地形数据。
 - **验收**：加载 JSON 后，TerrainGrid 正确渲染对应地形。
-- **状态**：[ ] `ready` / `done`
+- **状态**：[x] `done`
 
 ### Task 14: 游戏对象工厂（GameObject Factory）
 - **目标**：统一创建 Unit / Building 的工厂，分配唯一 ID，注册到场景与逻辑层。
 - **文件**：`src/game/GameObjectFactory.ts`
 - **验收**：调用 `Factory.createUnit('MediumTank', owner, cell)` 后，场景中立即出现对应 Dummy 单位。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ---
 
@@ -361,15 +361,16 @@
 
 | Phase | 任务数 | 完成数 | 备注 |
 |-------|--------|--------|------|
-| Phase 1 基建 | 5 | 0 | |
-| Phase 2 3D核心 | 5 | 0 | |
-| Phase 3 数据层 | 4 | 0 | |
+| Phase 0 预研 | 6 | 6 | |
+| Phase 1 基建 | 5 | 5 | |
+| Phase 2 3D核心 | 5 | 5 | |
+| Phase 3 数据层 | 4 | 4 | |
 | Phase 4 单位系统 | 5 | 0 | |
 | Phase 5 建筑系统 | 4 | 0 | |
 | Phase 6 交互 | 4 | 0 | |
 | Phase 7 战斗经济 | 4 | 0 | |
 | Phase 8 循环发布 | 4 | 0 | |
-| **总计** | **35** | **0** | |
+| **总计** | **41** | **20** | |
 
 ---
 
