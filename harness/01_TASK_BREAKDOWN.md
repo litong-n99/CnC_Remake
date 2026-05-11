@@ -86,7 +86,7 @@
 - **目标**：`main` 分支合并后自动构建并发布到 `gh-pages`。
 - **文件**：`.github/workflows/deploy.yml`
 - **验收**：访问 `https://<user>.github.io/CnC_Remake/` 能看到最新版本。
-- **状态**：[~] `skipped`（无 GitHub 访问权限，待后续手动创建）
+- **状态**：[x] `done`
 
 ---
 
