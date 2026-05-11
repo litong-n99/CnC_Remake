@@ -33,8 +33,8 @@ export abstract class GameObject {
   /** Babylon.js 占位 Mesh（子类在 `createMesh` 中初始化）。 */
   mesh: Mesh | null = null;
 
-  private readonly worldOffsetX: number;
-  private readonly worldOffsetZ: number;
+  protected readonly worldOffsetX: number;
+  protected readonly worldOffsetZ: number;
 
   protected constructor(
     id: string,

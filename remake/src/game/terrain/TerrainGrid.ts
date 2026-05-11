@@ -106,8 +106,8 @@ export class TerrainGrid {
     }
 
     this.terrainMesh = new Mesh('terrain', scene);
-    this.terrainMesh.setVerticesData(VertexBuffer.PositionKind, positions);
-    this.terrainMesh.setVerticesData(VertexBuffer.ColorKind, colors);
+    this.terrainMesh.setVerticesData(VertexBuffer.PositionKind, positions, true);
+    this.terrainMesh.setVerticesData(VertexBuffer.ColorKind, colors, true);
     this.terrainMesh.setIndices(indices);
     this.terrainMesh.useVertexColors = true;
     this.terrainMesh.material = this.terrainMaterial.getMaterial();

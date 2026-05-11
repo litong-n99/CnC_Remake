@@ -50,6 +50,11 @@ export class RTSCamera {
   private panningStartPoint: Vector3 | null = null;
   private panningStartTarget: Vector3 | null = null;
 
+  /** 右键单击回调（非拖拽）。参数为屏幕像素坐标。 */
+  onRightClick: ((screenX: number, screenY: number) => void) | null = null;
+  /** 左键单击回调。参数为屏幕像素坐标。 */
+  onLeftClick: ((screenX: number, screenY: number) => void) | null = null;
+
   private boundMouseMove: (e: MouseEvent) => void;
   private boundMouseDown: (e: MouseEvent) => void;
   private boundMouseUp: (e: MouseEvent) => void;
@@ -57,6 +62,7 @@ export class RTSCamera {
   private boundMouseLeave: (e: MouseEvent) => void;
   private boundWindowBlur: () => void;
   private boundContextMenu: (e: MouseEvent) => void;
+  private boundClick: (e: MouseEvent) => void;
   private boundWheel: (e: WheelEvent) => void;
 
   private renderCallback: () => void;
@@ -101,6 +107,7 @@ export class RTSCamera {
     this.boundMouseLeave = this.handleMouseLeave.bind(this);
     this.boundWindowBlur = this.handleWindowBlur.bind(this);
     this.boundContextMenu = this.handleContextMenu.bind(this);
+    this.boundClick = this.handleClick.bind(this);
     this.boundWheel = this.handleWheel.bind(this);
 
     this.renderCallback = this.update.bind(this);
@@ -122,6 +129,7 @@ export class RTSCamera {
     canvas.addEventListener('mouseleave', this.boundMouseLeave);
     window.addEventListener('blur', this.boundWindowBlur);
     canvas.addEventListener('contextmenu', this.boundContextMenu);
+    canvas.addEventListener('click', this.boundClick);
     canvas.addEventListener('wheel', this.boundWheel, { passive: false });
   }
 
@@ -151,6 +159,12 @@ export class RTSCamera {
     }
   }
 
+  private handleClick(e: MouseEvent): void {
+    if (this.onLeftClick) {
+      this.onLeftClick(e.clientX, e.clientY);
+    }
+  }
+
   private handleMouseEnter(): void {
     this.isMouseOverCanvas = true;
   }
@@ -172,6 +186,9 @@ export class RTSCamera {
 
   private handleContextMenu(e: MouseEvent): void {
     e.preventDefault();
+    if (this.onRightClick) {
+      this.onRightClick(e.clientX, e.clientY);
+    }
   }
 
   private handleWheel(e: WheelEvent): void {
@@ -196,9 +213,18 @@ export class RTSCamera {
   /**
    * Cast a ray from the camera through the given screen pixel and intersect
    * it with the mathematical ground plane `y = 0`.
+   *
+   * Automatically accounts for canvas CSS size vs render-buffer size (DPR).
    */
   private raycastToGround(screenX: number, screenY: number): Vector3 | null {
-    const ray = this.scene.createPickingRay(screenX, screenY, null, this.camera);
+    const canvas = this.engine.getRenderingCanvas();
+    if (!canvas) return null;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = (screenX - rect.left) * (canvas.width / rect.width);
+    const y = (screenY - rect.top) * (canvas.height / rect.height);
+
+    const ray = this.scene.createPickingRay(x, y, null, this.camera);
 
     if (Math.abs(ray.direction.y) < 0.0001) {
       return null;
@@ -210,6 +236,14 @@ export class RTSCamera {
     }
 
     return ray.origin.add(ray.direction.scale(t));
+  }
+
+  /**
+   * Convert a screen pixel coordinate to a ground-plane (y = 0) world
+   * coordinate. Returns `null` if the ray is parallel to the ground.
+   */
+  screenToGround(screenX: number, screenY: number): Vector3 | null {
+    return this.raycastToGround(screenX, screenY);
   }
 
   // ── Per-frame update ──
@@ -305,6 +339,7 @@ export class RTSCamera {
       canvas.removeEventListener('mouseenter', this.boundMouseEnter);
       canvas.removeEventListener('mouseleave', this.boundMouseLeave);
       canvas.removeEventListener('contextmenu', this.boundContextMenu);
+      canvas.removeEventListener('click', this.boundClick);
       canvas.removeEventListener('wheel', this.boundWheel);
     }
     window.removeEventListener('mouseup', this.boundMouseUp);

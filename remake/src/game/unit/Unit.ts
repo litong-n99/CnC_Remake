@@ -2,6 +2,8 @@ import { UnitState, UnitStateMachine } from './UnitState';
 import type { UnitDefinition } from '../rules/UnitDefinitions';
 import type { House } from '../house/House';
 import type { ArmorType } from '../rules/UnitDefinitions';
+import { UnitMovement } from './UnitMovement';
+import type { Pathfinder } from '../terrain/Pathfinder';
 
 /**
  * 格子坐标目标 — 用于 moveTarget / attackTarget。
@@ -70,9 +72,18 @@ export class UnitController {
   // ── 重装倒计时（UnitClass）──
   reloadTimer = 0;
 
-  constructor(definition: UnitDefinition, owner: House) {
+  // ── 坐标（与 GameObject.x/y 双向同步）──
+  x = 0;
+  y = 0;
+
+  // ── 移动控制器 ──
+  readonly movement: UnitMovement;
+
+  constructor(definition: UnitDefinition, owner: House, x = 0, y = 0) {
     this.definition = definition;
     this.owner = owner;
+    this.x = x;
+    this.y = y;
 
     this.maxHealth = definition.strength;
     this.currentHealth = definition.strength;
@@ -88,20 +99,30 @@ export class UnitController {
     this.armorBias = 1.0;
     this.firepowerBias = 1.0;
     this.speedBias = 1.0;
+
+    this.movement = new UnitMovement(this.speed);
+  }
+
+  /**
+   * 请求移动到目标格子。
+   * @returns 是否成功找到路径并开始移动。
+   */
+  moveTo(targetX: number, targetY: number, pathfinder: Pathfinder): boolean {
+    return this.movement.moveTo(this, targetX, targetY, pathfinder);
   }
 
   /**
    * 每 Tick 更新 — 对应 C++ UnitClass::AI() 简化骨架。
    * Source: REDALERT/UNIT.CPP, Line 421
    */
-  tick(_deltaTime: number): void {
+  tick(deltaTime: number): void {
     const state = this.stateMachine.state;
     switch (state) {
       case UnitState.Idle:
         this.tickIdle();
         break;
       case UnitState.Moving:
-        this.tickMoving();
+        this.tickMoving(deltaTime);
         break;
       case UnitState.Attacking:
         this.tickAttacking();
@@ -130,8 +151,8 @@ export class UnitController {
     // TODO: Phase 4+ — Enter_Idle_Mode() 逻辑、守卫/采集任务分配
   }
 
-  private tickMoving(): void {
-    // TODO: Phase 4+ — DriveClass::AI() 路径步进、插值移动
+  private tickMoving(deltaTime: number): void {
+    this.movement.update(this, deltaTime);
   }
 
   private tickAttacking(): void {

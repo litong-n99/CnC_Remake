@@ -23,7 +23,7 @@ export class Unit extends GameObject {
   constructor(id: string, definition: UnitDefinition, house: House, x: number, y: number) {
     super(id, GameObjectType.Unit, definition.id, house, x, y, definition.strength);
     this.definition = definition;
-    this.logic = new UnitController(definition, house);
+    this.logic = new UnitController(definition, house, x, y);
   }
 
   createMesh(scene: Scene): void {
@@ -37,5 +37,17 @@ export class Unit extends GameObject {
     this.logic.tick(deltaTime);
     this.isMoving = this.logic.stateMachine.state === UnitState.Moving;
     this.direction = (this.logic.bodyFacing / 256) * Math.PI * 2;
+
+    // 将 logic 坐标同步回 GameObject（寻路/移动器只操作 logic.x/y）
+    this.x = this.logic.x;
+    this.y = this.logic.y;
+
+    if (this.mesh) {
+      // 同步位置
+      this.mesh.position.x = this.logic.x - this.worldOffsetX + 0.5;
+      this.mesh.position.z = this.logic.y - this.worldOffsetZ + 0.5;
+      // 同步朝向（C++ DirType 0=北 → Babylon rotation.y=π）
+      this.mesh.rotation.y = Math.PI - this.direction;
+    }
   }
 }
