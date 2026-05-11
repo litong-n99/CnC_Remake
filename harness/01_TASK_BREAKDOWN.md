@@ -119,7 +119,7 @@
 - **文件**：`src/game/terrain/TerrainGrid.ts`
 - **Dummy 资源**：地面用 `GroundMesh` 或 `TiledGround`，不同地形类型（草地/ pavement/ 水）用不同颜色的 `StandardMaterial`。
 - **验收**：生成 64x64 格子地图，切换不同地形颜色可见。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 10: 地形材质与纹理系统
 - **目标**：支持多材质混合（草地、道路、水域、悬崖）。

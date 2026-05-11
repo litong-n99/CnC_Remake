@@ -3,6 +3,7 @@ import { EngineManager } from './core/EngineManager';
 import { SceneManager } from './core/SceneManager';
 import { RTSCamera } from './core/RTSCamera';
 import { Lighting } from './renderer/Lighting';
+import { TerrainGrid } from './game/terrain/TerrainGrid';
 
 const bootstrap = (): void => {
   // ── Engine ──
@@ -24,11 +25,16 @@ const bootstrap = (): void => {
   // ── Lighting & Shadows ──
   const lighting = new Lighting(scene);
 
-  // ── Reference geometry ──
-  const ground = MeshBuilder.CreateGround('ground', { width: 20, height: 20 }, scene);
+  // ── Terrain Grid ──
+  const terrain = new TerrainGrid(scene, 64, 64);
+  terrain.generateTestPattern();
+
+  // Shadow-catcher ground ( sits just below the terrain cells )
+  const ground = MeshBuilder.CreateGround('shadowGround', { width: 64, height: 64 }, scene);
   ground.position.y = -0.01;
   lighting.enableShadowsOnMesh(ground);
 
+  // ── Test geometry ──
   const box = MeshBuilder.CreateBox('box', { size: 1 }, scene);
   box.position.y = 0.5;
   lighting.addShadowCaster(box);
@@ -39,6 +45,7 @@ const bootstrap = (): void => {
 
   // ── Lifecycle cleanup ──
   window.addEventListener('beforeunload', () => {
+    terrain.dispose();
     lighting.dispose();
     rtsCamera.dispose();
     sceneManager.dispose();
@@ -49,4 +56,4 @@ const bootstrap = (): void => {
 bootstrap();
 
 // eslint-disable-next-line no-console
-console.info('C&C Remake — Lighting & Shadows initialised');
+console.info('C&C Remake — Terrain Grid initialised');
