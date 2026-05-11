@@ -111,7 +111,7 @@
 - **目标**：`DirectionalLight` 模拟太阳，`HemisphericLight` 环境光，`ShadowGenerator` 生成动态阴影。
 - **文件**：`src/renderer/Lighting.ts`
 - **验收**：场景中放置一个 Box，能看到清晰阴影，性能 60FPS。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 9: 地形网格系统（Cell-based Ground）
 - **目标**：将 C++ 的格子逻辑映射到 3D 地面。生成 `MAP_WIDTH x MAP_HEIGHT` 的网格地面，每个 Cell 对应一个地面贴片。
