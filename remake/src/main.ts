@@ -4,13 +4,14 @@ import { SceneManager } from './core/SceneManager';
 import { RTSCamera } from './core/RTSCamera';
 import { Lighting } from './renderer/Lighting';
 import { TerrainGrid } from './game/terrain/TerrainGrid';
+import { MapLoader } from './game/terrain/MapLoader';
 import { GameRules } from './game/rules/GameRules';
 import { UNIT_DEFINITIONS } from './game/rules/UnitDefinitions';
 import { BUILDING_DEFINITIONS } from './game/rules/BuildingDefinitions';
 import { HouseManager } from './game/house/HouseManager';
 import { HouseType } from './game/house/House';
 
-const bootstrap = (): void => {
+const bootstrap = async (): Promise<void> => {
   // ── Engine ──
   const engineManager = EngineManager.getInstance();
   engineManager.initialize('app');
@@ -32,7 +33,17 @@ const bootstrap = (): void => {
 
   // ── Terrain Grid ──
   const terrain = new TerrainGrid(scene, 64, 64);
-  terrain.generateTestPattern();
+
+  // ── Load map from JSON ──
+  try {
+    const map = await MapLoader.loadFromUrl('/maps/dummy_map.json');
+    MapLoader.applyToTerrainGrid(map, terrain);
+    // eslint-disable-next-line no-console
+    console.info(`Map loaded: ${map.width}x${map.height}, version ${map.version}`);
+  } catch (err) {
+    console.warn('Failed to load map, falling back to test pattern:', err);
+    terrain.generateTestPattern();
+  }
 
   // ── Test geometry ──
   const box = MeshBuilder.CreateBox('box', { size: 1 }, scene);
@@ -40,38 +51,28 @@ const bootstrap = (): void => {
   lighting.addShadowCaster(box);
   lighting.enableShadowsOnMesh(box);
 
-  // ── Houses (Task 12 acceptance demo) ──
+  // ── Houses ──
   const houseManager = HouseManager.getInstance();
 
   const gdi = houseManager.createHouse(HouseType.GDI, {
     isHuman: true,
     credits: GameRules.mpDefaultMoney,
     capacity: 2000,
-    firepowerBias: 1,
-    armorBias: 1,
   });
 
   const nod = houseManager.createHouse(HouseType.Nod, {
     isHuman: false,
     credits: GameRules.mpDefaultMoney,
     capacity: 2000,
-    firepowerBias: 1.1,
-    armorBias: 0.9,
-    buildSpeedBias: 1.1,
-    costBias: 0.9,
   });
 
-  // Simulate some production
   gdi.addBuilding(BUILDING_DEFINITIONS.PowerPlant.id);
   gdi.addBuilding(BUILDING_DEFINITIONS.Barracks.id);
-  gdi.addUnit(UNIT_DEFINITIONS.MediumTank.id);
   gdi.addUnit(UNIT_DEFINITIONS.MediumTank.id);
   gdi.addUnit(UNIT_DEFINITIONS.Jeep.id);
 
   nod.addBuilding(BUILDING_DEFINITIONS.PowerPlant.id);
   nod.addBuilding(BUILDING_DEFINITIONS.OreRefinery.id);
-  nod.addUnit(UNIT_DEFINITIONS.LightTank.id);
-  nod.addUnit(UNIT_DEFINITIONS.LightTank.id);
   nod.addUnit(UNIT_DEFINITIONS.LightTank.id);
   nod.addUnit(UNIT_DEFINITIONS.V2Rocket.id);
 
@@ -88,18 +89,14 @@ const bootstrap = (): void => {
     engineManager.dispose();
   });
 
-  // ── Verification logs ──
+  // ── Verification ──
   // eslint-disable-next-line no-console
   console.info('GDI — Credits:', gdi.credits, '| Buildings:', gdi.curBuildings, '| Units:', gdi.curUnits);
   // eslint-disable-next-line no-console
   console.info('Nod — Credits:', nod.credits, '| Buildings:', nod.curBuildings, '| Units:', nod.curUnits);
-  // eslint-disable-next-line no-console
-  console.info('GDI has PowerPlant?', gdi.hasBuilding('STRUCT_POWER'));
-  // eslint-disable-next-line no-console
-  console.info('Nod has Barracks?', nod.hasBuilding('STRUCT_BARRACKS'));
 };
 
 bootstrap();
 
 // eslint-disable-next-line no-console
-console.info('C&C Remake — House system initialised');
+console.info('C&C Remake — Map Loader initialised');
