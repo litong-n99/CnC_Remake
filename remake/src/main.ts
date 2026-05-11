@@ -29,11 +29,6 @@ const bootstrap = (): void => {
   const terrain = new TerrainGrid(scene, 64, 64);
   terrain.generateTestPattern();
 
-  // Shadow-catcher ground ( sits just below the terrain cells )
-  const ground = MeshBuilder.CreateGround('shadowGround', { width: 64, height: 64 }, scene);
-  ground.position.y = -0.01;
-  lighting.enableShadowsOnMesh(ground);
-
   // ── Test geometry ──
   const box = MeshBuilder.CreateBox('box', { size: 1 }, scene);
   box.position.y = 0.5;
@@ -56,4 +51,4 @@ const bootstrap = (): void => {
 bootstrap();
 
 // eslint-disable-next-line no-console
-console.info('C&C Remake — Terrain Grid initialised');
+console.info('C&C Remake — Terrain Material initialised');
