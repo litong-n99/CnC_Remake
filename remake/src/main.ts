@@ -4,6 +4,9 @@ import { SceneManager } from './core/SceneManager';
 import { RTSCamera } from './core/RTSCamera';
 import { Lighting } from './renderer/Lighting';
 import { TerrainGrid } from './game/terrain/TerrainGrid';
+import { GameRules } from './game/rules/GameRules';
+import { UNIT_DEFINITIONS } from './game/rules/UnitDefinitions';
+import { BUILDING_DEFINITIONS } from './game/rules/BuildingDefinitions';
 
 const bootstrap = (): void => {
   // ── Engine ──
@@ -46,9 +49,17 @@ const bootstrap = (): void => {
     sceneManager.dispose();
     engineManager.dispose();
   });
+
+  // ── Verify Task 11 acceptance criteria ──
+  // eslint-disable-next-line no-console
+  console.info('GameRules.buildSpeedBias =', GameRules.buildSpeedBias);
+  // eslint-disable-next-line no-console
+  console.info('UNIT_DEFINITIONS.MediumTank.speed =', UNIT_DEFINITIONS.MediumTank.speed);
+  // eslint-disable-next-line no-console
+  console.info('BUILDING_DEFINITIONS.PowerPlant.power =', BUILDING_DEFINITIONS.PowerPlant.power);
 };
 
 bootstrap();
 
 // eslint-disable-next-line no-console
-console.info('C&C Remake — Terrain Material initialised');
+console.info('C&C Remake — Rules & Definitions initialised');

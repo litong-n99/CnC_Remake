@@ -20,13 +20,13 @@
  * - 泰伯利亚矿（Tiberium）替代矿石（Ore），矿场生长逻辑不同。
  */
 
-import type { GameRules } from '../rules/GameRules';
+import type { GameRulesType } from '../rules/GameRules';
 
 /**
  * Tiberian Dawn 全局配置接口预留
  * TODO: Phase 8 从 origin/TIBERIANDAWN/RULES.CPP 提取完整常量
  */
-export interface TiberianDawnRules extends GameRules {
+export interface TiberianDawnRules extends GameRulesType {
   readonly theater: 'TEMPERATE' | 'DESERT' | 'WINTER';
   readonly tiberiumGrowthRate: number;
   readonly tiberiumSpreadRate: number;

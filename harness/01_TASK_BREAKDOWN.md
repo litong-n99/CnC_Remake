@@ -138,7 +138,7 @@
 - **文件**：`src/game/rules/GameRules.ts`, `src/game/rules/UnitDefinitions.ts`, `src/game/rules/BuildingDefinitions.ts`
 - **数值来源**：`REDALERT/RULES.CPP`, `TIBERIANDAWN/RULES.CPP`。
 - **验收**：打印 `GameRules.Tank.Speed` 能看到与 C++ 源码一致的数值。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 12: House（阵营/玩家）数据层
 - **目标**：翻译 `HOUSE.CPP`，管理玩家、AI、中立阵营的属性（资金、电力、已建造单位列表）。
