@@ -22,8 +22,11 @@ export class Building extends GameObject {
 
     this.mesh = MeshBuilder.CreateBox(`building_${this.id}`, { width: w, height, depth: h }, scene);
 
-    // 将 Mesh 中心对齐到 footprint 中心
-    this.mesh.position = new Vector3(this.x + w / 2, height / 2, this.y + h / 2);
+    // 将 Mesh 中心对齐到 footprint 中心（使用与 TerrainGrid 一致的世界坐标）
+    const base = this.getPosition();
+    const cx = base.x + (w - 1) / 2;
+    const cz = base.z + (h - 1) / 2;
+    this.mesh.position = new Vector3(cx, height / 2, cz);
 
     const mat = new StandardMaterial(`buildingMat_${this.id}`, scene);
     mat.diffuseColor = Color3.FromHexString(this.house.color);

@@ -33,6 +33,9 @@ export abstract class GameObject {
   /** Babylon.js 占位 Mesh（子类在 `createMesh` 中初始化）。 */
   mesh: Mesh | null = null;
 
+  private readonly worldOffsetX: number;
+  private readonly worldOffsetZ: number;
+
   protected constructor(
     id: string,
     type: GameObjectType,
@@ -40,7 +43,9 @@ export abstract class GameObject {
     house: House,
     x: number,
     y: number,
-    maxHealth: number
+    maxHealth: number,
+    mapWidth = 64,
+    mapHeight = 64
   ) {
     this.id = id;
     this.type = type;
@@ -50,14 +55,16 @@ export abstract class GameObject {
     this.y = y;
     this.maxHealth = maxHealth;
     this.health = maxHealth;
+    this.worldOffsetX = mapWidth / 2;
+    this.worldOffsetZ = mapHeight / 2;
   }
 
   /** 子类必须实现：在 Scene 中创建占位几何体。 */
   abstract createMesh(scene: import('@babylonjs/core').Scene): void;
 
-  /** 获取世界空间坐标（格子中心）。 */
+  /** 获取世界空间坐标（格子中心），与 TerrainGrid 坐标系一致。 */
   getPosition(): Vector3 {
-    return new Vector3(this.x + 0.5, 0, this.y + 0.5);
+    return new Vector3(this.x - this.worldOffsetX + 0.5, 0, this.y - this.worldOffsetZ + 0.5);
   }
 
   /** 移动到新的格子坐标并同步 Mesh 位置。 */
@@ -65,8 +72,8 @@ export abstract class GameObject {
     this.x = x;
     this.y = y;
     if (this.mesh) {
-      this.mesh.position.x = x + 0.5;
-      this.mesh.position.z = y + 0.5;
+      this.mesh.position.x = x - this.worldOffsetX + 0.5;
+      this.mesh.position.z = y - this.worldOffsetZ + 0.5;
     }
   }
 
