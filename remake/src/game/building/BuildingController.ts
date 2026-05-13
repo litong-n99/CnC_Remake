@@ -55,8 +55,12 @@ export class BuildingController {
   // ── 倒计时（BuildingClass::CountDown）──
   /** 死亡倒计时（毫秒），用于死亡动画/爆炸延迟。 */
   deathCountdown = 0;
-  /** 建造进度（0–1），Construction 状态中使用。 */
+  /** 建造进度（0–1），Construction 状态中使用。
+   * 注意：C++ 中地图上的生长动画很短（Rule.BuildupTime≈0.05 → 约 3 秒），
+   * 与 Sidebar 生产倒计时（buildTime，几秒到几十秒）是独立系统。 */
   constructionProgress = 0;
+  /** 地图生长动画时长（毫秒），对应 C++ Rule.BuildupTime。 */
+  static readonly CONSTRUCTION_ANIM_TIME = 3000;
 
   // ── 坐标 ──
   x = 0;
@@ -173,7 +177,16 @@ export class BuildingController {
   // ── 各状态 Tick 钩子（Phase 5+ 逐步填充）──
 
   private tickConstruction(deltaTime: number): void {
-    const rate = 1.0 / (this.definition.buildTime * 1000); // 每毫秒进度
+    // buildTime <= 0 表示预放置建筑（如 ConstructionYard），立即完成
+    if (this.definition.buildTime <= 0) {
+      this.constructionProgress = 1.0;
+      this.stateMachine.transition(BuildingState.Idle);
+      this.hasOpened = true;
+      return;
+    }
+    // C++ 中地图生长动画统一约 3 秒（Rule.BuildupTime * TICKS_PER_MINUTE / count），
+    // 与 Sidebar 生产倒计时（buildTime）是独立系统。
+    const rate = 1.0 / BuildingController.CONSTRUCTION_ANIM_TIME;
     this.constructionProgress += rate * deltaTime;
     if (this.constructionProgress >= 1.0) {
       this.constructionProgress = 1.0;

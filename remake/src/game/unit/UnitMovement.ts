@@ -8,15 +8,14 @@ import { UnitCollision } from './UnitCollision';
  *
  * 对应 C++ `FootClass::AI()` / `DriveClass::AI()` 中的路径步进逻辑。
  * 速度直接取自 `UnitDefinition.speed`，经 `SPEED_SCALE` 转换为世界坐标/秒。
+ *
+ * 注意：建筑阻塞已由 Pathfinder 动态回调处理（A* 路径自动绕开建筑），
+ * 本类只处理运行时单位间碰撞（暂停等待）和极偶然的建筑边缘碰撞。
  */
 export class UnitMovement {
   private path: PathNode[] = [];
   private pathIndex = 0;
   private isMoving = false;
-  private waitTimer = 0;
-  private cachedPathfinder?: Pathfinder;
-  private cachedTargetX = 0;
-  private cachedTargetY = 0;
 
   /** 速度缩放因子：将 C++ 内部 speed 转换为 格/毫秒。 */
   private static readonly SPEED_SCALE = 0.0006;
@@ -25,16 +24,11 @@ export class UnitMovement {
 
   /**
    * 请求移动到目标格子。
-   * @param blockedCells 可选的临时阻塞格子集合，用于绕过其他单位。
    * @returns 是否成功找到路径并开始移动。
    */
-  moveTo(
-    controller: UnitController,
-    targetX: number,
-    targetY: number,
-    pathfinder: Pathfinder,
-    blockedCells?: ReadonlySet<string>
-  ): boolean {
+  moveTo(controller: UnitController, targetX: number, targetY: number, pathfinder: Pathfinder): boolean {
+    // 将其他单位位置作为临时阻塞传入 A*（建筑已由 pathfinder 动态回调处理）
+    const blockedCells = UnitCollision.getBlockedCells(controller.unitId);
     const path = pathfinder.findPath(
       Math.round(controller.x),
       Math.round(controller.y),
@@ -47,10 +41,6 @@ export class UnitMovement {
     this.path = path;
     this.pathIndex = 1; // 跳过起点
     this.isMoving = true;
-    this.waitTimer = 0;
-    this.cachedPathfinder = pathfinder;
-    this.cachedTargetX = targetX;
-    this.cachedTargetY = targetY;
     controller.stateMachine.transition(UnitState.Moving);
     controller.isDriving = true;
     controller.moveTarget = { x: targetX, y: targetY };
@@ -87,27 +77,12 @@ export class UnitMovement {
     const nextX = controller.x + dx * ratio;
     const nextY = controller.y + dy * ratio;
 
-    // ── Task 19: 碰撞避障 — 检查下一步位置是否被其他单位阻挡 ──
+    // ── Task 19: 碰撞避障 — 运行时检测其他单位或建筑边缘 ──
+    // 建筑已由 Pathfinder 绕开，此处主要处理其他移动单位
     if (UnitCollision.isPositionBlocked(nextX, nextY, controller.unitId)) {
-      this.waitTimer += deltaTime;
-      // 等待超时后重新寻路，将其他单位所在格子标记为阻塞以绕过
-      if (this.waitTimer > UnitCollision.MAX_WAIT_TIME && this.cachedPathfinder) {
-        const blockedCells = UnitCollision.getBlockedCells(controller.unitId);
-        const success = this.moveTo(
-          controller,
-          this.cachedTargetX,
-          this.cachedTargetY,
-          this.cachedPathfinder,
-          blockedCells
-        );
-        if (!success) {
-          // 无法绕过，原地等待
-          this.waitTimer = 0;
-        }
-      }
+      // 暂停移动，等待前方清空（不自动重新寻路，避免抖动）
       return;
     }
-    this.waitTimer = 0;
 
     controller.x = nextX;
     controller.y = nextY;
@@ -116,7 +91,6 @@ export class UnitMovement {
 
   private stop(controller: UnitController): void {
     this.isMoving = false;
-    this.waitTimer = 0;
     controller.stateMachine.transition(UnitState.Idle);
     controller.isDriving = false;
     controller.moveTarget = undefined;

@@ -184,10 +184,13 @@
 
 ### Task 17: 单位移动与寻路（A* + 插值动画）
 - **目标**：翻译 C++ 寻路逻辑。格子地图使用 A* 算法，世界坐标使用 Babylon `Animation` 或每帧插值移动。
-- **参考 C++**：`UNIT.CPP` 中的 `Find_Path()`, `Set_Destination()`, `AI()`。
+- **参考 C++**：`UNIT.CPP` 中的 `Find_Path()`, `Set_Destination()`, `AI()`；`FINDPATH.CPP` 中 `#define DIAGONAL` 支持八方向。
 - **文件**：`src/game/unit/UnitMovement.ts`, `src/game/terrain/Pathfinder.ts`
 - **数值沿用**：移动速度直接取自 `UnitDefinitions.Speed`。
-- **验收**：右键点击地面，单位沿格子路径平滑移动，避开不可通行地形。
+- **验收**：右键点击地面，单位沿格子路径平滑移动，避开不可通行地形；支持八方向移动（含对角线），斜向目标不再走 L 形路径。
+- **备注**：
+  - 八方向 A*：邻居含 4 正交（cost=1）+ 4 对角线（cost=√2≈1.414），启发函数使用切比雪夫距离。
+  - 对角线剪枝（Corner Cutting）：沿对角线移动时，必须同时验证两个正交相邻格子可通行，防止穿墙。
 - **状态**：[x] `done`
 
 ### Task 18: 单位转向与炮塔追踪
@@ -217,12 +220,20 @@
 ### Task 21: Building 3D 表现层（Dummy 几何体 + 建造动画）
 - **目标**：建筑用组合几何体表示，建造过程中有从地面"生长"的缩放动画。
 - **Dummy 方案**：
-  - 电厂：`Box` 主体 + `Cylinder` 烟囱。
-  - 矿厂：`Box` 主体 + `Torus` 传送带。
-  - 建造动画：从 `scaling = Vector3.Zero()` 插值到 `Vector3.One()`。
-- **文件**：`src/renderer/meshes/BuildingMeshFactory.ts`
-- **验收**：放置建筑时，看到从地底升起的动画。
-- **状态**：[ ] `done`
+  - 建造厂：底座 + 主楼 + 控制塔 + 起重机臂
+  - 电厂：厂房 + 烟囱 + 烟囱顶
+  - 先进电厂：大厂房 + 双烟囱 + 冷却塔
+  - 兵营：营房 + 门 + 旗杆 + 红旗
+  - 矿厂：主体 + 双筒仓 + 传送带支架
+  - 战车工厂：大厂房 + 车库门 + 天线
+  - 雷达：主体 + 支架 + 雷达盘
+  - 停机坪：平台 + H 标记 + 灯柱
+  - 维修厂：平台 + 维修槽 + 起重机
+  - 船坞：建筑 + 船坞平台 + 龙门吊
+  - 建造动画：root mesh `scaling` 0→1，底部始终贴地（Y=0）
+- **文件**：`src/renderer/meshes/BuildingMeshFactory.ts`, `src/game/objects/Building.ts`
+- **验收**：放置建筑时，看到从地底升起的动画，且每种建筑外形可区分。
+- **状态**：[x] `done`
 
 ### Task 22: 建造队列与 Sidebar UI
 - **目标**：翻译 C++ 建造队列逻辑。HTML Overlay 侧边栏显示可建造项，点击后进入"准备放置"状态，再点击地面确认建造。
@@ -809,7 +820,7 @@
 | Phase 2 3D核心 | 5 | 5 | |
 | Phase 3 数据层 | 4 | 4 | |
 | Phase 4 单位系统 | 5 | 5 | |
-| Phase 5 建筑系统 | 4 | 1 | Task 21–23 待开发 |
+| Phase 5 建筑系统 | 4 | 2 | Task 22–23 待开发 |
 | Phase 6 交互 | 4 | 0 | 选择环已存在（SelectionManager.ts），框选/编队待开发 |
 | Phase 7 战斗经济 | 4 | 0 | |
 | Phase 8 循环发布 | 4 | 0 | |
@@ -822,7 +833,7 @@
 | Phase 15 AI高级 | 7 | 0 | Bot、超级武器、空军、桥梁 |
 | Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
 | Phase 17 发布平台 | 3 | 0 | 桌面打包、移动端、Steam |
-| **总计** | **100** | **26** | |
+| **总计** | **100** | **27** | |
 
 ---
 

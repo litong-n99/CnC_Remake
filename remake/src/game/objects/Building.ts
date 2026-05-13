@@ -1,9 +1,10 @@
-import { MeshBuilder, Scene, Vector3, Color3, StandardMaterial } from '@babylonjs/core';
+import { Scene, Vector3, Color3, StandardMaterial } from '@babylonjs/core';
 import { GameObject, GameObjectType } from './GameObject';
 import type { BuildingDefinition } from '../rules/BuildingDefinitions';
 import type { House } from '../house/House';
 import { BuildingController } from '../building/BuildingController';
 import { BuildingState } from '../building/BuildingState';
+import { BuildingMeshFactory } from '../../renderer/meshes/BuildingMeshFactory';
 
 /** 运行时建筑实例。
  *
@@ -32,22 +33,18 @@ export class Building extends GameObject {
   createMesh(scene: Scene): void {
     const w = this.definition.width;
     const h = this.definition.height;
-    const height = 1.0;
 
-    this.mesh = MeshBuilder.CreateBox(`building_${this.id}`, { width: w, height, depth: h }, scene);
+    // Task 21: 使用 BuildingMeshFactory 创建差异化几何体
+    this.mesh = BuildingMeshFactory.create(this.definition, this.house, scene, `building_${this.id}`);
 
     // 将 Mesh 中心对齐到 footprint 中心（使用与 TerrainGrid 一致的世界坐标）
     const base = this.getPosition();
     const cx = base.x + (w - 1) / 2;
     const cz = base.z + (h - 1) / 2;
-    this.mesh.position = new Vector3(cx, height / 2, cz);
+    // Task 21: world Y = 0 让 root mesh 底部贴地（BuildingMeshFactory 中局部坐标已抬高）
+    this.mesh.position = new Vector3(cx, 0, cz);
 
-    const mat = new StandardMaterial(`buildingMat_${this.id}`, scene);
-    mat.diffuseColor = Color3.FromHexString(this.house.color);
-    mat.specularColor = Color3.Black();
-    this.mesh.material = mat;
-
-    // Task 20: 建造初始状态 — 如果处于 Construction，缩放为 0
+    // Task 20/21: 建造初始状态 — 如果处于 Construction，缩放为 0
     if (this.logic.stateMachine.state === BuildingState.Construction) {
       this.mesh.scaling = Vector3.Zero();
     }
@@ -67,20 +64,15 @@ export class Building extends GameObject {
     this.y = this.logic.y;
 
     if (this.mesh) {
-      // Task 20: 建造动画 — 从地面"生长"上来
+      // Task 21: 建造动画 — 从地面生长（root mesh 底部始终在 Y=0）
       if (this.logic.stateMachine.state === BuildingState.Construction) {
         const progress = this.logic.constructionProgress;
-        this.mesh.scaling.x = progress;
-        this.mesh.scaling.y = progress;
-        this.mesh.scaling.z = progress;
-        // 同时调整 Y 位置，让底部始终贴地
-        const h = this.definition.height;
-        this.mesh.position.y = (h * progress) / 2;
+        this.mesh.scaling = new Vector3(progress, progress, progress);
+        this.mesh.position.y = 0;
       } else if (this.logic.stateMachine.previousState === BuildingState.Construction) {
-        // 建造完成后恢复正常缩放
+        // 建造完成后恢复正常缩放与位置
         this.mesh.scaling = Vector3.One();
-        const h = this.definition.height;
-        this.mesh.position.y = h / 2;
+        this.mesh.position.y = 0;
       }
 
       // Task 20: 受损状态 — 变暗/发红（Task 21 可替换为损伤贴图）

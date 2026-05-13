@@ -54,10 +54,33 @@ const bootstrap = async (): Promise<void> => {
   }
 
   // ── Pathfinder ──
-  const pathfinder = new Pathfinder(64, 64, (x, y) => {
-    const type = terrain.getCellLandType(x, y);
-    return type !== LandType.Water && type !== LandType.Rock && type !== LandType.Wall && type !== LandType.River;
-  });
+  // 动态阻塞回调：每帧查询建筑 footprint，让 A* 自动绕开建筑
+  const getBuildingBlockedCells = (): ReadonlySet<string> => {
+    const blocked = new Set<string>();
+    for (const obj of GameObjectManager.getInstance().getAll()) {
+      if (!obj.isAlive()) continue;
+      if (obj.type !== GameObjectType.Building) continue;
+      const building = obj as import('./game/objects/Building').Building;
+      const def = building.definition;
+      // 只阻塞建筑 footprint 本身（单位可紧贴建筑边缘行走）
+      for (let dx = 0; dx < def.width; dx++) {
+        for (let dy = 0; dy < def.height; dy++) {
+          blocked.add(`${building.x + dx},${building.y + dy}`);
+        }
+      }
+    }
+    return blocked;
+  };
+
+  const pathfinder = new Pathfinder(
+    64,
+    64,
+    (x, y) => {
+      const type = terrain.getCellLandType(x, y);
+      return type !== LandType.Water && type !== LandType.Rock && type !== LandType.Wall && type !== LandType.River;
+    },
+    getBuildingBlockedCells
+  );
 
   // ── Houses ──
   const houseManager = HouseManager.getInstance();
@@ -74,21 +97,61 @@ const bootstrap = async (): Promise<void> => {
     capacity: 2000,
   });
 
-  // ── Spawn game objects via Factory ──
-  const gdiPowerPlant = GameObjectFactory.createBuilding({
-    definition: BUILDING_DEFINITIONS.PowerPlant,
-    house: gdi,
-    x: 40,
-    y: 10,
-    scene,
-  });
-  const gdiBarracks = GameObjectFactory.createBuilding({
-    definition: BUILDING_DEFINITIONS.Barracks,
-    house: gdi,
-    x: 44,
-    y: 10,
-    scene,
-  });
+  // ── Spawn all building types for both houses ──
+  // GDI base (top-right quadrant)
+  const gdiBuildings = [
+    GameObjectFactory.createBuilding({
+      definition: BUILDING_DEFINITIONS.ConstructionYard,
+      house: gdi,
+      x: 34,
+      y: 6,
+      scene,
+    }),
+    GameObjectFactory.createBuilding({ definition: BUILDING_DEFINITIONS.PowerPlant, house: gdi, x: 40, y: 6, scene }),
+    GameObjectFactory.createBuilding({
+      definition: BUILDING_DEFINITIONS.AdvancedPower,
+      house: gdi,
+      x: 44,
+      y: 6,
+      scene,
+    }),
+    GameObjectFactory.createBuilding({ definition: BUILDING_DEFINITIONS.Barracks, house: gdi, x: 48, y: 6, scene }),
+    GameObjectFactory.createBuilding({ definition: BUILDING_DEFINITIONS.WarFactory, house: gdi, x: 38, y: 10, scene }),
+    GameObjectFactory.createBuilding({ definition: BUILDING_DEFINITIONS.Radar, house: gdi, x: 42, y: 10, scene }),
+    GameObjectFactory.createBuilding({ definition: BUILDING_DEFINITIONS.Helipad, house: gdi, x: 46, y: 10, scene }),
+    GameObjectFactory.createBuilding({
+      definition: BUILDING_DEFINITIONS.RepairFacility,
+      house: gdi,
+      x: 50,
+      y: 10,
+      scene,
+    }),
+  ];
+
+  // Nod base (bottom-right quadrant)
+  const nodBuildings = [
+    GameObjectFactory.createBuilding({
+      definition: BUILDING_DEFINITIONS.ConstructionYard,
+      house: nod,
+      x: 34,
+      y: 38,
+      scene,
+    }),
+    GameObjectFactory.createBuilding({ definition: BUILDING_DEFINITIONS.PowerPlant, house: nod, x: 40, y: 38, scene }),
+    GameObjectFactory.createBuilding({ definition: BUILDING_DEFINITIONS.OreRefinery, house: nod, x: 44, y: 38, scene }),
+    GameObjectFactory.createBuilding({ definition: BUILDING_DEFINITIONS.WarFactory, house: nod, x: 48, y: 38, scene }),
+    GameObjectFactory.createBuilding({ definition: BUILDING_DEFINITIONS.Radar, house: nod, x: 52, y: 38, scene }),
+    GameObjectFactory.createBuilding({ definition: BUILDING_DEFINITIONS.Helipad, house: nod, x: 40, y: 42, scene }),
+    GameObjectFactory.createBuilding({
+      definition: BUILDING_DEFINITIONS.RepairFacility,
+      house: nod,
+      x: 44,
+      y: 42,
+      scene,
+    }),
+    GameObjectFactory.createBuilding({ definition: BUILDING_DEFINITIONS.Shipyard, house: nod, x: 52, y: 42, scene }),
+  ];
+
   const gdiTank = GameObjectFactory.createUnit({
     definition: UNIT_DEFINITIONS.MediumTank,
     house: gdi,
@@ -96,45 +159,24 @@ const bootstrap = async (): Promise<void> => {
     y: 14,
     scene,
   });
-  const gdiJeep = GameObjectFactory.createUnit({
-    definition: UNIT_DEFINITIONS.Jeep,
-    house: gdi,
-    x: 45,
-    y: 15,
-    scene,
-  });
-
-  const nodPowerPlant = GameObjectFactory.createBuilding({
-    definition: BUILDING_DEFINITIONS.PowerPlant,
-    house: nod,
-    x: 50,
-    y: 45,
-    scene,
-  });
-  const nodRefinery = GameObjectFactory.createBuilding({
-    definition: BUILDING_DEFINITIONS.OreRefinery,
-    house: nod,
-    x: 46,
-    y: 45,
-    scene,
-  });
+  const gdiJeep = GameObjectFactory.createUnit({ definition: UNIT_DEFINITIONS.Jeep, house: gdi, x: 45, y: 15, scene });
   const nodTank = GameObjectFactory.createUnit({
     definition: UNIT_DEFINITIONS.LightTank,
     house: nod,
-    x: 48,
-    y: 42,
+    x: 46,
+    y: 40,
     scene,
   });
   const nodRocket = GameObjectFactory.createUnit({
     definition: UNIT_DEFINITIONS.V2Rocket,
     house: nod,
-    x: 45,
+    x: 50,
     y: 40,
     scene,
   });
 
   // Enable shadows on all spawned objects
-  for (const obj of [gdiPowerPlant, gdiBarracks, gdiTank, gdiJeep, nodPowerPlant, nodRefinery, nodTank, nodRocket]) {
+  for (const obj of [...gdiBuildings, ...nodBuildings, gdiTank, gdiJeep, nodTank, nodRocket]) {
     if (obj.mesh) {
       lighting.addShadowCaster(obj.mesh);
       lighting.enableShadowsOnMesh(obj.mesh);
