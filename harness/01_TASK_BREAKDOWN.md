@@ -209,10 +209,10 @@
 
 ### Task 20: BuildingClass 核心属性（翻译 BUILDING.CPP）
 - **目标**：翻译 `BuildingClass`：Health, PowerDrain/Production, Cost, BuildTime, Adjacency 规则。
-- **文件**：`src/game/building/Building.ts`, `src/game/building/BuildingState.ts`
-- **数值沿用**：引用 `BuildingDefinitions`。
-- **验收**：创建电厂与兵营，属性与 C++ 默认值一致。
-- **状态**：[ ] `done`
+- **文件**：`src/game/building/BuildingController.ts`, `src/game/building/BuildingState.ts`, `src/game/objects/Building.ts`
+- **数值沿用**：引用 `BuildingDefinitions`（新增 `buildTime` 字段）。
+- **验收**：创建电厂与兵营，属性与 C++ 默认值一致；建造时从地面生长，受损时发红光。
+- **状态**：[x] `done`
 
 ### Task 21: Building 3D 表现层（Dummy 几何体 + 建造动画）
 - **目标**：建筑用组合几何体表示，建造过程中有从地面"生长"的缩放动画。
@@ -809,7 +809,7 @@
 | Phase 2 3D核心 | 5 | 5 | |
 | Phase 3 数据层 | 4 | 4 | |
 | Phase 4 单位系统 | 5 | 5 | |
-| Phase 5 建筑系统 | 4 | 0 | |
+| Phase 5 建筑系统 | 4 | 1 | Task 21–23 待开发 |
 | Phase 6 交互 | 4 | 0 | 选择环已存在（SelectionManager.ts），框选/编队待开发 |
 | Phase 7 战斗经济 | 4 | 0 | |
 | Phase 8 循环发布 | 4 | 0 | |
@@ -822,7 +822,7 @@
 | Phase 15 AI高级 | 7 | 0 | Bot、超级武器、空军、桥梁 |
 | Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
 | Phase 17 发布平台 | 3 | 0 | 桌面打包、移动端、Steam |
-| **总计** | **100** | **25** | |
+| **总计** | **100** | **26** | |
 
 ---
 

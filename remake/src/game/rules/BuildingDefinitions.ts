@@ -41,6 +41,8 @@ export interface BuildingDefinition {
   readonly width: number;
   /** Base height in cells. */
   readonly height: number;
+  /** Construction time in seconds. */
+  readonly buildTime: number;
 }
 
 /** Classic Red Alert building roster (military structures only). */
@@ -63,6 +65,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     isStealthy: false,
     width: 3,
     height: 3,
+    buildTime: 0,
   },
   PowerPlant: {
     id: 'STRUCT_POWER',
@@ -82,6 +85,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     isStealthy: false,
     width: 2,
     height: 2,
+    buildTime: 8,
   },
   AdvancedPower: {
     id: 'STRUCT_ADVANCED_POWER',
@@ -101,6 +105,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     isStealthy: false,
     width: 3,
     height: 2,
+    buildTime: 12,
   },
   Barracks: {
     id: 'STRUCT_BARRACKS',
@@ -120,6 +125,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     isStealthy: false,
     width: 2,
     height: 2,
+    buildTime: 10,
   },
   OreRefinery: {
     id: 'STRUCT_REFINERY',
@@ -139,6 +145,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     isStealthy: false,
     width: 3,
     height: 3,
+    buildTime: 20,
   },
   WarFactory: {
     id: 'STRUCT_WEAP',
@@ -158,6 +165,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     isStealthy: false,
     width: 3,
     height: 3,
+    buildTime: 20,
   },
   Radar: {
     id: 'STRUCT_RADAR',
@@ -177,6 +185,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     isStealthy: false,
     width: 2,
     height: 2,
+    buildTime: 15,
   },
   Helipad: {
     id: 'STRUCT_HELIPAD',
@@ -196,6 +205,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     isStealthy: false,
     width: 2,
     height: 2,
+    buildTime: 12,
   },
   RepairFacility: {
     id: 'STRUCT_REPAIR',
@@ -215,6 +225,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     isStealthy: false,
     width: 3,
     height: 2,
+    buildTime: 15,
   },
   Shipyard: {
     id: 'STRUCT_SHIP_YARD',
@@ -234,6 +245,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     isStealthy: false,
     width: 3,
     height: 3,
+    buildTime: 20,
   },
 } as const;
 
