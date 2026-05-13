@@ -238,9 +238,13 @@
 ### Task 22: 建造队列与 Sidebar UI
 - **目标**：翻译 C++ 建造队列逻辑。Babylon.GUI 侧边栏显示可建造项，点击后进入"准备放置"状态，再点击地面确认建造。
 - **参考 C++**：`BUILDING.CPP` 中的 `Begin_Construction()`, `Place()`。
-- **文件**：`src/game/building/ConstructionQueue.ts`, `src/renderer/ui/Sidebar.ts`
-- **验收**：点击 Sidebar 的"电厂"，鼠标变为放置预览，点击空地后扣除资金并开始建造。
-- **状态**：[ ] `done`
+- **文件**：`src/game/building/ConstructionQueue.ts`, `src/game/building/BuildingPlacer.ts`, `src/renderer/ui/Sidebar.ts`
+- **实现细节**：
+  - `ConstructionQueue`：每个 House 一个队列，一次一项。资金在点击时扣除，取消建造全额退款。
+  - `BuildingPlacer`：半透明 Ghost Box 跟随鼠标，合法=绿色/非法=红色，验证地形+建筑重叠+地图边界。
+  - `Sidebar`：Babylon.GUI 右侧面板，显示建筑名称/价格/进度条。按钮状态：可用(绿)/资金不足(红)/锁定(灰)/建造中(进度条)/就绪(闪烁金)。
+- **验收**：点击 Sidebar 的"电厂"，资金扣除并显示进度；就绪后点击进入放置预览；左键空地确认建造，右键取消放置。
+- **状态**：[x] `done`
 
 ### Task 23: 电力与基地依赖系统
 - **目标**：电力不足时部分建筑停摆；建造兵营后才能造步兵；建造战车工厂后才能造坦克。

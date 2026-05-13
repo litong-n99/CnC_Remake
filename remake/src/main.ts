@@ -17,6 +17,9 @@ import { GameObjectType } from './game/objects/GameObject';
 import { SelectionManager } from './game/SelectionManager';
 import { Unit } from './game/objects/Unit';
 import { UnitState } from './game/unit/UnitState';
+import { ConstructionQueue } from './game/building/ConstructionQueue';
+import { BuildingPlacer } from './game/building/BuildingPlacer';
+import { Sidebar } from './renderer/ui/Sidebar';
 
 const bootstrap = async (): Promise<void> => {
   // ── Engine ──
@@ -183,6 +186,44 @@ const bootstrap = async (): Promise<void> => {
     }
   }
 
+  // ── Task 22: Construction Queue & Sidebar ──
+  const queue = new ConstructionQueue(gdi);
+  const placer = new BuildingPlacer(scene, rtsCamera.getCamera(), terrain);
+
+  const sidebar = new Sidebar(
+    scene,
+    gdi,
+    queue,
+    (def) => {
+      const ok = queue.startBuilding(def);
+      if (ok) {
+        // eslint-disable-next-line no-console
+        console.info(`Started building ${def.name} — Credits left: ${gdi.credits}`);
+      } else {
+        console.warn(`Cannot build ${def.name} — check funds/prerequisites/queue status`);
+      }
+    },
+    () => {
+      if (queue.status === 'ready' && queue.currentDefinition) {
+        placer.startPlacement(queue.currentDefinition);
+      }
+    }
+  );
+
+  /** 更新 House 电力（遍历所有建筑重新计算）。 */
+  const updateHousePower = (house: import('./game/house/House').House): void => {
+    let production = 0;
+    let consumption = 0;
+    for (const obj of GameObjectManager.getInstance().getBuildings()) {
+      if (obj.house !== house || !obj.isAlive()) continue;
+      const building = obj as import('./game/objects/Building').Building;
+      const p = building.definition.power;
+      if (p > 0) production += p;
+      else consumption += Math.abs(p);
+    }
+    house.updatePower(production, consumption);
+  };
+
   // ── Task 17: Selection & Right-click to move ──
   const selectionManager = SelectionManager.getInstance();
 
@@ -216,8 +257,29 @@ const bootstrap = async (): Promise<void> => {
     return closest;
   };
 
-  // 左键：选中单位
+  // 左键：放置建筑 或 选中单位
   rtsCamera.onLeftClick = (screenX, screenY) => {
+    // 放置模式优先
+    if (placer.isPlacing()) {
+      placer.updateFromScreen(scene.pointerX, scene.pointerY);
+      const cell = placer.confirmPlacement();
+      if (cell) {
+        const building = queue.placeBuilding(cell.x, cell.y, scene);
+        if (building) {
+          updateHousePower(gdi);
+          if (building.mesh) {
+            lighting.addShadowCaster(building.mesh);
+            lighting.enableShadowsOnMesh(building.mesh);
+          }
+          // eslint-disable-next-line no-console
+          console.info(`Placed ${building.definition.name} at (${cell.x}, ${cell.y})`);
+        }
+      } else {
+        console.warn('Invalid placement position');
+      }
+      return;
+    }
+
     console.warn('Left-click detected at', screenX, screenY);
 
     const unit = pickUnitAt(screenX, screenY);
@@ -230,8 +292,15 @@ const bootstrap = async (): Promise<void> => {
     }
   };
 
-  // 右键：对选中单位下达命令（移动 / 攻击）
+  // 右键：取消放置 或 对选中单位下达命令（移动 / 攻击）
   rtsCamera.onRightClick = (screenX, screenY) => {
+    // 放置模式下右键 = 取消
+    if (placer.isPlacing()) {
+      placer.cancelPlacement();
+      console.warn('Placement cancelled');
+      return;
+    }
+
     console.warn('Right-click detected at', screenX, screenY);
 
     const worldPos = rtsCamera.screenToGround(screenX, screenY);
@@ -281,10 +350,19 @@ const bootstrap = async (): Promise<void> => {
     }
   };
 
-  // ── Game loop: update all game objects ──
+  // ── Game loop ──
   const engine = engineManager.getEngine();
   scene.onBeforeRenderObservable.add(() => {
-    GameObjectManager.getInstance().update(engine.getDeltaTime());
+    const dt = engine.getDeltaTime();
+
+    // Task 22: update construction queue + ghost + sidebar
+    queue.tick(dt);
+    if (placer.isPlacing()) {
+      placer.updateFromScreen(scene.pointerX, scene.pointerY);
+    }
+    sidebar.refresh(dt);
+
+    GameObjectManager.getInstance().update(dt);
   });
 
   // ── Render loop ──
@@ -292,6 +370,8 @@ const bootstrap = async (): Promise<void> => {
 
   // ── Lifecycle cleanup ──
   window.addEventListener('beforeunload', () => {
+    sidebar.dispose();
+    placer.dispose();
     GameObjectManager.getInstance().dispose();
     houseManager.dispose();
     terrain.dispose();
