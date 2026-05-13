@@ -81,11 +81,15 @@ export class UnitController {
   // ── 移动控制器 ──
   readonly movement: UnitMovement;
 
-  constructor(definition: UnitDefinition, owner: House, x = 0, y = 0) {
+  /** 运行时唯一 ID（用于碰撞排除自身）。 */
+  readonly unitId: string;
+
+  constructor(definition: UnitDefinition, owner: House, x = 0, y = 0, unitId = '') {
     this.definition = definition;
     this.owner = owner;
     this.x = x;
     this.y = y;
+    this.unitId = unitId;
 
     this.maxHealth = definition.strength;
     this.currentHealth = definition.strength;

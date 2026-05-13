@@ -32,10 +32,18 @@ export class Pathfinder {
 
   /**
    * A* 寻路。
+   * @param blockedCells 可选的临时阻塞格子集合（格式 `"x,y"`），用于动态避障。
    * @returns 从起点到终点的格子路径（含起点和终点），无路径时返回 `null`。
    */
-  findPath(startX: number, startY: number, endX: number, endY: number): PathNode[] | null {
+  findPath(
+    startX: number,
+    startY: number,
+    endX: number,
+    endY: number,
+    blockedCells?: ReadonlySet<string>
+  ): PathNode[] | null {
     if (!this.isInside(endX, endY) || !this.isPassable(endX, endY)) return null;
+    if (blockedCells?.has(`${endX},${endY}`)) return null;
 
     const openSet: AStarNode[] = [];
     const closedSet = new Set<string>();
@@ -79,6 +87,7 @@ export class Pathfinder {
         if (closedSet.has(key)) continue;
         if (!this.isInside(n.x, n.y)) continue;
         if (!this.isPassable(n.x, n.y)) continue;
+        if (blockedCells?.has(key)) continue;
 
         const g = current.g + 1;
         const existing = openSet.find((o) => o.x === n.x && o.y === n.y);

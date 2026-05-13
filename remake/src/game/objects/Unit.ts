@@ -27,7 +27,7 @@ export class Unit extends GameObject {
   constructor(id: string, definition: UnitDefinition, house: House, x: number, y: number) {
     super(id, GameObjectType.Unit, definition.id, house, x, y, definition.strength);
     this.definition = definition;
-    this.logic = new UnitController(definition, house, x, y);
+    this.logic = new UnitController(definition, house, x, y, this.id);
   }
 
   createMesh(scene: Scene): void {
