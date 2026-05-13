@@ -139,8 +139,8 @@ Background@MAINMENU:
 
 **对我们的启示**：
 - 当前无 UI 框架。未来主菜单、战役选择、设置页面都需要。
-- **借鉴方案**：可复用现有 HTML/CSS 做 shell 页面（主菜单、设置），Babylon.GUI 做 HUD（血条、小地图）。
-- 或自研轻量 HTML Overlay 框架，YAML/JSON 定义布局，TS 类处理逻辑。
+- **借鉴方案**：所有交互 UI 统一使用 Babylon.GUI 实现（Shell 页面、HUD、侧边栏、主菜单、设置等）。
+- Babylon.GUI 提供与 3D 场景一致的坐标系和渲染管线，避免 HTML 与 Canvas 的层叠和 DPI 适配问题。
 
 ---
 
@@ -254,7 +254,7 @@ OpenRA 地图由多个文件组成：
 | **Trait/Component 系统** | 重构 `Unit`/`Building` 为数据容器，`MobileComponent`、`HealthComponent`、`RenderComponent` 独立挂载 | 高 |
 | **命令序列化** | 定义 `GameOrder` 接口，为网络对战和回放做准备 | 中 |
 | **规则外化** | 将 `UnitDefinitions.ts` / `BuildingDefinitions.ts` 转为 JSON/YAML，引擎运行时加载合并 | 高 |
-| **Widget UI 框架** | 主菜单、战役选择、设置页面用 HTML/CSS/TS 实现；HUD 用 Babylon.GUI 或 HTML Overlay | 高 |
+| **Widget UI 框架** | 所有交互 UI 统一使用 Babylon.GUI 实现 | 高 |
 | **Locomotor 系统** | 不同单位对不同地形有不同速度和通行性（如轮式不能上沙地） | 中 |
 | **音频管理器** | 封装 Web Audio API，支持分类、3D 定位、播放列表 | 中 |
 

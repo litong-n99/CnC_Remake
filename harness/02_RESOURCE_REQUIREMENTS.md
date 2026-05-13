@@ -940,9 +940,9 @@
 | 资源 ID | 用途 | 格式 | 文件路径 | 状态 |
 |---------|------|------|----------|------|
 | `font_cnc` | 红警风格像素字体 | WOFF2 | `public/assets/fonts/cnc.woff2` | [ ] Dummy: 系统等宽字体 `Courier New` |
-| `tex_ui_sidebar` | Sidebar 背景面板 | PNG | `public/assets/ui/sidebar_bg.png` | [ ] Dummy: CSS 渐变背景 |
-| `tex_ui_button` | 建造按钮边框 | PNG / SVG | `public/assets/ui/button_frame.svg` | [ ] Dummy: CSS border |
-| `tex_ui_powerbar` | 电力条 | PNG | `public/assets/ui/powerbar.png` | [ ] Dummy: CSS 渐变 |
+| `tex_ui_sidebar` | Sidebar 背景面板 | PNG | `public/assets/ui/sidebar_bg.png` | [ ] Dummy: Babylon.GUI Rectangle 纯色填充 |
+| `tex_ui_button` | 建造按钮边框 | PNG / SVG | `public/assets/ui/button_frame.svg` | [ ] Dummy: Babylon.GUI Rectangle 边框 |
+| `tex_ui_powerbar` | 电力条 | PNG | `public/assets/ui/powerbar.png` | [ ] Dummy: Babylon.GUI Rectangle 纯色填充 |
 | `tex_ui_healthbar_green` | 满血条 | PNG | `public/assets/ui/health_green.png` | [ ] Dummy: 绿色矩形 |
 | `tex_ui_healthbar_yellow` | 黄血条 | PNG | `public/assets/ui/health_yellow.png` | [ ] Dummy: 黄色矩形 |
 | `tex_ui_healthbar_red` | 红血条 | PNG | `public/assets/ui/health_red.png` | [ ] Dummy: 红色矩形 |

@@ -22,7 +22,7 @@
 | 3D 引擎 | Babylon.js | ^9 | https://doc.babylonjs.com/ |
 | 构建工具 | Vite | ^8 | https://cn.vitejs.dev/config/ |
 | 语言 | TypeScript | ^6 (strict mode) | |
-| UI 覆盖层 | HTML5 + CSS3 | - | |
+| UI 覆盖层 | Babylon.GUI | - | |
 | 状态管理 | 轻量级 Observable / EventBus | 自建 | |
 | 网络 | WebSocket (Phase 8 预留) | - | |
 | CI/CD | GitHub Actions | - | |
@@ -84,7 +84,7 @@ src/
 │   ├── meshes/              ← Dummy / 真实模型加载
 │   ├── materials/           ← 地形/单位/建筑材质
 │   ├── effects/             ← 粒子、弹道轨迹、爆炸
-│   └── ui/                  ← Babylon.GUI + HTML Overlay
+│   └── ui/                  ← Babylon.GUI
 ├── network/                 ← 网络抽象层（预留，替代 IPXCONN.CPP）
 ├── save/                    ← 存档序列化
 └── main.ts                  ← 入口

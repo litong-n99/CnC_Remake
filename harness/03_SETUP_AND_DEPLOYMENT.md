@@ -293,7 +293,7 @@ CnC_Remake/
 │   │   ├── meshes/          ← Dummy / GLB 加载
 │   │   ├── materials/       ← 材质系统
 │   │   ├── effects/         ← 粒子、弹道、爆炸
-│   │   └── ui/              ← Babylon.GUI + HTML Overlay
+│   │   └── ui/              ← Babylon.GUI
 │   ├── network/             ← WebSocket 预留
 │   ├── save/                ← 存档序列化
 │   ├── types/               ← 全局类型定义

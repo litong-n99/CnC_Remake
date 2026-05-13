@@ -236,9 +236,9 @@
 - **状态**：[x] `done`
 
 ### Task 22: 建造队列与 Sidebar UI
-- **目标**：翻译 C++ 建造队列逻辑。HTML Overlay 侧边栏显示可建造项，点击后进入"准备放置"状态，再点击地面确认建造。
+- **目标**：翻译 C++ 建造队列逻辑。Babylon.GUI 侧边栏显示可建造项，点击后进入"准备放置"状态，再点击地面确认建造。
 - **参考 C++**：`BUILDING.CPP` 中的 `Begin_Construction()`, `Place()`。
-- **文件**：`src/game/building/ConstructionQueue.ts`, `src/renderer/ui/Sidebar.tsx`（或纯 HTML）
+- **文件**：`src/game/building/ConstructionQueue.ts`, `src/renderer/ui/Sidebar.ts`
 - **验收**：点击 Sidebar 的"电厂"，鼠标变为放置预览，点击空地后扣除资金并开始建造。
 - **状态**：[ ] `done`
 
@@ -256,7 +256,7 @@
 ### Task 24: 鼠标输入层（框选 + 点击）
 - **目标**：翻译 `MOUSE.CPP`。左键框选单位/建筑，右键对选中单位下达移动/攻击指令。
 - **文件**：`src/core/InputManager.ts`, `src/core/SelectionBox.ts`
-- **Dummy 资源**：框选用 HTML div 或 Babylon.GUI 矩形，颜色为绿色（友方）/红色（敌方）。
+- **Dummy 资源**：框选用 Babylon.GUI 矩形，颜色为绿色（友方）/红色（敌方）。
 - **验收**：按住左键拖动出现绿色矩形，松开时框内单位被选中；右键点击地面单位移动。
 - **状态**：[ ] `done`
 
@@ -273,8 +273,8 @@
 - **状态**：[ ] `done`
 
 ### Task 27: HUD / UI 覆盖层（资源、小地图、单位信息）
-- **目标**：HTML Overlay 显示顶部资源栏、底部选中单位信息、右下角小地图（先占位）。
-- **文件**：`src/renderer/ui/HUD.css`, `src/renderer/ui/HUD.ts`
+- **目标**：Babylon.GUI 显示顶部资源栏、底部选中单位信息、右下角小地图（先占位）。
+- **文件**：`src/renderer/ui/HUD.ts`
 - **Dummy 资源**：小地图先用纯色方块表示地形，单位用点表示。
 - **验收**：选中单位后，底部面板显示血量、速度、装甲类型。
 - **状态**：[ ] `done`
@@ -349,12 +349,12 @@
 ## Phase 9: UI Shell 与页面导航（Game Shell）
 
 > 参考 OpenRA：`mods/*/chrome/*.yaml` + `ChromeLogic` 分离布局与逻辑。  
-> 我们的方案：HTML/CSS/TS 实现 Shell 页面（主菜单、设置等），Babylon.GUI 或 HTML Overlay 实现 HUD。
+> 我们的方案：Babylon.GUI 实现所有交互 UI（Shell 页面、HUD、侧边栏、主菜单、设置等）。
 
 ### Task 36: 主菜单页面（Main Menu）
 - **目标**：游戏启动后显示主菜单：背景滚动地图/视频、Logo、Singleplayer / Multiplayer / Settings / Exit 按钮。
 - **参考 OpenRA**：`mods/cnc/chrome/mainmenu.yaml` + `MainMenuLogic.cs`
-- **文件**：`src/ui/shell/MainMenu.ts`, `src/ui/shell/MainMenu.css`
+- **文件**：`src/ui/shell/MainMenu.ts`
 - **验收**：启动游戏后看到主菜单，点击按钮有视觉反馈，背景不是黑屏。
 - **状态**：[ ] `done`
 
@@ -416,7 +416,7 @@
 ### Task 44: Sidebar 生产队列 UI
 - **目标**：右侧/左侧边栏显示可建造的建筑和单位，带图标、价格、冷却遮罩。点击后进入"准备放置"状态（建筑）或立即开始生产（单位）。
 - **参考 OpenRA**：`mods/*/chrome/ingame-*.yaml` + `ProductionPaletteWidget.cs`
-- **文件**：`src/renderer/ui/Sidebar.ts`, `src/renderer/ui/Sidebar.css`
+- **文件**：`src/renderer/ui/Sidebar.ts`
 - **验收**：点击电厂图标，图标变灰并显示进度条；完成后图标高亮，再次点击进入放置预览。
 - **状态**：[ ] `done`
 

@@ -2845,7 +2845,7 @@ public takeDamage(damage: number, warhead: WarheadType): void {
 | `new/delete` 手动内存管理 | 直译 `new` | 使用 TS 对象引用，依赖 GC |
 | `Win32 API` (`CreateWindow`, `BitBlt`) | 任何 Win32 调用 | 由 Babylon.js Engine/Scene 替代 |
 | `IPX/TCP Socket` 原生网络 | 直译 Socket 代码 | 使用 WebSocket / WebRTC |
-| `MFC` 界面 | 直译对话框/菜单 | 使用 HTML/CSS 覆盖层 |
+| `MFC` 界面 | 直译对话框/菜单 | 使用 Babylon.GUI |
 | `__asm` 内联汇编 | 直译 | 删除，Babylon.js 用 Shader |
 | `union` 内存共用体 | 直译 | 使用 TS Discriminated Union 类型 |
 | 多继承（如 `class X : public A, public B`） | 直译 | 使用 Mixin 模式或组合替代 |
