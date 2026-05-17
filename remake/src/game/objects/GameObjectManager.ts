@@ -54,6 +54,14 @@ export class GameObjectManager {
     return this.getAll().filter((o) => o.type === GameObjectType.Building);
   }
 
+  /** 获取所有步兵（通过 Unit 的 definition.locomotion 过滤）。 */
+  getInfantry(): GameObject[] {
+    return this.getUnits().filter((o) => {
+      const unit = o as import('./Unit').Unit;
+      return unit.definition?.locomotion === 0; // Locomotion.Foot = 0
+    });
+  }
+
   /** 获取指定阵营的所有对象。 */
   getByHouse(houseId: number): GameObject[] {
     return this.getAll().filter((o) => o.house.id === houseId);

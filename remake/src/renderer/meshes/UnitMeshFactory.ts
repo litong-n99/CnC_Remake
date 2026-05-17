@@ -28,6 +28,9 @@ export class UnitMeshFactory {
     mat.diffuseColor = color;
     mat.specularColor = Color3.Black();
 
+    if (definition.locomotion === Locomotion.Foot) {
+      return { body: this.createInfantry(name, mat, scene, definition) };
+    }
     if (definition.locomotion === Locomotion.Track && definition.hasTurret) {
       return this.createTank(name, mat, scene);
     }
@@ -115,6 +118,60 @@ export class UnitMeshFactory {
     cargo.position = new Vector3(0, 0.38, 0.05);
     cargo.parent = body;
     cargo.material = mat;
+
+    return body;
+  }
+
+  // ── 步兵（Foot）──
+  private static createInfantry(name: string, mat: StandardMaterial, scene: Scene, definition: UnitDefinition): Mesh {
+    // 主体 — 小圆柱体表示人形
+    const body = MeshBuilder.CreateCylinder(`${name}_body`, { diameter: 0.35, height: 0.6 }, scene);
+    body.position.y = 0.4;
+    body.material = mat;
+
+    // 头部 — 小方块
+    const head = MeshBuilder.CreateBox(`${name}_head`, { width: 0.2, height: 0.2, depth: 0.2 }, scene);
+    head.position = new Vector3(0, 0.45, 0);
+    head.parent = body;
+    head.material = mat;
+
+    // 武器 — 根据射程和类型区分外观
+    if (definition.range > 0) {
+      const weapon = MeshBuilder.CreateBox(`${name}_weapon`, { width: 0.06, height: 0.06, depth: 0.25 }, scene);
+      weapon.position = new Vector3(0.15, 0.1, 0.12);
+      weapon.parent = body;
+      weapon.material = mat;
+    }
+
+    // 特殊标记 — 工程师/谭雅/医疗兵用头部上方小标记区分
+    if (definition.id === 'INFANTRY_RENOVATOR') {
+      const wrench = MeshBuilder.CreateBox(`${name}_wrench`, { width: 0.04, height: 0.2, depth: 0.04 }, scene);
+      wrench.position = new Vector3(0.18, 0.15, 0);
+      wrench.parent = body;
+      wrench.material = mat;
+    } else if (definition.id === 'INFANTRY_TANYA') {
+      const beret = MeshBuilder.CreateBox(`${name}_beret`, { width: 0.22, height: 0.04, depth: 0.22 }, scene);
+      beret.position = new Vector3(0, 0.12, 0);
+      beret.parent = head;
+      beret.material = mat;
+    } else if (definition.id === 'INFANTRY_MEDIC') {
+      const cross = MeshBuilder.CreateBox(`${name}_cross`, { width: 0.15, height: 0.04, depth: 0.05 }, scene);
+      cross.position = new Vector3(0, 0.14, 0);
+      cross.parent = head;
+      cross.material = mat;
+    } else if (definition.id === 'INFANTRY_DOG') {
+      // 狗用更矮更长的身体
+      body.dispose();
+      const dogBody = MeshBuilder.CreateBox(`${name}_body`, { width: 0.3, height: 0.25, depth: 0.5 }, scene);
+      dogBody.position.y = 0.2;
+      dogBody.material = mat;
+      head.dispose();
+      const dogHead = MeshBuilder.CreateBox(`${name}_head`, { width: 0.18, height: 0.18, depth: 0.22 }, scene);
+      dogHead.position = new Vector3(0, 0.15, 0.2);
+      dogHead.parent = dogBody;
+      dogHead.material = mat;
+      return dogBody;
+    }
 
     return body;
   }

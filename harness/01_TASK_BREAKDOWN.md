@@ -169,17 +169,19 @@
 - **状态机**：`Idle`, `Moving`, `Attacking`, `Dying`, `TurretTracking`。
 - **文件**：`src/game/unit/Unit.ts`, `src/game/unit/UnitState.ts`
 - **数值沿用**：直接引用 Task 11 的 `UnitDefinitions`。
-- **验收**：创建单位后，控制台打印属性与 C++ 默认值一致。
+- **步兵定义**：`UnitDefinitions.ts` 已扩展 9 种步兵（步枪兵/掷弹兵/火箭兵/喷火兵/工程师/谭雅/间谍/医疗兵/军犬），数值交叉核对 `origin/REDALERT/IDATA.CPP` + `RULES.INI` 默认值。
+- **验收**：创建单位后，控制台打印属性与 C++ 默认值一致；场景中可见步兵与载具共存。
 - **状态**：[x] `done`
 
 ### Task 16: Unit 3D 表现层（Dummy 几何体）
 - **目标**：为每种单位类型创建 Babylon.js 程序化几何体组合。
 - **Dummy 方案**：
   - 坦克：`Box` 车身 + `Cylinder` 炮塔 + `Box` 炮管，颜色区分阵营。
-  - 步兵：`Capsule` 身体 + `Sphere` 头部。
+  - 步兵：`Cylinder` 身体 + `Box` 头部 + `Box` 武器，特殊标记区分工程师/谭雅/医疗兵/狗。
   - 选择环：`Torus` 悬浮于单位底部。
 - **文件**：`src/renderer/meshes/UnitMeshFactory.ts`
-- **验收**：场景中生成 4 辆以上不同外形车辆（坦克/轮式），可见且可按阵营颜色与几何外形区分。
+- **数值来源**：`origin/REDALERT/IDATA.CPP`（步兵外形参考 `HumanShape[32]` 与 `MasterDoControls`）。
+- **验收**：场景中生成 4 辆以上不同外形车辆（坦克/轮式）+ 8 名以上不同外形步兵，可见且可按阵营颜色与几何外形区分。
 - **状态**：[x] `done`
 
 ### Task 17: 单位移动与寻路（A* + 插值动画）

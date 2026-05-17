@@ -178,8 +178,83 @@ const bootstrap = async (): Promise<void> => {
     scene,
   });
 
+  // ── Infantry spawn ──
+  const gdiRifle1 = GameObjectFactory.createUnit({
+    definition: UNIT_DEFINITIONS.RifleInfantry,
+    house: gdi,
+    x: 41,
+    y: 16,
+    scene,
+  });
+  const gdiRifle2 = GameObjectFactory.createUnit({
+    definition: UNIT_DEFINITIONS.RifleInfantry,
+    house: gdi,
+    x: 43,
+    y: 16,
+    scene,
+  });
+  const gdiRocket = GameObjectFactory.createUnit({
+    definition: UNIT_DEFINITIONS.RocketSoldier,
+    house: gdi,
+    x: 44,
+    y: 17,
+    scene,
+  });
+  const gdiEngineer = GameObjectFactory.createUnit({
+    definition: UNIT_DEFINITIONS.Engineer,
+    house: gdi,
+    x: 42,
+    y: 17,
+    scene,
+  });
+
+  const nodRifle1 = GameObjectFactory.createUnit({
+    definition: UNIT_DEFINITIONS.RifleInfantry,
+    house: nod,
+    x: 45,
+    y: 42,
+    scene,
+  });
+  const nodRifle2 = GameObjectFactory.createUnit({
+    definition: UNIT_DEFINITIONS.RifleInfantry,
+    house: nod,
+    x: 47,
+    y: 42,
+    scene,
+  });
+  const nodFlame = GameObjectFactory.createUnit({
+    definition: UNIT_DEFINITIONS.Flamethrower,
+    house: nod,
+    x: 46,
+    y: 43,
+    scene,
+  });
+  const nodDog = GameObjectFactory.createUnit({
+    definition: UNIT_DEFINITIONS.AttackDog,
+    house: nod,
+    x: 48,
+    y: 43,
+    scene,
+  });
+
   // Enable shadows on all spawned objects
-  for (const obj of [...gdiBuildings, ...nodBuildings, gdiTank, gdiJeep, nodTank, nodRocket]) {
+  const allSpawned = [
+    ...gdiBuildings,
+    ...nodBuildings,
+    gdiTank,
+    gdiJeep,
+    nodTank,
+    nodRocket,
+    gdiRifle1,
+    gdiRifle2,
+    gdiRocket,
+    gdiEngineer,
+    nodRifle1,
+    nodRifle2,
+    nodFlame,
+    nodDog,
+  ];
+  for (const obj of allSpawned) {
     if (obj.mesh) {
       lighting.addShadowCaster(obj.mesh);
       lighting.enableShadowsOnMesh(obj.mesh);
