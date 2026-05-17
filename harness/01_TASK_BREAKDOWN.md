@@ -7,6 +7,11 @@
 
 ## Phase 0: 原始代码学习与 Harness 更新（Pre-coding）
 
+> **参考文档**：
+> - `harness/04_CPP_TO_TS_MAPPING.md` — C++ → TS 代码翻译规范
+> - `harness/05_OPENRA_ANALYSIS.md` — OpenRA 架构分析
+> - `harness/05_RA2WEB_ANALYSIS.md` — RA2-Web（React + Three.js 红警2网页版）架构与组件分析，含数据解析器、渲染系统、音频系统、Trait/ECS 设计、触发器系统、任务系统、虚拟文件系统的详细映射
+
 ### Task 0: 获取原始 C++ 源码并放置到 origin/
 - **目标**：将 EA 开源的 `CnC_Remastered_Collection` 源码下载并解压到 `origin/` 目录，保持原始目录结构不变。
 - **文件位置**：`origin/REDALERT/`, `origin/TIBERIANDAWN/`, `origin/CnCTDRAMapEditor/`

@@ -21,6 +21,7 @@ build/
 # origin
 origin/
 OpenRA/
+ra2-web/
 
 # OS
 .DS_Store
