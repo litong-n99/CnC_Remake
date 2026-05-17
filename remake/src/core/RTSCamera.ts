@@ -1,5 +1,4 @@
 import { ArcRotateCamera, Vector3, Scene, Engine } from '@babylonjs/core';
-import { AdvancedDynamicTexture, Rectangle, Control } from '@babylonjs/gui';
 
 export interface RTSCameraOptions {
   /** Camera name (default: `'rtsCamera'`). */
@@ -51,6 +50,9 @@ export class RTSCamera {
   private mouseY = 0;
   private panningStartPoint: Vector3 | null = null;
   private panningStartTarget: Vector3 | null = null;
+  private rightClickPending = false;
+  private rightDragStartX = 0;
+  private rightDragStartY = 0;
 
   /** 右键单击回调（非拖拽）。参数为屏幕像素坐标。 */
   onRightClick: ((screenX: number, screenY: number) => void) | null = null;
@@ -70,8 +72,7 @@ export class RTSCamera {
   private boundPointerLockError: () => void;
   private boundKeyDown: (e: KeyboardEvent) => void;
 
-  private cursorRect: Rectangle | null = null;
-  private cursorTexture: AdvancedDynamicTexture | null = null;
+  private cursorDiv: HTMLDivElement | null = null;
 
   private renderCallback: () => void;
 
@@ -126,29 +127,45 @@ export class RTSCamera {
 
     this.setupCursor();
     this.setupInputHandlers();
+    this.setupPointerObservable();
     this.scene.onBeforeRenderObservable.add(this.renderCallback);
   }
 
-  // ── Custom cursor (visible only when pointer lock is active) ──
+  // ── HTML cursor (visible only when pointer lock is active) ──
 
   private setupCursor(): void {
     if (!this.options.pointerLock) return;
 
-    const texture = AdvancedDynamicTexture.CreateFullscreenUI('rtsCursorUI', true, this.scene);
-    const cursor = new Rectangle('rtsCursor');
-    cursor.width = '12px';
-    cursor.height = '12px';
-    cursor.color = '#ffffff';
-    cursor.thickness = 2;
-    cursor.background = 'rgba(255,255,255,0.25)';
-    cursor.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-    cursor.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-    cursor.isHitTestVisible = false;
-    cursor.isVisible = false;
-    texture.addControl(cursor);
+    const div = document.createElement('div');
+    div.style.position = 'fixed';
+    div.style.width = '12px';
+    div.style.height = '12px';
+    div.style.border = '2px solid #ffffff';
+    div.style.backgroundColor = 'rgba(255,255,255,0.25)';
+    div.style.pointerEvents = 'none';
+    div.style.zIndex = '99999';
+    div.style.display = 'none';
+    document.body.appendChild(div);
 
-    this.cursorTexture = texture;
-    this.cursorRect = cursor;
+    this.cursorDiv = div;
+  }
+
+  // ── Babylon pointer observable (runs before GUI picking) ──
+
+  private setupPointerObservable(): void {
+    this.scene.onPrePointerObservable.add(
+      () => {
+        if (!this.isPointerLocked) return;
+        const canvas = this.engine.getRenderingCanvas();
+        if (!canvas) return;
+        const dpr = canvas.width / canvas.getBoundingClientRect().width;
+        // Feed virtual cursor into Babylon so GUI (Sidebar) picking works.
+        this.scene.pointerX = this.mouseX * dpr;
+        this.scene.pointerY = this.mouseY * dpr;
+      },
+      undefined,
+      true // insertFirst — run before GUI's own observer
+    );
   }
 
   // ── Input wiring ──
@@ -171,24 +188,33 @@ export class RTSCamera {
     window.addEventListener('keydown', this.boundKeyDown);
   }
 
+  /**
+   * Track mouse position in canvas-local coordinates (0,0 = top-left of canvas).
+   * In pointer-lock mode we accumulate movementX/Y and also feed the value
+   * into Babylon's scene.pointerX/pointerY so GUI (Sidebar) stays interactive.
+   */
   private handleMouseMove(e: MouseEvent): void {
+    const canvas = this.engine.getRenderingCanvas();
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+
     if (this.isPointerLocked) {
-      const canvas = this.engine.getRenderingCanvas();
-      if (canvas) {
-        const rect = canvas.getBoundingClientRect();
-        this.mouseX += e.movementX;
-        this.mouseY += e.movementY;
-        // Clamp to canvas bounds so edge-scroll still works logically.
-        this.mouseX = Math.max(0, Math.min(rect.width - 1, this.mouseX));
-        this.mouseY = Math.max(0, Math.min(rect.height - 1, this.mouseY));
-      }
+      this.mouseX += e.movementX;
+      this.mouseY += e.movementY;
+      // Clamp to canvas bounds so edge-scroll still works logically.
+      this.mouseX = Math.max(0, Math.min(rect.width - 1, this.mouseX));
+      this.mouseY = Math.max(0, Math.min(rect.height - 1, this.mouseY));
     } else {
-      this.mouseX = e.clientX;
-      this.mouseY = e.clientY;
+      this.mouseX = e.clientX - rect.left;
+      this.mouseY = e.clientY - rect.top;
     }
 
     if (this.isRightDragging) {
       this.handlePan(this.mouseX, this.mouseY);
+      const dragDist = Math.abs(this.mouseX - this.rightDragStartX) + Math.abs(this.mouseY - this.rightDragStartY);
+      if (dragDist > 5) {
+        this.rightClickPending = false;
+      }
     }
   }
 
@@ -196,6 +222,9 @@ export class RTSCamera {
     if (e.button === 2) {
       // Right button — start panning
       this.isRightDragging = true;
+      this.rightClickPending = true;
+      this.rightDragStartX = this.mouseX;
+      this.rightDragStartY = this.mouseY;
       this.panningStartPoint = this.raycastToGround(this.mouseX, this.mouseY);
       this.panningStartTarget = this.camera.target.clone();
     }
@@ -203,9 +232,17 @@ export class RTSCamera {
 
   private handleMouseUp(e: MouseEvent): void {
     if (e.button === 2) {
+      const wasPending = this.rightClickPending;
       this.isRightDragging = false;
+      this.rightClickPending = false;
       this.panningStartPoint = null;
       this.panningStartTarget = null;
+
+      // In pointer-lock mode contextmenu is unreliable; fire onRightClick
+      // here when the right-button press was a click rather than a drag.
+      if (this.isPointerLocked && wasPending && this.onRightClick) {
+        this.onRightClick(this.mouseX, this.mouseY);
+      }
     }
   }
 
@@ -249,7 +286,8 @@ export class RTSCamera {
 
   private handleContextMenu(e: MouseEvent): void {
     e.preventDefault();
-    if (this.onRightClick) {
+    // In pointer-lock mode we rely on handleMouseUp for right-click detection.
+    if (!this.isPointerLocked && this.onRightClick) {
       this.onRightClick(this.mouseX, this.mouseY);
     }
   }
@@ -301,18 +339,18 @@ export class RTSCamera {
   }
 
   /**
-   * Cast a ray from the camera through the given screen pixel and intersect
-   * it with the mathematical ground plane `y = 0`.
+   * Cast a ray from the camera through the given canvas-local pixel and
+   * intersect it with the mathematical ground plane `y = 0`.
    *
-   * Automatically accounts for canvas CSS size vs render-buffer size (DPR).
+   * `canvasX`/`canvasY` are relative to the canvas top-left (CSS pixels).
    */
-  private raycastToGround(screenX: number, screenY: number): Vector3 | null {
+  private raycastToGround(canvasX: number, canvasY: number): Vector3 | null {
     const canvas = this.engine.getRenderingCanvas();
     if (!canvas) return null;
 
-    const rect = canvas.getBoundingClientRect();
-    const x = (screenX - rect.left) * (canvas.width / rect.width);
-    const y = (screenY - rect.top) * (canvas.height / rect.height);
+    const dpr = canvas.width / canvas.getBoundingClientRect().width;
+    const x = canvasX * dpr;
+    const y = canvasY * dpr;
 
     const ray = this.scene.createPickingRay(x, y, null, this.camera);
 
@@ -329,11 +367,11 @@ export class RTSCamera {
   }
 
   /**
-   * Convert a screen pixel coordinate to a ground-plane (y = 0) world
+   * Convert a canvas-local pixel coordinate to a ground-plane (y = 0) world
    * coordinate. Returns `null` if the ray is parallel to the ground.
    */
-  screenToGround(screenX: number, screenY: number): Vector3 | null {
-    return this.raycastToGround(screenX, screenY);
+  screenToGround(canvasX: number, canvasY: number): Vector3 | null {
+    return this.raycastToGround(canvasX, canvasY);
   }
 
   /**
@@ -343,8 +381,7 @@ export class RTSCamera {
   getPointerPosition(): { x: number; y: number } {
     const canvas = this.engine.getRenderingCanvas();
     if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-    const dpr = canvas.width / rect.width;
+    const dpr = canvas.width / canvas.getBoundingClientRect().width;
     return { x: this.mouseX * dpr, y: this.mouseY * dpr };
   }
 
@@ -357,12 +394,16 @@ export class RTSCamera {
       this.camera.radius += diff * this.options.zoomDamping;
     }
 
-    // Custom cursor position update
-    if (this.cursorRect) {
-      this.cursorRect.isVisible = this.isPointerLocked;
+    // HTML cursor position update
+    if (this.cursorDiv) {
+      this.cursorDiv.style.display = this.isPointerLocked ? 'block' : 'none';
       if (this.isPointerLocked) {
-        this.cursorRect.leftInPixels = this.mouseX - 6;
-        this.cursorRect.topInPixels = this.mouseY - 6;
+        const canvas = this.engine.getRenderingCanvas();
+        if (canvas) {
+          const rect = canvas.getBoundingClientRect();
+          this.cursorDiv.style.left = `${rect.left + this.mouseX - 6}px`;
+          this.cursorDiv.style.top = `${rect.top + this.mouseY - 6}px`;
+        }
       }
     }
 
@@ -467,7 +508,9 @@ export class RTSCamera {
       document.exitPointerLock();
     }
 
-    this.cursorTexture?.dispose();
+    if (this.cursorDiv) {
+      this.cursorDiv.remove();
+    }
     this.camera.dispose();
   }
 }
