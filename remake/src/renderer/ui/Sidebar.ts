@@ -215,7 +215,10 @@ export class Sidebar {
       const qStatus = this.queue.status;
       const qDef = this.queue.currentDefinition;
 
-      if (qStatus === QueueStatus.Ready && qDef?.id === def.id) {
+      if (qStatus === QueueStatus.Building && qDef?.id === def.id) {
+        // 建造中再次点击 = 取消建造（全额退款）
+        this.queue.cancel();
+      } else if (qStatus === QueueStatus.Ready && qDef?.id === def.id) {
         // 就绪 → 进入放置模式
         this.onPlaceRequest();
       } else if (qStatus === QueueStatus.Idle) {
@@ -277,7 +280,7 @@ export class Sidebar {
     const def = this.queue.currentDefinition;
     if (status === QueueStatus.Building && def) {
       const pct = Math.floor(this.queue.progress * 100);
-      this.statusText.text = `Building: ${def.name} (${pct}%)`;
+      this.statusText.text = `Building: ${def.name} (${pct}%) — Click to cancel`;
       this.statusText.color = '#0f0';
     } else if (status === QueueStatus.Ready && def) {
       this.statusText.text = `Ready: ${def.name} — Click to place`;
