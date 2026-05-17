@@ -1,4 +1,5 @@
 import { ArcRotateCamera, Vector3, Scene, Engine } from '@babylonjs/core';
+import { AdvancedDynamicTexture, Rectangle, Control } from '@babylonjs/gui';
 
 export interface RTSCameraOptions {
   /** Camera name (default: `'rtsCamera'`). */
@@ -21,6 +22,8 @@ export interface RTSCameraOptions {
   edgeScrollSpeed?: number;
   /** Zoom interpolation factor per frame, 0–1 (default: `0.1`). */
   zoomDamping?: number;
+  /** Whether to enable pointer lock on left-click (default: `true`). */
+  pointerLock?: boolean;
 }
 
 /**
@@ -31,9 +34,7 @@ export interface RTSCameraOptions {
  * - Mouse-wheel zoom with damping.
  * - Right-click drag to pan (pixel-perfect ground-plane tracking).
  * - Screen-edge auto-scroll.
- *
- * The camera is implemented as an {@link ArcRotateCamera} with all default
- * inputs cleared so every interaction is explicitly controlled.
+ * - Pointer lock: click canvas to capture the cursor; press Esc to release.
  */
 export class RTSCamera {
   private camera: ArcRotateCamera;
@@ -45,6 +46,7 @@ export class RTSCamera {
   private targetZoom: number;
   private isRightDragging = false;
   private isMouseOverCanvas = false;
+  private isPointerLocked = false;
   private mouseX = 0;
   private mouseY = 0;
   private panningStartPoint: Vector3 | null = null;
@@ -64,6 +66,12 @@ export class RTSCamera {
   private boundContextMenu: (e: MouseEvent) => void;
   private boundClick: (e: MouseEvent) => void;
   private boundWheel: (e: WheelEvent) => void;
+  private boundPointerLockChange: () => void;
+  private boundPointerLockError: () => void;
+  private boundKeyDown: (e: KeyboardEvent) => void;
+
+  private cursorRect: Rectangle | null = null;
+  private cursorTexture: AdvancedDynamicTexture | null = null;
 
   private renderCallback: () => void;
 
@@ -82,6 +90,7 @@ export class RTSCamera {
       edgeThreshold: options.edgeThreshold ?? 20,
       edgeScrollSpeed: options.edgeScrollSpeed ?? 0.5,
       zoomDamping: options.zoomDamping ?? 0.1,
+      pointerLock: options.pointerLock ?? true,
     };
 
     this.targetZoom = this.options.initialZoom;
@@ -109,11 +118,37 @@ export class RTSCamera {
     this.boundContextMenu = this.handleContextMenu.bind(this);
     this.boundClick = this.handleClick.bind(this);
     this.boundWheel = this.handleWheel.bind(this);
+    this.boundPointerLockChange = this.handlePointerLockChange.bind(this);
+    this.boundPointerLockError = this.handlePointerLockError.bind(this);
+    this.boundKeyDown = this.handleKeyDown.bind(this);
 
     this.renderCallback = this.update.bind(this);
 
+    this.setupCursor();
     this.setupInputHandlers();
     this.scene.onBeforeRenderObservable.add(this.renderCallback);
+  }
+
+  // ── Custom cursor (visible only when pointer lock is active) ──
+
+  private setupCursor(): void {
+    if (!this.options.pointerLock) return;
+
+    const texture = AdvancedDynamicTexture.CreateFullscreenUI('rtsCursorUI', true, this.scene);
+    const cursor = new Rectangle('rtsCursor');
+    cursor.width = '12px';
+    cursor.height = '12px';
+    cursor.color = '#ffffff';
+    cursor.thickness = 2;
+    cursor.background = 'rgba(255,255,255,0.25)';
+    cursor.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    cursor.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    cursor.isHitTestVisible = false;
+    cursor.isVisible = false;
+    texture.addControl(cursor);
+
+    this.cursorTexture = texture;
+    this.cursorRect = cursor;
   }
 
   // ── Input wiring ──
@@ -131,22 +166,37 @@ export class RTSCamera {
     canvas.addEventListener('contextmenu', this.boundContextMenu);
     canvas.addEventListener('click', this.boundClick);
     canvas.addEventListener('wheel', this.boundWheel, { passive: false });
+    document.addEventListener('pointerlockchange', this.boundPointerLockChange);
+    document.addEventListener('pointerlockerror', this.boundPointerLockError);
+    window.addEventListener('keydown', this.boundKeyDown);
   }
 
   private handleMouseMove(e: MouseEvent): void {
-    this.mouseX = e.clientX;
-    this.mouseY = e.clientY;
+    if (this.isPointerLocked) {
+      const canvas = this.engine.getRenderingCanvas();
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect();
+        this.mouseX += e.movementX;
+        this.mouseY += e.movementY;
+        // Clamp to canvas bounds so edge-scroll still works logically.
+        this.mouseX = Math.max(0, Math.min(rect.width - 1, this.mouseX));
+        this.mouseY = Math.max(0, Math.min(rect.height - 1, this.mouseY));
+      }
+    } else {
+      this.mouseX = e.clientX;
+      this.mouseY = e.clientY;
+    }
 
     if (this.isRightDragging) {
-      this.handlePan(e.clientX, e.clientY);
+      this.handlePan(this.mouseX, this.mouseY);
     }
   }
 
   private handleMouseDown(e: MouseEvent): void {
     if (e.button === 2) {
-      // Right button
+      // Right button — start panning
       this.isRightDragging = true;
-      this.panningStartPoint = this.raycastToGround(e.clientX, e.clientY);
+      this.panningStartPoint = this.raycastToGround(this.mouseX, this.mouseY);
       this.panningStartTarget = this.camera.target.clone();
     }
   }
@@ -159,9 +209,22 @@ export class RTSCamera {
     }
   }
 
-  private handleClick(e: MouseEvent): void {
+  private handleClick(_e: MouseEvent): void {
+    // Request pointer lock on left-click so the cursor is captured for RTS play.
+    if (this.options.pointerLock && !this.isPointerLocked) {
+      const canvas = this.engine.getRenderingCanvas();
+      if (canvas) {
+        try {
+          canvas.requestPointerLock();
+        } catch (err) {
+          console.warn('Pointer lock request failed:', err);
+        }
+      }
+    }
+
     if (this.onLeftClick) {
-      this.onLeftClick(e.clientX, e.clientY);
+      // Use tracked mouse position so pointer-lock works correctly.
+      this.onLeftClick(this.mouseX, this.mouseY);
     }
   }
 
@@ -187,7 +250,7 @@ export class RTSCamera {
   private handleContextMenu(e: MouseEvent): void {
     e.preventDefault();
     if (this.onRightClick) {
-      this.onRightClick(e.clientX, e.clientY);
+      this.onRightClick(this.mouseX, this.mouseY);
     }
   }
 
@@ -196,6 +259,33 @@ export class RTSCamera {
     const delta = e.deltaY > 0 ? 1 : -1;
     this.targetZoom += delta * 5;
     this.targetZoom = Math.max(this.options.minZoom, Math.min(this.options.maxZoom, this.targetZoom));
+  }
+
+  private handlePointerLockChange(): void {
+    const canvas = this.engine.getRenderingCanvas();
+    const wasLocked = this.isPointerLocked;
+    this.isPointerLocked = canvas !== null && document.pointerLockElement === canvas;
+    if (this.isPointerLocked && !wasLocked) {
+      // eslint-disable-next-line no-console
+      console.info('Pointer lock acquired');
+    } else if (!this.isPointerLocked && wasLocked) {
+      // eslint-disable-next-line no-console
+      console.info('Pointer lock released');
+      // Reset drag state when lock is lost.
+      this.isRightDragging = false;
+      this.panningStartPoint = null;
+      this.panningStartTarget = null;
+    }
+  }
+
+  private handlePointerLockError(): void {
+    console.warn('Pointer lock error — request was denied or failed');
+  }
+
+  private handleKeyDown(e: KeyboardEvent): void {
+    if (e.key === 'Escape' && this.isPointerLocked) {
+      document.exitPointerLock();
+    }
   }
 
   // ── Panning ──
@@ -246,6 +336,18 @@ export class RTSCamera {
     return this.raycastToGround(screenX, screenY);
   }
 
+  /**
+   * Current mouse position in render-buffer coordinates.
+   * Accounts for device-pixel-ratio and pointer-lock virtual cursor.
+   */
+  getPointerPosition(): { x: number; y: number } {
+    const canvas = this.engine.getRenderingCanvas();
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const dpr = canvas.width / rect.width;
+    return { x: this.mouseX * dpr, y: this.mouseY * dpr };
+  }
+
   // ── Per-frame update ──
 
   private update(): void {
@@ -255,9 +357,22 @@ export class RTSCamera {
       this.camera.radius += diff * this.options.zoomDamping;
     }
 
+    // Custom cursor position update
+    if (this.cursorRect) {
+      this.cursorRect.isVisible = this.isPointerLocked;
+      if (this.isPointerLocked) {
+        this.cursorRect.leftInPixels = this.mouseX - 6;
+        this.cursorRect.topInPixels = this.mouseY - 6;
+      }
+    }
+
     // Edge scrolling
     if (this.isRightDragging) return;
-    if (!this.isMouseOverCanvas) return;
+
+    // Pointer lock active: mouse is confined to the canvas, so edge-scroll
+    // is always valid.  Pointer lock inactive: only scroll when the real
+    // cursor is over the canvas.
+    if (!this.isPointerLocked && !this.isMouseOverCanvas) return;
 
     const canvas = this.engine.getRenderingCanvas();
     if (!canvas) return;
@@ -344,7 +459,15 @@ export class RTSCamera {
     }
     window.removeEventListener('mouseup', this.boundMouseUp);
     window.removeEventListener('blur', this.boundWindowBlur);
+    document.removeEventListener('pointerlockchange', this.boundPointerLockChange);
+    document.removeEventListener('pointerlockerror', this.boundPointerLockError);
+    window.removeEventListener('keydown', this.boundKeyDown);
 
+    if (this.isPointerLocked) {
+      document.exitPointerLock();
+    }
+
+    this.cursorTexture?.dispose();
     this.camera.dispose();
   }
 }

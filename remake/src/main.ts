@@ -336,7 +336,8 @@ const bootstrap = async (): Promise<void> => {
   rtsCamera.onLeftClick = (screenX, screenY) => {
     // 放置模式优先
     if (placer.isPlacing()) {
-      placer.updateFromScreen(scene.pointerX, scene.pointerY);
+      const ptr = rtsCamera.getPointerPosition();
+      placer.updateFromScreen(ptr.x, ptr.y);
       const cell = placer.confirmPlacement();
       if (cell) {
         const building = queue.placeBuilding(cell.x, cell.y, scene);
@@ -433,7 +434,8 @@ const bootstrap = async (): Promise<void> => {
     // Task 22: update construction queue + ghost + sidebar
     queue.tick(dt);
     if (placer.isPlacing()) {
-      placer.updateFromScreen(scene.pointerX, scene.pointerY);
+      const ptr = rtsCamera.getPointerPosition();
+      placer.updateFromScreen(ptr.x, ptr.y);
     }
     sidebar.refresh(dt);
 
