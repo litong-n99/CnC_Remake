@@ -230,6 +230,46 @@ feature/xx  ← 单个 Task 分支（如 feature/task-09-terrain-grid）
 
 ---
 
+## 调试控制台（Debug Console）
+
+为方便运行时快速验证功能，项目提供了一个浏览器 DevTools 调试控制台，通过 `window.cnc` 暴露一组命令。该控制台**仅在开发环境可用**，不应出现在生产构建中。
+
+### 安装位置
+
+`remake/src/debug/GameConsole.ts` 由 `main.ts` 在场景初始化后自动 `install()`，将命令注册到全局 `window.cnc` 对象。
+
+### 可用命令
+
+| 命令 | 签名 | 说明 | 示例 |
+|------|------|------|------|
+| `cnc.unit` | `(type, house='gdi', x?, y?)` | 生成单位；省略 `x,y` 时在相机中心最近可用地面生成 | `cnc.unit('MediumTank', 'gdi')` / `cnc.unit('MediumTank', 'nod', 30, 30)` |
+| `cnc.building` | `(type, house='gdi')` | 启动建筑放置模式（ghost 跟随鼠标，左键放置，右键取消） | `cnc.building('PowerPlant', 'gdi')` |
+| `cnc.money` | `(house?, amount?)` | 查看或增加资金 | `cnc.money('gdi', 5000)` |
+| `cnc.power` | `(house?)` | 查看电力状态 | `cnc.power('nod')` |
+| `cnc.kill` | `(type?)` | 杀死对象 | `cnc.kill('units')` / `cnc.kill()` |
+| `cnc.clear` | `()` | 清除所有对象 | `cnc.clear()` |
+| `cnc.list` | `()` | 列出所有单位/建筑 | `cnc.list()` |
+| `cnc.help` | `()` | 显示帮助信息 | `cnc.help()` |
+
+### 单位类型（`cnc.unit` 的 `type` 参数）
+
+取自 `UNIT_DEFINITIONS` 的键名：
+
+`LightTank`, `MediumTank`, `HeavyTank`, `MammothTank`, `Harvester`, `MCV`, `Jeep`, `APC`, `Artillery`, `V2Rocket`, `RifleInfantry`, `Grenadier`, `RocketSoldier`, `Flamethrower`, `Engineer`, `Tanya`, `Spy`, `Medic`, `AttackDog`
+
+### 建筑类型（`cnc.building` 的 `type` 参数）
+
+取自 `BUILDING_DEFINITIONS` 的键名：
+
+`ConstructionYard`, `PowerPlant`, `AdvancedPower`, `OreRefinery`, `Barracks`, `WarFactory`, `Radar`, `Helipad`, `RepairFacility`, `Shipyard`, `TeslaCoil`, `GapGenerator`, `SAMSite`, `Silo`, `Turret`
+
+### 阵营（`house` 参数）
+
+- `'gdi'` — 对应 `HouseType.GDI`
+- `'nod'` — 对应 `HouseType.Nod`
+
+---
+
 ## CI/CD 与部署
 
 ### GitHub Actions 工作流（尚未创建，配置见 `harness/03_SETUP_AND_DEPLOYMENT.md`）

@@ -21,6 +21,7 @@ import { UnitState } from './game/unit/UnitState';
 import { ConstructionQueue } from './game/building/ConstructionQueue';
 import { BuildingPlacer } from './game/building/BuildingPlacer';
 import { Sidebar } from './renderer/ui/Sidebar';
+import { GameConsole } from './debug/GameConsole';
 
 const bootstrap = async (): Promise<void> => {
   // ── Engine ──
@@ -339,7 +340,12 @@ const bootstrap = async (): Promise<void> => {
       placer.updateFromScreen(ptr.x, ptr.y);
       const cell = placer.confirmPlacement();
       if (cell) {
-        const building = queue.placeBuilding(cell.x, cell.y, scene);
+        let building: import('./game/objects/Building').Building | null;
+        if (gameConsole.hasPendingBuilding()) {
+          building = gameConsole.tryPlaceBuilding(cell.x, cell.y, scene);
+        } else {
+          building = queue.placeBuilding(cell.x, cell.y, scene);
+        }
         if (building) {
           updateHousePower(gdi);
           if (building.mesh) {
@@ -372,6 +378,7 @@ const bootstrap = async (): Promise<void> => {
     // 放置模式下右键 = 取消
     if (placer.isPlacing()) {
       placer.cancelPlacement();
+      gameConsole.clearPendingBuilding();
       console.warn('Placement cancelled');
       return;
     }
@@ -456,6 +463,10 @@ const bootstrap = async (): Promise<void> => {
     sceneManager.dispose();
     engineManager.dispose();
   });
+
+  // ── Debug Console ──
+  const gameConsole = new GameConsole(scene, lighting, rtsCamera, terrain, placer);
+  gameConsole.install();
 
   // ── Verification ──
   const goManager = GameObjectManager.getInstance();
