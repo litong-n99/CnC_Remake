@@ -1,10 +1,16 @@
 /**
- * 建造侧边栏 — Babylon.GUI 实现。
+ * 建造侧边栏 — 完整实现。
  *
- * 位于屏幕右侧，显示玩家可建造的建筑列表。
- * - 空闲：点击开始建造，扣款并显示进度。
- * - 建造中：进度条填充，不可点击其他建筑。
- * - 就绪：按钮高亮闪烁，点击后进入放置模式。
+ * Cross-check:
+ * - Origin: SIDEBAR.CPP / SIDEBAR.H
+ *   - 顶部按钮：Repair, Sell(Upgrade), Zoom
+ *   - 双栏建筑列表（Column[0], Column[1]）
+ * - OpenRA: ProductionTabsWidget, ResourceBarWidget, ClassicProductionLogic
+ *   - 电力竖状条（vertical ResourceBarWidget）
+ *   - 生产标签页（Buildings / Infantry / Vehicles / Aircraft / Vessels）
+ *   - 顶部命令按钮（RepairOrderButtonLogic, SellOrderButtonLogic）
+ *
+ * 本实现采用 OpenRA 式的标签页 + Origin 式的顶部命令按钮 + 电力竖状条。
  */
 
 import * as GUI from '@babylonjs/gui';
@@ -13,6 +19,19 @@ import type { BuildingDefinition } from '../../game/rules/BuildingDefinitions';
 import { BUILDING_DEFINITIONS } from '../../game/rules/BuildingDefinitions';
 import type { House } from '../../game/house/House';
 import { ConstructionQueue, QueueStatus } from '../../game/building/ConstructionQueue';
+import { UNIT_DEFINITIONS, Locomotion } from '../../game/rules/UnitDefinitions';
+import type { UnitDefinition } from '../../game/rules/UnitDefinitions';
+import { TechTree } from '../../game/building/TechTree';
+import { GameObjectFactory } from '../../game/objects/GameObjectFactory';
+import { GameObjectManager } from '../../game/objects/GameObjectManager';
+import { GameObjectType } from '../../game/objects/GameObject';
+import { Building } from '../../game/objects/Building';
+
+/** Sidebar 操作模式。 */
+export type SidebarMode = 'normal' | 'repair' | 'sell';
+
+/** 生产标签页。 */
+export type ProductionTab = 'buildings' | 'infantry' | 'vehicles';
 
 interface SidebarButton {
   readonly bg: GUI.Rectangle;
@@ -23,6 +42,13 @@ interface SidebarButton {
   readonly definition: BuildingDefinition;
 }
 
+interface UnitSidebarButton {
+  readonly bg: GUI.Rectangle;
+  readonly nameText: GUI.TextBlock;
+  readonly priceText: GUI.TextBlock;
+  readonly definition: UnitDefinition;
+}
+
 export class Sidebar {
   private readonly gui: GUI.AdvancedDynamicTexture;
   private readonly panel: GUI.Rectangle;
@@ -30,9 +56,28 @@ export class Sidebar {
   private readonly house: House;
   private readonly onBuildRequest: (definition: BuildingDefinition) => void;
   private readonly onPlaceRequest: () => void;
-  private readonly buttons: SidebarButton[] = [];
+  private readonly onModeChange: (mode: SidebarMode) => void;
+  private readonly scene: Scene;
+
+  private readonly buildingButtons: SidebarButton[] = [];
+  private readonly infantryButtons: UnitSidebarButton[] = [];
+  private readonly vehicleButtons: UnitSidebarButton[] = [];
+
   private readonly creditText: GUI.TextBlock;
   private readonly statusText: GUI.TextBlock;
+  private readonly powerBg: GUI.Rectangle;
+  private readonly powerFill: GUI.Rectangle;
+  private readonly drainMarker: GUI.Rectangle;
+  private readonly repairBtn: GUI.Rectangle;
+  private readonly sellBtn: GUI.Rectangle;
+  private readonly repairLabel: GUI.TextBlock;
+  private readonly sellLabel: GUI.TextBlock;
+  private readonly tabBuildings: GUI.Rectangle;
+  private readonly tabInfantry: GUI.Rectangle;
+  private readonly tabVehicles: GUI.Rectangle;
+
+  private _mode: SidebarMode = 'normal';
+  private _activeTab: ProductionTab = 'buildings';
   private flashTimer = 0;
 
   constructor(
@@ -40,128 +85,397 @@ export class Sidebar {
     house: House,
     queue: ConstructionQueue,
     onBuildRequest: (definition: BuildingDefinition) => void,
-    onPlaceRequest: () => void
+    onPlaceRequest: () => void,
+    onModeChange: (mode: SidebarMode) => void
   ) {
+    this.scene = scene;
     this.house = house;
     this.queue = queue;
     this.onBuildRequest = onBuildRequest;
     this.onPlaceRequest = onPlaceRequest;
+    this.onModeChange = onModeChange;
 
     this.gui = GUI.AdvancedDynamicTexture.CreateFullscreenUI('sidebarUI', true, scene);
 
-    // 主面板
+    // ── 主面板 ──
     this.panel = new GUI.Rectangle('sidebarPanel');
     this.panel.width = '190px';
     this.panel.height = '100%';
     this.panel.horizontalAlignment = GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
     this.panel.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
     this.panel.background = '#1a1a1a';
-    this.panel.alpha = 0.9;
+    this.panel.alpha = 0.92;
     this.panel.thickness = 0;
     this.gui.addControl(this.panel);
 
-    // 标题
-    const title = new GUI.TextBlock('sidebarTitle', 'CONSTRUCTION');
-    title.color = '#FFD700';
-    title.fontSize = 14;
-    title.fontWeight = 'bold';
-    title.height = '28px';
-    title.top = '8px';
-    title.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
-    this.panel.addControl(title);
+    // ── 电力竖状条（OpenRA ResourceBarWidget 风格）──
+    // 作为 gui 根层级控件，紧贴 panel 左侧外部，避免被 panel 裁剪
+    const powerContainer = new GUI.Rectangle('powerContainer');
+    powerContainer.width = '16px';
+    powerContainer.height = '100%';
+    powerContainer.horizontalAlignment = GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
+    powerContainer.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
+    powerContainer.top = '0px';
+    powerContainer.left = '-190px'; // 紧贴 panel 左侧，零间隙
+    powerContainer.background = '#111';
+    powerContainer.thickness = 1;
+    powerContainer.color = '#444';
+    powerContainer.isPointerBlocker = true;
+    this.gui.addControl(powerContainer);
 
-    // 资金显示
+    // 背景
+    this.powerBg = new GUI.Rectangle('powerBg');
+    this.powerBg.width = '100%';
+    this.powerBg.height = '100%';
+    this.powerBg.background = '#111';
+    this.powerBg.thickness = 0;
+    powerContainer.addControl(this.powerBg);
+
+    // 填充条（从底到顶，表示发电量）
+    this.powerFill = new GUI.Rectangle('powerFill');
+    this.powerFill.width = '100%';
+    this.powerFill.height = '0%';
+    this.powerFill.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+    this.powerFill.background = '#0f0';
+    this.powerFill.thickness = 0;
+    powerContainer.addControl(this.powerFill);
+
+    // 刻度线（每 25% 一条，增强柱状图观感）
+    for (let i = 1; i < 4; i++) {
+      const tick = new GUI.Rectangle(`powerTick_${i}`);
+      tick.width = '100%';
+      tick.height = '1px';
+      tick.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
+      tick.top = `${i * 25}%`;
+      tick.background = '#333';
+      tick.thickness = 0;
+      powerContainer.addControl(tick);
+    }
+
+    // drain 标记线（OpenRA indicator 风格）
+    this.drainMarker = new GUI.Rectangle('drainMarker');
+    this.drainMarker.width = '22px'; // 比电力条宽，突出显示
+    this.drainMarker.height = '3px';
+    this.drainMarker.horizontalAlignment = GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
+    this.drainMarker.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
+    this.drainMarker.top = '0%';
+    this.drainMarker.background = '#fff';
+    this.drainMarker.thickness = 0;
+    this.drainMarker.isVisible = false;
+    powerContainer.addControl(this.drainMarker);
+
+    // 点击电力条输出详细电力明细
+    powerContainer.onPointerClickObservable.add(() => {
+      const buildings = GameObjectManager.getInstance()
+        .getBuildings()
+        .filter((obj) => obj.type === GameObjectType.Building && obj.isAlive())
+        .map((obj) => obj as Building)
+        .filter((b) => b.house.id === this.house.id);
+
+      const producers = buildings.filter((b) => b.definition.power > 0);
+      const consumers = buildings.filter((b) => b.definition.power < 0);
+
+      let totalProduction = 0;
+      let totalConsumption = 0;
+
+      // eslint-disable-next-line no-console
+      console.info(`\n╔══════════════════════════════════════════════════════════════╗`);
+      // eslint-disable-next-line no-console
+      console.info(`║           Power Report — ${this.house.name}`);
+      // eslint-disable-next-line no-console
+      console.info(`╠══════════════════════════════════════════════════════════════╣`);
+
+      // eslint-disable-next-line no-console
+      console.info(`║  PRODUCTION (${producers.length} buildings):`);
+      for (const b of producers) {
+        totalProduction += b.definition.power;
+        // eslint-disable-next-line no-console
+        console.info(`║    +${b.definition.power.toString().padStart(4)}  ${b.definition.name} at (${b.x}, ${b.y})`);
+      }
+
+      // eslint-disable-next-line no-console
+      console.info(`║  CONSUMPTION (${consumers.length} buildings):`);
+      for (const b of consumers) {
+        totalConsumption += Math.abs(b.definition.power);
+        // eslint-disable-next-line no-console
+        console.info(
+          `║    -${Math.abs(b.definition.power).toString().padStart(4)}  ${b.definition.name} at (${b.x}, ${b.y})`
+        );
+      }
+
+      const balance = totalProduction - totalConsumption;
+      // eslint-disable-next-line no-console
+      console.info(`╠══════════════════════════════════════════════════════════════╣`);
+      // eslint-disable-next-line no-console
+      console.info(`║  TOTAL: +${totalProduction} / -${totalConsumption}  →  ${balance >= 0 ? '+' : ''}${balance}`);
+      // eslint-disable-next-line no-console
+      console.info(`╚══════════════════════════════════════════════════════════════╝\n`);
+    });
+
+    // ── 顶部命令按钮（Origin SIDEBAR.CPP 风格）──
+    this.repairBtn = this.createTopButton('repairBtn', 'REPAIR', 0);
+    this.repairLabel = this.repairBtn.getChildByName('repairBtn_label') as GUI.TextBlock;
+    this.repairBtn.onPointerClickObservable.add(() => this.toggleMode('repair'));
+
+    this.sellBtn = this.createTopButton('sellBtn', 'SELL', 1);
+    this.sellLabel = this.sellBtn.getChildByName('sellBtn_label') as GUI.TextBlock;
+    this.sellBtn.onPointerClickObservable.add(() => this.toggleMode('sell'));
+
+    // ── 生产标签页（OpenRA ProductionTabsWidget 风格）──
+    this.tabBuildings = this.createTabButton('tabBuildings', 'B', 0, 'buildings');
+    this.tabInfantry = this.createTabButton('tabInfantry', 'I', 1, 'infantry');
+    this.tabVehicles = this.createTabButton('tabVehicles', 'V', 2, 'vehicles');
+
+    // ── 资金 / 状态 ──
     this.creditText = new GUI.TextBlock('creditText', `Credits: ${house.credits}`);
     this.creditText.color = '#0f0';
     this.creditText.fontSize = 12;
-    this.creditText.height = '22px';
-    this.creditText.top = '34px';
+    this.creditText.height = '20px';
+    this.creditText.top = '92px';
     this.creditText.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
     this.panel.addControl(this.creditText);
 
-    // 状态提示
     this.statusText = new GUI.TextBlock('statusText', '');
     this.statusText.color = '#aaa';
     this.statusText.fontSize = 11;
-    this.statusText.height = '20px';
-    this.statusText.top = '56px';
+    this.statusText.height = '18px';
+    this.statusText.top = '112px';
     this.statusText.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
     this.panel.addControl(this.statusText);
 
-    // 建筑按钮
-    const defs = Object.values(BUILDING_DEFINITIONS).filter((d) => d.techLevel >= 0 && d.cost > 0);
-    defs.forEach((def, i) => this.createButton(def, i));
+    // ── 建筑按钮 ──
+    const buildingDefs = Object.values(BUILDING_DEFINITIONS).filter((d) => d.techLevel >= 0 && d.cost > 0);
+    buildingDefs.forEach((def, i) => this.createBuildingButton(def, i));
 
-    // 防止 GUI 面板本身阻挡场景指针事件（按钮仍接收点击）
+    // ── 步兵按钮 ──
+    const infantryDefs = Object.values(UNIT_DEFINITIONS).filter((d) => d.locomotion === Locomotion.Foot);
+    infantryDefs.forEach((def, i) => this.createUnitButton(def, i, 'infantry'));
+
+    // ── 车辆按钮 ──
+    const vehicleDefs = Object.values(UNIT_DEFINITIONS).filter((d) => d.locomotion !== Locomotion.Foot);
+    vehicleDefs.forEach((def, i) => this.createUnitButton(def, i, 'vehicles'));
+
+    // 默认显示建筑标签
+    this.switchTab('buildings');
+
+    // 防止 GUI 面板本身阻挡场景指针事件
     this.panel.isPointerBlocker = false;
   }
 
-  // ──  每帧刷新  ──
+  // ── 模式与标签页 ──
+
+  get mode(): SidebarMode {
+    return this._mode;
+  }
+
+  get activeTab(): ProductionTab {
+    return this._activeTab;
+  }
+
+  private toggleMode(mode: SidebarMode): void {
+    if (this._mode === mode) {
+      this._mode = 'normal';
+    } else {
+      this._mode = mode;
+    }
+    this.updateTopButtonStyles();
+    this.onModeChange(this._mode);
+  }
+
+  private switchTab(tab: ProductionTab): void {
+    this._activeTab = tab;
+    // 切回正常模式（避免 Repair/Sell 干扰生产）
+    if (this._mode !== 'normal') {
+      this._mode = 'normal';
+      this.updateTopButtonStyles();
+      this.onModeChange('normal');
+    }
+    this.updateTabStyles();
+    this.updateContentVisibility();
+  }
+
+  private updateTopButtonStyles(): void {
+    const repairActive = this._mode === 'repair';
+    const sellActive = this._mode === 'sell';
+
+    this.repairBtn.background = repairActive ? '#0a4a0a' : '#2a2a2a';
+    this.repairBtn.color = repairActive ? '#0f0' : '#555';
+    this.repairLabel.color = repairActive ? '#0f0' : '#aaa';
+
+    this.sellBtn.background = sellActive ? '#4a2a0a' : '#2a2a2a';
+    this.sellBtn.color = sellActive ? '#f90' : '#555';
+    this.sellLabel.color = sellActive ? '#f90' : '#aaa';
+  }
+
+  private updateTabStyles(): void {
+    const setTabStyle = (tab: GUI.Rectangle, active: boolean) => {
+      tab.background = active ? '#3a3a3a' : '#1a1a1a';
+      tab.color = active ? '#FFD700' : '#555';
+      (tab.getChildByName(tab.name + '_label') as GUI.TextBlock).color = active ? '#FFD700' : '#888';
+    };
+    setTabStyle(this.tabBuildings, this._activeTab === 'buildings');
+    setTabStyle(this.tabInfantry, this._activeTab === 'infantry');
+    setTabStyle(this.tabVehicles, this._activeTab === 'vehicles');
+  }
+
+  private updateContentVisibility(): void {
+    for (const btn of this.buildingButtons) {
+      btn.bg.isVisible = this._activeTab === 'buildings';
+    }
+    for (const btn of this.infantryButtons) {
+      btn.bg.isVisible = this._activeTab === 'infantry';
+    }
+    for (const btn of this.vehicleButtons) {
+      btn.bg.isVisible = this._activeTab === 'vehicles';
+    }
+  }
+
+  // ── 每帧刷新 ──
 
   refresh(deltaTime: number): void {
     this.flashTimer += deltaTime;
 
-    // 刷新资金
+    // 资金
     this.creditText.text = `Credits: ${this.house.credits}`;
 
-    // 刷新状态提示
+    // 电力竖状条（OpenRA 行为：从底到顶，填充高度 = power / max）
+    const power = this.house.power;
+    const drain = this.house.drain;
+    const maxPower = Math.max(power, drain, 1);
+    const powerFrac = Math.min(1, power / maxPower);
+    const drainFrac = Math.min(1, drain / maxPower);
+    this.powerFill.height = `${powerFrac * 100}%`;
+    if (drain > power) {
+      this.powerFill.background = '#f00';
+    } else if (drain > power * 0.8) {
+      this.powerFill.background = '#f90';
+    } else {
+      this.powerFill.background = '#0f0';
+    }
+
+    // 更新 drain 标记线位置（OpenRA indicator 风格）
+    if (drain > 0) {
+      this.drainMarker.isVisible = true;
+      this.drainMarker.top = `${(1 - drainFrac) * 100}%`;
+      this.drainMarker.background = drain > power ? '#f88' : '#fff';
+    } else {
+      this.drainMarker.isVisible = false;
+    }
+
+    // 状态提示
     this.updateStatusText();
 
+    // 建筑按钮刷新
     const qStatus = this.queue.status;
     const qDef = this.queue.currentDefinition;
 
-    for (const btn of this.buttons) {
+    for (const btn of this.buildingButtons) {
       const def = btn.definition;
       const isCurrent = qDef?.id === def.id;
       const canAfford = this.house.credits >= def.cost;
       const canBuild = this.queue.hasPrerequisites(def);
 
       if (qStatus === QueueStatus.Building && isCurrent) {
-        // 当前正在建造：显示进度条
-        this.setButtonState(btn, 'building');
-        const progress = this.queue.progress;
-        btn.progressBar.width = `${progress * 100}%`;
+        this.setBuildingButtonState(btn, 'building');
+        btn.progressBar.width = `${this.queue.progress * 100}%`;
         btn.progressBg.isVisible = true;
         btn.progressBar.isVisible = true;
       } else if (qStatus === QueueStatus.Ready && isCurrent) {
-        // 就绪：闪烁高亮
-        this.setButtonState(btn, 'ready');
+        this.setBuildingButtonState(btn, 'ready');
         const flash = Math.sin(this.flashTimer * 0.008) > 0;
         btn.bg.color = flash ? '#0f0' : '#FFD700';
         btn.progressBg.isVisible = false;
         btn.progressBar.isVisible = false;
       } else if (qStatus !== QueueStatus.Idle) {
-        // 队列被占用（建造其他建筑）：全部变灰不可点
-        this.setButtonState(btn, 'disabled');
+        this.setBuildingButtonState(btn, 'disabled');
         btn.progressBg.isVisible = false;
         btn.progressBar.isVisible = false;
       } else if (!canBuild) {
-        // 科技未解锁
-        this.setButtonState(btn, 'locked');
+        this.setBuildingButtonState(btn, 'locked');
         btn.progressBg.isVisible = false;
         btn.progressBar.isVisible = false;
       } else if (!canAfford) {
-        // 资金不足
-        this.setButtonState(btn, 'noFunds');
+        this.setBuildingButtonState(btn, 'noFunds');
         btn.progressBg.isVisible = false;
         btn.progressBar.isVisible = false;
       } else {
-        // 可建造
-        this.setButtonState(btn, 'available');
+        this.setBuildingButtonState(btn, 'available');
         btn.progressBg.isVisible = false;
         btn.progressBar.isVisible = false;
       }
     }
+
+    // 步兵按钮刷新
+    for (const btn of this.infantryButtons) {
+      const canBuild = TechTree.canBuildUnit(btn.definition, this.house);
+      this.setUnitButtonState(btn, canBuild);
+    }
+
+    // 车辆按钮刷新
+    for (const btn of this.vehicleButtons) {
+      const canBuild = TechTree.canBuildUnit(btn.definition, this.house);
+      this.setUnitButtonState(btn, canBuild);
+    }
   }
 
-  // ──  创建按钮  ──
+  // ── 创建控件 helpers ──
 
-  private createButton(def: BuildingDefinition, index: number): void {
-    const btnY = 82 + index * 56;
+  private createTopButton(name: string, label: string, index: number): GUI.Rectangle {
+    const btn = new GUI.Rectangle(name);
+    btn.width = '88px';
+    btn.height = '26px';
+    btn.top = '4px';
+    btn.left = index === 0 ? '-46px' : '46px';
+    btn.background = '#2a2a2a';
+    btn.thickness = 2;
+    btn.color = '#555';
+    btn.cornerRadius = 3;
+    btn.isPointerBlocker = true;
+    btn.horizontalAlignment = GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
+    btn.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
+    this.panel.addControl(btn);
+
+    const text = new GUI.TextBlock(name + '_label', label);
+    text.color = '#aaa';
+    text.fontSize = 10;
+    text.fontWeight = 'bold';
+    text.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_CENTER;
+    btn.addControl(text);
+
+    return btn;
+  }
+
+  private createTabButton(name: string, label: string, index: number, tab: ProductionTab): GUI.Rectangle {
+    const btn = new GUI.Rectangle(name);
+    btn.width = '58px';
+    btn.height = '24px';
+    btn.top = '36px';
+    btn.left = `${-60 + index * 62}px`;
+    btn.background = '#1a1a1a';
+    btn.thickness = 1;
+    btn.color = '#555';
+    btn.isPointerBlocker = true;
+    btn.horizontalAlignment = GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
+    btn.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
+    this.panel.addControl(btn);
+
+    const text = new GUI.TextBlock(name + '_label', label);
+    text.color = '#888';
+    text.fontSize = 10;
+    text.fontWeight = 'bold';
+    text.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_CENTER;
+    btn.addControl(text);
+
+    btn.onPointerClickObservable.add(() => this.switchTab(tab));
+    return btn;
+  }
+
+  private createBuildingButton(def: BuildingDefinition, index: number): void {
+    const btnY = 138 + index * 52;
 
     const bg = new GUI.Rectangle(`btn_${def.id}`);
     bg.width = '170px';
-    bg.height = '48px';
+    bg.height = '44px';
     bg.top = `${btnY}px`;
     bg.background = '#2a2a2a';
     bg.thickness = 2;
@@ -171,68 +485,112 @@ export class Sidebar {
     bg.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
     this.panel.addControl(bg);
 
-    // 建筑名称
     const nameText = new GUI.TextBlock(`name_${def.id}`, def.name);
     nameText.color = '#fff';
-    nameText.fontSize = 12;
-    nameText.height = '20px';
-    nameText.top = '-10px';
+    nameText.fontSize = 11;
+    nameText.height = '18px';
+    nameText.top = '-8px';
     nameText.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_CENTER;
     bg.addControl(nameText);
 
-    // 价格
     const priceText = new GUI.TextBlock(`price_${def.id}`, `$${def.cost}`);
     priceText.color = '#0f0';
-    priceText.fontSize = 11;
-    priceText.height = '16px';
-    priceText.top = '10px';
+    priceText.fontSize = 10;
+    priceText.height = '14px';
+    priceText.top = '8px';
     priceText.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_CENTER;
     bg.addControl(priceText);
 
-    // 进度条背景
     const progressBg = new GUI.Rectangle(`progBg_${def.id}`);
-    progressBg.width = '160px';
-    progressBg.height = '4px';
-    progressBg.top = '20px';
+    progressBg.width = '156px';
+    progressBg.height = '3px';
+    progressBg.top = '16px';
     progressBg.background = '#333';
     progressBg.thickness = 0;
     progressBg.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_CENTER;
     progressBg.isVisible = false;
     bg.addControl(progressBg);
 
-    // 进度条填充
     const progressBar = new GUI.Rectangle(`prog_${def.id}`);
     progressBar.width = '0%';
-    progressBar.height = '4px';
+    progressBar.height = '3px';
     progressBar.horizontalAlignment = GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
     progressBar.background = '#0f0';
     progressBar.thickness = 0;
     progressBar.isVisible = false;
     progressBg.addControl(progressBar);
 
-    // 点击事件
     bg.onPointerClickObservable.add(() => {
       const qStatus = this.queue.status;
       const qDef = this.queue.currentDefinition;
 
       if (qStatus === QueueStatus.Building && qDef?.id === def.id) {
-        // 建造中再次点击 = 取消建造（全额退款）
         this.queue.cancel();
       } else if (qStatus === QueueStatus.Ready && qDef?.id === def.id) {
-        // 就绪 → 进入放置模式
         this.onPlaceRequest();
       } else if (qStatus === QueueStatus.Idle) {
-        // 空闲 → 开始建造
         this.onBuildRequest(def);
       }
     });
 
-    this.buttons.push({ bg, nameText, priceText, progressBar, progressBg, definition: def });
+    this.buildingButtons.push({ bg, nameText, priceText, progressBar, progressBg, definition: def });
   }
 
-  // ──  状态样式  ──
+  private createUnitButton(def: UnitDefinition, index: number, tab: ProductionTab): void {
+    const btnY = 138 + index * 40;
 
-  private setButtonState(
+    const bg = new GUI.Rectangle(`unitBtn_${def.id}`);
+    bg.width = '170px';
+    bg.height = '32px';
+    bg.top = `${btnY}px`;
+    bg.background = '#2a2a2a';
+    bg.thickness = 2;
+    bg.color = '#555';
+    bg.cornerRadius = 3;
+    bg.isPointerBlocker = true;
+    bg.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
+    this.panel.addControl(bg);
+
+    const nameText = new GUI.TextBlock(`unitName_${def.id}`, `${def.name}  $${def.cost}`);
+    nameText.color = '#fff';
+    nameText.fontSize = 10;
+    nameText.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_CENTER;
+    bg.addControl(nameText);
+
+    bg.onPointerClickObservable.add(() => {
+      if (!TechTree.canBuildUnit(def, this.house)) {
+        console.warn(
+          `Locked: ${def.name} — requires ${TechTree.getMissingUnitPrerequisites(def, this.house).join(', ')}`
+        );
+        return;
+      }
+      // 在玩家基地附近生成（简化版，后续替换为正式生产队列）
+      const playerBaseX = 42;
+      const playerBaseY = 14;
+      const offsetX = Math.floor(Math.random() * 4) - 2;
+      const offsetY = Math.floor(Math.random() * 4) - 2;
+      const unit = GameObjectFactory.createUnit({
+        definition: def,
+        house: this.house,
+        x: playerBaseX + offsetX,
+        y: playerBaseY + offsetY,
+        scene: this.scene,
+      });
+      // eslint-disable-next-line no-console
+      console.info(`Spawned ${def.name} at (${unit.x}, ${unit.y})`);
+    });
+
+    const btn: UnitSidebarButton = { bg, nameText, priceText: nameText, definition: def };
+    if (tab === 'infantry') {
+      this.infantryButtons.push(btn);
+    } else {
+      this.vehicleButtons.push(btn);
+    }
+  }
+
+  // ── 状态样式 ──
+
+  private setBuildingButtonState(
     btn: SidebarButton,
     state: 'available' | 'noFunds' | 'locked' | 'building' | 'ready' | 'disabled'
   ): void {
@@ -275,6 +633,18 @@ export class Sidebar {
     }
   }
 
+  private setUnitButtonState(btn: UnitSidebarButton, canBuild: boolean): void {
+    if (canBuild) {
+      btn.bg.background = '#2a2a2a';
+      btn.bg.color = '#666';
+      btn.nameText.color = '#fff';
+    } else {
+      btn.bg.background = '#222';
+      btn.bg.color = '#444';
+      btn.nameText.color = '#666';
+    }
+  }
+
   private updateStatusText(): void {
     const status = this.queue.status;
     const def = this.queue.currentDefinition;
@@ -286,7 +656,7 @@ export class Sidebar {
       this.statusText.text = `Ready: ${def.name} — Click to place`;
       this.statusText.color = '#FFD700';
     } else {
-      this.statusText.text = 'Select a building to construct';
+      this.statusText.text = 'Select a unit or building';
       this.statusText.color = '#888';
     }
   }

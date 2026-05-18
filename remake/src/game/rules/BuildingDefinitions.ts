@@ -49,6 +49,11 @@ export interface BuildingDefinition {
   readonly footprint?: readonly { readonly dx: number; readonly dy: number }[];
   /** Construction time in seconds. */
   readonly buildTime: number;
+  /**
+   * Whether the building stops functioning when the house is low on power.
+   * Source: origin/REDALERT/BDATA.CPP IsPowered.
+   */
+  readonly requiresPower: boolean;
 }
 
 /**
@@ -88,6 +93,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     width: 3,
     height: 3,
     buildTime: 0,
+    requiresPower: false,
   },
   PowerPlant: {
     id: 'STRUCT_POWER',
@@ -108,6 +114,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     width: 2,
     height: 2,
     buildTime: 8,
+    requiresPower: false,
   },
   AdvancedPower: {
     id: 'STRUCT_ADVANCED_POWER',
@@ -128,6 +135,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     width: 3,
     height: 3,
     buildTime: 12,
+    requiresPower: false,
   },
   Barracks: {
     id: 'STRUCT_BARRACKS',
@@ -148,6 +156,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     width: 2,
     height: 2,
     buildTime: 10,
+    requiresPower: true,
   },
   OreRefinery: {
     id: 'STRUCT_REFINERY',
@@ -182,6 +191,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
       { dx: 0, dy: 2 },
     ] as const,
     buildTime: 20,
+    requiresPower: false,
   },
   WarFactory: {
     id: 'STRUCT_WEAP',
@@ -202,6 +212,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     width: 3,
     height: 2,
     buildTime: 20,
+    requiresPower: true,
   },
   Radar: {
     id: 'STRUCT_RADAR',
@@ -222,6 +233,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     width: 2,
     height: 2,
     buildTime: 15,
+    requiresPower: true,
   },
   Helipad: {
     id: 'STRUCT_HELIPAD',
@@ -242,6 +254,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     width: 2,
     height: 2,
     buildTime: 12,
+    requiresPower: true,
   },
   RepairFacility: {
     id: 'STRUCT_REPAIR',
@@ -262,6 +275,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     width: 3,
     height: 3,
     buildTime: 15,
+    requiresPower: false,
   },
   Shipyard: {
     id: 'STRUCT_SHIP_YARD',
@@ -282,6 +296,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     width: 3,
     height: 3,
     buildTime: 20,
+    requiresPower: true,
   },
 } as const;
 

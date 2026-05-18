@@ -22,6 +22,7 @@ import { ConstructionQueue } from './game/building/ConstructionQueue';
 import { BuildingPlacer } from './game/building/BuildingPlacer';
 import { Sidebar } from './renderer/ui/Sidebar';
 import { GameConsole } from './debug/GameConsole';
+import { PowerManager } from './game/building/PowerManager';
 
 const bootstrap = async (): Promise<void> => {
   // ── Engine ──
@@ -265,6 +266,9 @@ const bootstrap = async (): Promise<void> => {
   const queue = new ConstructionQueue(gdi);
   const placer = new BuildingPlacer(scene, rtsCamera.getCamera(), terrain);
 
+  // ── Sidebar mode state ──
+  let sidebarMode: import('./renderer/ui/Sidebar').SidebarMode = 'normal';
+
   const sidebar = new Sidebar(
     scene,
     gdi,
@@ -281,6 +285,17 @@ const bootstrap = async (): Promise<void> => {
     () => {
       if (queue.status === 'ready' && queue.currentDefinition) {
         placer.startPlacement(queue.currentDefinition);
+      }
+    },
+    (mode) => {
+      sidebarMode = mode;
+      // Update cursor color to indicate mode
+      if (mode === 'repair') {
+        rtsCamera.setCursorColor('#0f0');
+      } else if (mode === 'sell') {
+        rtsCamera.setCursorColor('#f90');
+      } else {
+        rtsCamera.setCursorColor('#fff');
       }
     }
   );
@@ -332,7 +347,31 @@ const bootstrap = async (): Promise<void> => {
     return closest;
   };
 
-  // 左键：放置建筑 或 选中单位
+  /** 将屏幕坐标转为地面坐标，再查找最近的建筑（2 格半径内）。 */
+  const pickBuildingAt = (screenX: number, screenY: number): import('./game/objects/Building').Building | null => {
+    const groundPos = rtsCamera.screenToGround(screenX, screenY);
+    if (!groundPos) return null;
+
+    let closest: import('./game/objects/Building').Building | null = null;
+    let closestDist = Infinity;
+
+    for (const obj of GameObjectManager.getInstance().getBuildings()) {
+      if (obj.type !== GameObjectType.Building) continue;
+      const b = obj as import('./game/objects/Building').Building;
+      const pos = b.getPosition?.() ?? new Vector3(b.x - 31.5, 0, b.y - 31.5);
+      const dx = pos.x - groundPos.x;
+      const dz = pos.z - groundPos.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+
+      if (dist < 2.0 && dist < closestDist) {
+        closest = b;
+        closestDist = dist;
+      }
+    }
+    return closest;
+  };
+
+  // 左键：放置建筑 / 选中单位 / 维修 / 出售
   rtsCamera.onLeftClick = (screenX, screenY) => {
     // 放置模式优先
     if (placer.isPlacing()) {
@@ -361,6 +400,48 @@ const bootstrap = async (): Promise<void> => {
       return;
     }
 
+    // ── Repair mode ──
+    if (sidebarMode === 'repair') {
+      const b = pickBuildingAt(screenX, screenY);
+      if (b && b.house === gdi && b.isAlive()) {
+        const repairCost = Math.floor(b.definition.cost * 0.1);
+        if (gdi.credits < repairCost) {
+          console.warn(`Not enough credits to repair ${b.definition.name} (need $${repairCost})`);
+          return;
+        }
+        const oldHp = b.health;
+        b.health = Math.min(b.definition.strength, b.health + Math.floor(b.definition.strength * 0.25));
+        if (b.health > oldHp) {
+          gdi.spendCredits(repairCost);
+          // eslint-disable-next-line no-console
+          console.info(`Repaired ${b.definition.name} (+${b.health - oldHp} HP) for $${repairCost}`);
+        } else {
+          console.warn(`${b.definition.name} is already at full health`);
+        }
+      } else {
+        console.warn('No friendly building found to repair');
+      }
+      return;
+    }
+
+    // ── Sell mode ──
+    if (sidebarMode === 'sell') {
+      const b = pickBuildingAt(screenX, screenY);
+      if (b && b.house === gdi && b.isAlive()) {
+        const refund = Math.floor(b.definition.cost * 0.5);
+        gdi.addCredits(refund);
+        b.dispose();
+        GameObjectManager.getInstance().unregister(b.id);
+        updateHousePower(gdi);
+        // eslint-disable-next-line no-console
+        console.info(`Sold ${b.definition.name} for $${refund}`);
+      } else {
+        console.warn('No friendly building found to sell');
+      }
+      return;
+    }
+
+    // ── Normal mode: select unit ──
     console.warn('Left-click detected at', screenX, screenY);
 
     const unit = pickUnitAt(screenX, screenY);
@@ -380,6 +461,14 @@ const bootstrap = async (): Promise<void> => {
       placer.cancelPlacement();
       gameConsole.clearPendingBuilding();
       console.warn('Placement cancelled');
+      return;
+    }
+
+    // Repair / Sell 模式下右键 = 取消模式
+    if (sidebarMode !== 'normal') {
+      sidebarMode = 'normal';
+      rtsCamera.setCursorColor('#fff');
+      console.warn('Mode cancelled');
       return;
     }
 
@@ -445,6 +534,17 @@ const bootstrap = async (): Promise<void> => {
     }
     sidebar.refresh(dt);
 
+    // Task 23: 电力检查 — 输出因电力不足而停摆的建筑
+    const powerMgr = PowerManager.getInstance();
+    const unpowered = powerMgr.getUnpoweredBuildingsForHouse(gdi.id);
+    if (unpowered.length > 0 && Math.random() < 0.02) {
+      // 低频率日志，避免刷屏
+      console.warn(
+        `LOW POWER — ${unpowered.length} buildings offline:`,
+        unpowered.map((b) => b.definition.name).join(', ')
+      );
+    }
+
     GameObjectManager.getInstance().update(dt);
   });
 
@@ -455,6 +555,7 @@ const bootstrap = async (): Promise<void> => {
   window.addEventListener('beforeunload', () => {
     sidebar.dispose();
     placer.dispose();
+    PowerManager.getInstance().dispose();
     GameObjectManager.getInstance().dispose();
     houseManager.dispose();
     terrain.dispose();

@@ -547,4 +547,11 @@ export class RTSCamera {
     }
     this.camera.dispose();
   }
+
+  /** Change the HTML cursor color to indicate special modes (repair / sell). */
+  setCursorColor(color: string): void {
+    if (this.cursorDiv) {
+      this.cursorDiv.style.backgroundColor = color;
+    }
+  }
 }

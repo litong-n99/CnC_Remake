@@ -258,7 +258,7 @@
 - **参考 C++**：`BUILDING.CPP` 中的 `Powered()` 与 `Can_Make()`。
 - **文件**：`src/game/building/PowerManager.ts`, `src/game/building/TechTree.ts`
 - **验收**：卖掉所有电厂后，雷达与防御塔停止工作；未建兵营时 Sidebar 步兵图标灰色不可点。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ---
 

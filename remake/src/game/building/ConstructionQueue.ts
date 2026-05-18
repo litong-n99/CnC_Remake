@@ -10,6 +10,7 @@ import type { BuildingDefinition } from '../rules/BuildingDefinitions';
 import type { House } from '../house/House';
 import { GameObjectFactory } from '../objects/GameObjectFactory';
 import type { Building } from '../objects/Building';
+import { TechTree } from './TechTree';
 
 export enum QueueStatus {
   Idle = 'idle',
@@ -104,11 +105,7 @@ export class ConstructionQueue {
   }
 
   hasPrerequisites(definition: BuildingDefinition): boolean {
-    if (definition.techLevel < 0) return false;
-    // 需要建造厂才能造建筑（使用 Definition ID 而非键名）
-    if (!this.house.hasBuilding('STRUCT_CONST')) return false;
-    // Task 23 将扩展完整科技树（如需要兵营才能造步兵等）
-    return true;
+    return TechTree.canBuildBuilding(definition, this.house);
   }
 
   isBuilding(definition: BuildingDefinition): boolean {
