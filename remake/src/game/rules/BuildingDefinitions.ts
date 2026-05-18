@@ -37,12 +37,34 @@ export interface BuildingDefinition {
   readonly isExploding: boolean;
   /** Whether the building is invisible to enemy radar. */
   readonly isStealthy: boolean;
-  /** Base width in cells. */
+  /** Base width in cells (bounding box). */
   readonly width: number;
-  /** Base height in cells. */
+  /** Base height in cells (bounding box). */
   readonly height: number;
+  /**
+   * Occupied cell offsets within the bounding box.
+   * If omitted, the entire width×height rectangle is occupied.
+   * Source: origin/REDALERT/BDATA.CPP OccupyList.
+   */
+  readonly footprint?: readonly { readonly dx: number; readonly dy: number }[];
   /** Construction time in seconds. */
   readonly buildTime: number;
+}
+
+/**
+ * Return the list of occupied cell offsets for a building definition.
+ * If the definition has an explicit `footprint`, use it;
+ * otherwise fall back to a full width×height rectangle.
+ */
+export function getBuildingFootprint(def: BuildingDefinition): readonly { readonly dx: number; readonly dy: number }[] {
+  if (def.footprint) return def.footprint;
+  const cells: { dx: number; dy: number }[] = [];
+  for (let dx = 0; dx < def.width; dx++) {
+    for (let dy = 0; dy < def.height; dy++) {
+      cells.push({ dx, dy });
+    }
+  }
+  return cells;
 }
 
 /** Classic Red Alert building roster (military structures only). */
@@ -104,7 +126,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     isExploding: false,
     isStealthy: false,
     width: 3,
-    height: 2,
+    height: 3,
     buildTime: 12,
   },
   Barracks: {
@@ -145,6 +167,20 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     isStealthy: false,
     width: 3,
     height: 3,
+    /**
+     * OccupyList from origin/REDALERT/BDATA.CPP:
+     * List010111100 = {1, MCW, MCW+1, MCW+2, MCW*2}
+     *   _ X _
+     *   X X X
+     *   X _ _
+     */
+    footprint: [
+      { dx: 1, dy: 0 },
+      { dx: 0, dy: 1 },
+      { dx: 1, dy: 1 },
+      { dx: 2, dy: 1 },
+      { dx: 0, dy: 2 },
+    ] as const,
     buildTime: 20,
   },
   WarFactory: {
@@ -164,7 +200,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     isExploding: false,
     isStealthy: false,
     width: 3,
-    height: 3,
+    height: 2,
     buildTime: 20,
   },
   Radar: {
@@ -224,7 +260,7 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
     isExploding: false,
     isStealthy: false,
     width: 3,
-    height: 2,
+    height: 3,
     buildTime: 15,
   },
   Shipyard: {

@@ -1,6 +1,7 @@
 import { GameObjectManager } from '../objects/GameObjectManager';
 import { GameObjectType } from '../objects/GameObject';
 import { Building } from '../objects/Building';
+import { getBuildingFootprint } from '../rules/BuildingDefinitions';
 
 /**
  * 单位碰撞与避障系统 — Task 19（简单版）。
@@ -38,16 +39,17 @@ export class UnitCollision {
       } else if (obj.type === GameObjectType.Building) {
         const building = obj as Building;
         const def = building.definition;
-        // 建筑 footprint：左下角 (x, y)，宽高 (width, height)
-        // margin = 0：单位可紧贴建筑边缘行走
-        const margin = 0;
-        if (
-          x >= building.x - margin &&
-          x < building.x + def.width + margin &&
-          y >= building.y - margin &&
-          y < building.y + def.height + margin
-        ) {
-          return true;
+        // 快速 AABB 排除（bounding box）
+        if (x < building.x || x >= building.x + def.width || y < building.y || y >= building.y + def.height) {
+          continue;
+        }
+        // 精确 footprint 检测
+        const bx = Math.floor(x);
+        const by = Math.floor(y);
+        for (const cell of getBuildingFootprint(def)) {
+          if (bx === building.x + cell.dx && by === building.y + cell.dy) {
+            return true;
+          }
         }
       }
     }

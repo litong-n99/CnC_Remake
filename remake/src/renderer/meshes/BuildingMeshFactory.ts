@@ -101,14 +101,14 @@ export class BuildingMeshFactory {
     return root;
   }
 
-  // ── 先进电厂 (3×2) ──
+  // ── 先进电厂 (3×3) ──
   private static createAdvancedPower(
     name: string,
     bodyMat: StandardMaterial,
     detailMat: StandardMaterial,
     scene: Scene
   ): Mesh {
-    const root = MeshBuilder.CreateBox(`${name}_main`, { width: 2.6, height: 0.9, depth: 1.4 }, scene);
+    const root = MeshBuilder.CreateBox(`${name}_main`, { width: 2.6, height: 0.9, depth: 2.6 }, scene);
     root.position.y = 0.55;
     root.material = bodyMat;
 
@@ -191,14 +191,14 @@ export class BuildingMeshFactory {
     return root;
   }
 
-  // ── 战车工厂 (3×3) ──
+  // ── 战车工厂 (3×2) ──
   private static createWarFactory(
     name: string,
     bodyMat: StandardMaterial,
     detailMat: StandardMaterial,
     scene: Scene
   ): Mesh {
-    const root = MeshBuilder.CreateBox(`${name}_main`, { width: 2.4, height: 1.0, depth: 1.8 }, scene);
+    const root = MeshBuilder.CreateBox(`${name}_main`, { width: 2.4, height: 1.0, depth: 1.6 }, scene);
     root.position.y = 0.6;
     root.material = bodyMat;
 
@@ -273,14 +273,14 @@ export class BuildingMeshFactory {
     return root;
   }
 
-  // ── 维修厂 (3×2) ──
+  // ── 维修厂 (3×3) ──
   private static createRepairFacility(
     name: string,
     bodyMat: StandardMaterial,
     detailMat: StandardMaterial,
     scene: Scene
   ): Mesh {
-    const root = MeshBuilder.CreateBox(`${name}_platform`, { width: 2.6, height: 0.15, depth: 1.4 }, scene);
+    const root = MeshBuilder.CreateBox(`${name}_platform`, { width: 2.6, height: 0.15, depth: 2.6 }, scene);
     root.position.y = 0.075;
     root.material = bodyMat;
 

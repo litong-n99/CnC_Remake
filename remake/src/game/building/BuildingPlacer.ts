@@ -4,18 +4,19 @@
  * 合法位置显示绿色，非法位置显示红色（地形不可建造、与其他物体重叠、超出地图）。
  */
 
-import { type Scene, type Camera, MeshBuilder, StandardMaterial, Color3, Matrix, Vector3 } from '@babylonjs/core';
+import { type Scene, type Camera, Mesh, MeshBuilder, StandardMaterial, Color3, Matrix, Vector3 } from '@babylonjs/core';
 import type { BuildingDefinition } from '../rules/BuildingDefinitions';
 import type { TerrainGrid } from '../terrain/TerrainGrid';
 import { LandType } from '../terrain/TerrainGrid';
 import { UnitCollision } from '../unit/UnitCollision';
+import { getBuildingFootprint } from '../rules/BuildingDefinitions';
 
 export class BuildingPlacer {
   private readonly scene: Scene;
   private readonly camera: Camera;
   private readonly terrain: TerrainGrid;
 
-  private ghost: ReturnType<typeof MeshBuilder.CreateBox> | null = null;
+  private ghost: Mesh | null = null;
   private ghostMat: StandardMaterial | null = null;
   private definition: BuildingDefinition | null = null;
   private targetCell: { x: number; y: number } | null = null;
@@ -79,11 +80,10 @@ export class BuildingPlacer {
     this.ghostMat!.emissiveColor = valid ? new Color3(0, 0.6, 0) : new Color3(0.6, 0, 0);
     this.ghost.setEnabled(true);
 
-    // Ghost 中心对齐 footprint 中心
-    const def = this.definition;
-    this.ghost.position.x = cell.x + def.width / 2 - 32;
-    this.ghost.position.z = cell.y + def.height / 2 - 32;
-    this.ghost.position.y = 0.05;
+    // Ghost 原点对齐建筑左下角（子 mesh 局部坐标已包含 footprint 偏移）
+    this.ghost.position.x = cell.x - 32;
+    this.ghost.position.z = cell.y - 32;
+    this.ghost.position.y = 0;
   }
 
   // ──  操作  ──
@@ -119,26 +119,24 @@ export class BuildingPlacer {
     const def = this.definition;
     if (!def) return false;
 
-    // 地图边界
+    // 地图边界（以 bounding box 为准）
     if (cellX < 0 || cellY < 0 || cellX + def.width > 64 || cellY + def.height > 64) {
       return false;
     }
 
-    for (let dx = 0; dx < def.width; dx++) {
-      for (let dy = 0; dy < def.height; dy++) {
-        const cx = cellX + dx;
-        const cy = cellY + dy;
+    for (const cell of getBuildingFootprint(def)) {
+      const cx = cellX + cell.dx;
+      const cy = cellY + cell.dy;
 
-        // 地形检查
-        const type = this.terrain.getCellLandType(cx, cy);
-        if (type === LandType.Water || type === LandType.Rock || type === LandType.Wall || type === LandType.River) {
-          return false;
-        }
+      // 地形检查
+      const type = this.terrain.getCellLandType(cx, cy);
+      if (type === LandType.Water || type === LandType.Rock || type === LandType.Wall || type === LandType.River) {
+        return false;
+      }
 
-        // 与其他建筑/单位重叠检查（空字符串 excludeId 表示不排除任何对象）
-        if (UnitCollision.isPositionBlocked(cx, cy, '')) {
-          return false;
-        }
+      // 与其他建筑/单位重叠检查（空字符串 excludeId 表示不排除任何对象）
+      if (UnitCollision.isPositionBlocked(cx, cy, '')) {
+        return false;
       }
     }
     return true;
@@ -147,15 +145,25 @@ export class BuildingPlacer {
   // ──  helpers  ──
 
   private createGhost(def: BuildingDefinition): void {
-    this.ghost = MeshBuilder.CreateBox(
-      'placementGhost',
-      { width: def.width, depth: def.height, height: 0.1 },
-      this.scene
-    );
+    const root = new Mesh('placementGhost', this.scene);
     this.ghostMat = new StandardMaterial('ghostMat', this.scene);
     this.ghostMat.alpha = 0.35;
     this.ghostMat.disableLighting = true;
-    this.ghost.material = this.ghostMat;
+
+    for (const cell of getBuildingFootprint(def)) {
+      const box = MeshBuilder.CreateBox(
+        `ghostCell_${cell.dx}_${cell.dy}`,
+        { width: 0.95, depth: 0.95, height: 0.1 },
+        this.scene
+      );
+      box.position.x = cell.dx + 0.5;
+      box.position.z = cell.dy + 0.5;
+      box.position.y = 0.05;
+      box.material = this.ghostMat;
+      box.parent = root;
+    }
+
+    this.ghost = root;
     this.ghost.setEnabled(false);
   }
 

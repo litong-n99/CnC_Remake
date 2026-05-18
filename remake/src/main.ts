@@ -8,6 +8,7 @@ import { MapLoader } from './game/terrain/MapLoader';
 import { Pathfinder } from './game/terrain/Pathfinder';
 import { GameRules } from './game/rules/GameRules';
 import { UNIT_DEFINITIONS } from './game/rules/UnitDefinitions';
+import { getBuildingFootprint } from './game/rules/BuildingDefinitions';
 import { BUILDING_DEFINITIONS } from './game/rules/BuildingDefinitions';
 import { HouseManager } from './game/house/HouseManager';
 import { HouseType } from './game/house/House';
@@ -66,10 +67,8 @@ const bootstrap = async (): Promise<void> => {
       const building = obj as import('./game/objects/Building').Building;
       const def = building.definition;
       // 只阻塞建筑 footprint 本身（单位可紧贴建筑边缘行走）
-      for (let dx = 0; dx < def.width; dx++) {
-        for (let dy = 0; dy < def.height; dy++) {
-          blocked.add(`${building.x + dx},${building.y + dy}`);
-        }
+      for (const cell of getBuildingFootprint(def)) {
+        blocked.add(`${building.x + cell.dx},${building.y + cell.dy}`);
       }
     }
     return blocked;
