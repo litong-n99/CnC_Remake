@@ -19,6 +19,8 @@ export interface RTSCameraOptions {
   alpha?: number;
   /** Distance from screen edge in pixels that triggers auto-scroll (default: `20`). */
   edgeThreshold?: number;
+  /** Width in pixels of any UI panel on the right edge that should be excluded from edge-scroll (default: `0`). */
+  uiRightPanelWidth?: number;
   /** Edge-scroll speed in world units per frame at 60 fps (default: `0.5`). */
   edgeScrollSpeed?: number;
   /** Zoom interpolation factor per frame, 0–1 (default: `0.1`). */
@@ -96,6 +98,7 @@ export class RTSCamera {
       beta: options.beta ?? (2 * Math.PI) / 9,
       alpha: options.alpha ?? Math.PI,
       edgeThreshold: options.edgeThreshold ?? 20,
+      uiRightPanelWidth: options.uiRightPanelWidth ?? 0,
       edgeScrollSpeed: options.edgeScrollSpeed ?? 0.5,
       zoomDamping: options.zoomDamping ?? 0.1,
       pointerLock: options.pointerLock ?? true,
@@ -459,16 +462,23 @@ export class RTSCamera {
     let dx = 0;
     let dz = 0;
 
-    if (this.mouseX < this.options.edgeThreshold) {
+    const threshold = this.options.edgeThreshold;
+
+    // 左边缘：贴住浏览器左边缘时滚动
+    if (this.mouseX < threshold) {
       dx -= this.options.edgeScrollSpeed;
     }
-    if (this.mouseX > rect.width - this.options.edgeThreshold) {
+    // 右边缘：贴住浏览器窗口右边缘时滚动
+    //（Sidebar 区域也会被检测，但 threshold 很小，只有贴住最边缘才触发）
+    if (this.mouseX > rect.width - threshold) {
       dx += this.options.edgeScrollSpeed;
     }
-    if (this.mouseY < this.options.edgeThreshold) {
+    // 上边缘：贴住浏览器上边缘时滚动
+    if (this.mouseY < threshold) {
       dz += this.options.edgeScrollSpeed;
     }
-    if (this.mouseY > rect.height - this.options.edgeThreshold) {
+    // 下边缘：贴住浏览器下边缘时滚动
+    if (this.mouseY > rect.height - threshold) {
       dz -= this.options.edgeScrollSpeed;
     }
 

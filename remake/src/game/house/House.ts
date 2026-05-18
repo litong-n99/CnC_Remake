@@ -236,9 +236,11 @@ export class House {
   }
 
   /** 建筑被摧毁。 */
-  removeBuilding(_typeId: string): void {
+  removeBuilding(typeId: string, isLastOfType = false): void {
     this.curBuildings = Math.max(0, this.curBuildings - 1);
-    // 不立即从 Set 删除，因为可能还有其他同类型建筑
+    if (isLastOfType) {
+      this.availableBuildings.delete(typeId);
+    }
     this.destroyedBuildings++;
   }
 

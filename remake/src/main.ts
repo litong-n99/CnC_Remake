@@ -39,6 +39,8 @@ const bootstrap = async (): Promise<void> => {
     initialZoom: 50,
     alpha: Math.PI, // South-to-North view (camera at south edge looking north)
     beta: (2 * Math.PI) / 9, // ~40° pitch, matching OpenRA's CameraPitch
+    edgeThreshold: 5, // 鼠标贴住边缘 5px 内热区时滚动
+    uiRightPanelWidth: 190, // Sidebar 宽度，排除在右边缘滚动区域外
   });
 
   // ── Lighting & Shadows ──
@@ -436,6 +438,11 @@ const bootstrap = async (): Promise<void> => {
         gdi.addCredits(refund);
         b.dispose();
         GameObjectManager.getInstance().unregister(b.id);
+        // 检查是否还有其他同类型建筑存活，没有则从 availableBuildings 中删除
+        const hasOther = GameObjectManager.getInstance()
+          .getBuildings()
+          .some((obj) => obj.definitionId === b.definition.id && obj.house.id === gdi.id && obj.isAlive());
+        gdi.removeBuilding(b.definition.id, !hasOther);
         updateHousePower(gdi);
         // eslint-disable-next-line no-console
         console.info(`Sold ${b.definition.name} for $${refund}`);
