@@ -314,6 +314,10 @@ const bootstrap = async (): Promise<void> => {
     house.updatePower(production, consumption);
   };
 
+  // 初始化电力（初始建筑已放置但尚未计算）
+  updateHousePower(gdi);
+  updateHousePower(nod);
+
   // ── Task 17: Selection & Right-click to move ──
   const selectionManager = SelectionManager.getInstance();
 

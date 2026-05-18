@@ -64,6 +64,7 @@ export class Sidebar {
   private readonly vehicleButtons: UnitSidebarButton[] = [];
 
   private readonly creditText: GUI.TextBlock;
+  private readonly powerText: GUI.TextBlock;
   private readonly statusText: GUI.TextBlock;
   private readonly powerBg: GUI.Rectangle;
   private readonly powerFill: GUI.Rectangle;
@@ -226,7 +227,16 @@ export class Sidebar {
     this.tabInfantry = this.createTabButton('tabInfantry', 'I', 1, 'infantry');
     this.tabVehicles = this.createTabButton('tabVehicles', 'V', 2, 'vehicles');
 
-    // ── 资金 / 状态 ──
+    // ── 电力状态 ──
+    this.powerText = new GUI.TextBlock('powerText', '');
+    this.powerText.color = '#0f0';
+    this.powerText.fontSize = 11;
+    this.powerText.height = '18px';
+    this.powerText.top = '72px';
+    this.powerText.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
+    this.panel.addControl(this.powerText);
+
+    // ── 资金 ──
     this.creditText = new GUI.TextBlock('creditText', `Credits: ${house.credits}`);
     this.creditText.color = '#0f0';
     this.creditText.fontSize = 12;
@@ -235,6 +245,7 @@ export class Sidebar {
     this.creditText.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
     this.panel.addControl(this.creditText);
 
+    // ── 建造状态 ──
     this.statusText = new GUI.TextBlock('statusText', '');
     this.statusText.color = '#aaa';
     this.statusText.fontSize = 11;
@@ -337,6 +348,16 @@ export class Sidebar {
 
     // 资金
     this.creditText.text = `Credits: ${this.house.credits}`;
+
+    // 电力状态文本
+    const powerBal = this.house.getPowerBalance();
+    if (powerBal < 0) {
+      this.powerText.text = `LOW POWER: ${this.house.power} / ${this.house.drain}`;
+      this.powerText.color = '#f00';
+    } else {
+      this.powerText.text = `Power: ${this.house.power} / ${this.house.drain}`;
+      this.powerText.color = '#0f0';
+    }
 
     // 电力竖状条（OpenRA 行为：从底到顶，填充高度 = power / max）
     const power = this.house.power;
