@@ -34,8 +34,8 @@ const bootstrap = async (): Promise<void> => {
   const rtsCamera = new RTSCamera(scene, engineManager.getEngine(), {
     target: Vector3.Zero(),
     initialZoom: 50,
-    alpha: -Math.PI / 4,
-    beta: Math.PI / 4,
+    alpha: Math.PI, // South-to-North view (camera at south edge looking north)
+    beta: (2 * Math.PI) / 9, // ~40° pitch, matching OpenRA's CameraPitch
   });
 
   // ── Lighting & Shadows ──

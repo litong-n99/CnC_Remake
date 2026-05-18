@@ -11,9 +11,11 @@ export interface RTSCameraOptions {
   minZoom?: number;
   /** Maximum zoom distance (default: `100`). */
   maxZoom?: number;
-  /** Vertical orbit angle from the Y axis — 0 = top-down, π/2 = horizontal (default: `π/4` ≈ 45°). */
+  /** Vertical orbit angle from the Y axis — 0 = top-down, π/2 = horizontal.
+   *  Default: `2π/9` ≈ 40°, matching OpenRA's CameraPitch. */
   beta?: number;
-  /** Horizontal orbit angle around the Y axis (default: `−π/4`). */
+  /** Horizontal orbit angle around the Y axis.
+   *  Default: `π` = South-to-North view (camera at south edge looking north). */
   alpha?: number;
   /** Distance from screen edge in pixels that triggers auto-scroll (default: `20`). */
   edgeThreshold?: number;
@@ -53,6 +55,10 @@ export class RTSCamera {
   private rightClickPending = false;
   private rightDragStartX = 0;
   private rightDragStartY = 0;
+  private isRotatingLeft = false;
+  private isRotatingRight = false;
+  /** Camera rotation speed in radians per second (Insert / Delete). */
+  private rotationSpeed = 1.5;
 
   /** 右键单击回调（非拖拽）。参数为屏幕像素坐标。 */
   onRightClick: ((screenX: number, screenY: number) => void) | null = null;
@@ -71,6 +77,7 @@ export class RTSCamera {
   private boundPointerLockChange: () => void;
   private boundPointerLockError: () => void;
   private boundKeyDown: (e: KeyboardEvent) => void;
+  private boundKeyUp: (e: KeyboardEvent) => void;
 
   private cursorDiv: HTMLDivElement | null = null;
 
@@ -86,8 +93,8 @@ export class RTSCamera {
       initialZoom: options.initialZoom ?? 50,
       minZoom: options.minZoom ?? 20,
       maxZoom: options.maxZoom ?? 100,
-      beta: options.beta ?? Math.PI / 4,
-      alpha: options.alpha ?? -Math.PI / 4,
+      beta: options.beta ?? (2 * Math.PI) / 9,
+      alpha: options.alpha ?? Math.PI,
       edgeThreshold: options.edgeThreshold ?? 20,
       edgeScrollSpeed: options.edgeScrollSpeed ?? 0.5,
       zoomDamping: options.zoomDamping ?? 0.1,
@@ -122,6 +129,7 @@ export class RTSCamera {
     this.boundPointerLockChange = this.handlePointerLockChange.bind(this);
     this.boundPointerLockError = this.handlePointerLockError.bind(this);
     this.boundKeyDown = this.handleKeyDown.bind(this);
+    this.boundKeyUp = this.handleKeyUp.bind(this);
 
     this.renderCallback = this.update.bind(this);
 
@@ -186,6 +194,7 @@ export class RTSCamera {
     document.addEventListener('pointerlockchange', this.boundPointerLockChange);
     document.addEventListener('pointerlockerror', this.boundPointerLockError);
     window.addEventListener('keydown', this.boundKeyDown);
+    window.addEventListener('keyup', this.boundKeyUp);
   }
 
   /**
@@ -324,6 +333,21 @@ export class RTSCamera {
     if (e.key === 'Escape' && this.isPointerLocked) {
       document.exitPointerLock();
     }
+    if (e.key === 'Insert') {
+      this.isRotatingLeft = true;
+    }
+    if (e.key === 'Delete') {
+      this.isRotatingRight = true;
+    }
+  }
+
+  private handleKeyUp(e: KeyboardEvent): void {
+    if (e.key === 'Insert') {
+      this.isRotatingLeft = false;
+    }
+    if (e.key === 'Delete') {
+      this.isRotatingRight = false;
+    }
   }
 
   // ── Panning ──
@@ -392,6 +416,15 @@ export class RTSCamera {
     const diff = this.targetZoom - this.camera.radius;
     if (Math.abs(diff) > 0.01) {
       this.camera.radius += diff * this.options.zoomDamping;
+    }
+
+    // Camera rotation (Insert / Delete — War3-style)
+    const dt = this.engine.getDeltaTime() / 1000;
+    if (this.isRotatingLeft) {
+      this.camera.alpha += this.rotationSpeed * dt;
+    }
+    if (this.isRotatingRight) {
+      this.camera.alpha -= this.rotationSpeed * dt;
     }
 
     // HTML cursor position update
@@ -503,6 +536,7 @@ export class RTSCamera {
     document.removeEventListener('pointerlockchange', this.boundPointerLockChange);
     document.removeEventListener('pointerlockerror', this.boundPointerLockError);
     window.removeEventListener('keydown', this.boundKeyDown);
+    window.removeEventListener('keyup', this.boundKeyUp);
 
     if (this.isPointerLocked) {
       document.exitPointerLock();
