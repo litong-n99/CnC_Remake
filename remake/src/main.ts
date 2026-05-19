@@ -240,6 +240,20 @@ const bootstrap = async (): Promise<void> => {
     scene,
   });
 
+  // ── Task 23.1 验收：5 辆 GDI MediumTank 排成一排 ──
+  const testTanks: Unit[] = [];
+  for (let i = 0; i < 5; i++) {
+    testTanks.push(
+      GameObjectFactory.createUnit({
+        definition: UNIT_DEFINITIONS.MediumTank,
+        house: gdi,
+        x: 25 + i,
+        y: 30,
+        scene,
+      })
+    );
+  }
+
   // Enable shadows on all spawned objects
   const allSpawned = [
     ...gdiBuildings,
@@ -256,6 +270,7 @@ const bootstrap = async (): Promise<void> => {
     nodRifle2,
     nodFlame,
     nodDog,
+    ...testTanks,
   ];
   for (const obj of allSpawned) {
     if (obj.mesh) {

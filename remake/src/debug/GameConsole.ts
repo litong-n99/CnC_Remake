@@ -14,6 +14,7 @@ import type { House } from '../game/house/House';
 import { RTSCamera } from '../core/RTSCamera';
 import { TerrainGrid, LandType } from '../game/terrain/TerrainGrid';
 import { UnitCollision } from '../game/unit/UnitCollision';
+import { ActorMap } from '../game/world/ActorMap';
 import { BuildingPlacer } from '../game/building/BuildingPlacer';
 
 /**
@@ -44,6 +45,7 @@ export class GameConsole {
       kill: this.kill.bind(this),
       clear: this.clear.bind(this),
       list: this.list.bind(this),
+      actorMap: this.actorMap.bind(this),
       help: this.help.bind(this),
     };
     // eslint-disable-next-line no-console
@@ -272,6 +274,26 @@ export class GameConsole {
     }
   }
 
+  /** Inspect ActorMap occupancy. */
+  private actorMap(x?: number, y?: number): void {
+    const am = ActorMap.getInstance();
+    if (x !== undefined && y !== undefined) {
+      const occupants = am.getOccupants(x, y);
+      // eslint-disable-next-line no-console
+      console.info(`Cell (${x}, ${y}): ${occupants.length} unit(s) — [${occupants.join(', ')}]`);
+    } else {
+      const cells = am.getAllOccupiedCells();
+      // eslint-disable-next-line no-console
+      console.info(`ActorMap — ${cells.size} occupied cell(s):`);
+      for (const key of cells) {
+        const [cx, cy] = key.split(',').map(Number);
+        const occupants = am.getOccupants(cx, cy);
+        // eslint-disable-next-line no-console
+        console.info(`  (${cx}, ${cy}): [${occupants.join(', ')}]`);
+      }
+    }
+  }
+
   /** Show help text. */
   private help(): void {
     // eslint-disable-next-line no-console
@@ -303,6 +325,10 @@ export class GameConsole {
 ║                                                              ║
 ║ cnc.list()                                                   ║
 ║   List all units and buildings.                              ║
+║                                                              ║
+║ cnc.actorMap(x?, y?)                                         ║
+║   Inspect ActorMap occupancy. Omit x,y to list all cells.    ║
+║   Example: cnc.actorMap(30, 30)                              ║
 ║                                                              ║
 ║ cnc.help()                                                   ║
 ║   Show this help message.                                    ║
