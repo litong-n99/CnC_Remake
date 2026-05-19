@@ -5,6 +5,7 @@ import type { House } from '../house/House';
 import { UnitController } from '../unit/Unit';
 import { UnitState } from '../unit/UnitState';
 import { UnitMeshFactory } from '../../renderer/meshes/UnitMeshFactory';
+import { ActorMap } from '../world/ActorMap';
 
 /** 运行时单位实例。
  *
@@ -24,10 +25,16 @@ export class Unit extends GameObject {
   /** 炮塔旋转轴心（TransformNode），仅 hasTurret 单位有值。 */
   turretPivot?: TransformNode;
 
+  /** 上次在 ActorMap 中注册的格子坐标。 */
+  private lastCellX = 0;
+  private lastCellY = 0;
+
   constructor(id: string, definition: UnitDefinition, house: House, x: number, y: number) {
     super(id, GameObjectType.Unit, definition.id, house, x, y, definition.strength);
     this.definition = definition;
     this.logic = new UnitController(definition, house, x, y, this.id);
+    this.lastCellX = Math.round(x);
+    this.lastCellY = Math.round(y);
   }
 
   createMesh(scene: Scene): void {
@@ -49,6 +56,15 @@ export class Unit extends GameObject {
     this.x = this.logic.x;
     this.y = this.logic.y;
 
+    // ── ActorMap 格子占用同步 ──
+    const cx = Math.round(this.x);
+    const cy = Math.round(this.y);
+    if (cx !== this.lastCellX || cy !== this.lastCellY) {
+      ActorMap.getInstance().move(this.id, this.lastCellX, this.lastCellY, cx, cy);
+      this.lastCellX = cx;
+      this.lastCellY = cy;
+    }
+
     if (this.mesh) {
       // 同步位置
       this.mesh.position.x = this.logic.x - this.worldOffsetX + 0.5;
@@ -62,5 +78,11 @@ export class Unit extends GameObject {
       // turretFacing 是相对车身的朝向；局部 rotation.y 为负表示同向
       this.turretPivot.rotation.y = -this.turretDirection;
     }
+  }
+
+  /** 释放资源并注销 ActorMap 占用。 */
+  override dispose(): void {
+    ActorMap.getInstance().vacate(this.id, this.lastCellX, this.lastCellY);
+    super.dispose();
   }
 }

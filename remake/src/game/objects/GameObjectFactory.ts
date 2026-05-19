@@ -2,6 +2,7 @@ import type { Scene } from '@babylonjs/core';
 import { Unit } from './Unit';
 import { Building } from './Building';
 import { GameObjectManager } from './GameObjectManager';
+import { ActorMap } from '../world/ActorMap';
 import { Locomotion, type UnitDefinition } from '../rules/UnitDefinitions';
 import type { BuildingDefinition } from '../rules/BuildingDefinitions';
 import type { House } from '../house/House';
@@ -51,6 +52,7 @@ export class GameObjectFactory {
     const unit = new Unit(id, definition, house, x, y);
     unit.createMesh(scene);
     GameObjectManager.getInstance().register(unit);
+    ActorMap.getInstance().occupy(unit.id, Math.round(x), Math.round(y));
     // 步兵使用 Foot locomotion，注册到 House 的步兵计数器
     if (definition.locomotion === Locomotion.Foot) {
       house.addInfantry(definition.id);

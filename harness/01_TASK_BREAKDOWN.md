@@ -290,7 +290,7 @@
 - **文件**：`src/game/world/ActorMap.ts`
 - **接口**：`occupy(id, x, y)` / `vacate(id, x, y)` / `move(id, fx, fy, tx, ty)` / `getOccupants(x, y)` / `isOccupied(x, y)` / `getAllOccupiedCells()`
 - **验收**：创建 5 辆坦克，ActorMap 查询每个坦克所在格子返回正确 ID；移动后旧格子清空、新格子有记录。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 23.2: UnitCollision 重构 — 格子级阻塞查询
 - **目标**：彻底替换当前浮点距离检测。`isPositionBlocked` 和 `getBlockedCells` 改为查询 ActorMap 的格子占用状态。移除 `MIN_SEPARATION` 浮点阈值。
@@ -907,7 +907,7 @@
 | Phase 3 数据层 | 4 | 4 | |
 | Phase 4 单位系统 | 5 | 5 | |
 | Phase 5 建筑系统 | 4 | 4 | Task 20–23 全部完成 |
-| Phase 5.5 寻路碰撞重构 | 6 | 0 | 首轮实现已回滚，新方案待开发 |
+| Phase 5.5 寻路碰撞重构 | 6 | 1 | Task 23.1 ActorMap 完成，23.2–23.6 待开发 |
 | Phase 6 交互 | 4 | 0 | 选择环已存在（SelectionManager.ts），框选/编队待开发 |
 | Phase 7 战斗经济 | 4 | 0 | |
 | Phase 8 循环发布 | 4 | 0 | |
@@ -920,7 +920,7 @@
 | Phase 15 AI高级 | 7 | 0 | Bot、超级武器、空军、桥梁 |
 | Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
 | Phase 17 发布平台 | 3 | 0 | 桌面打包、移动端、Steam |
-| **总计** | **106** | **31** | |
+| **总计** | **106** | **32** | |
 
 ---
 
