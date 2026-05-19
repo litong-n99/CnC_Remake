@@ -262,6 +262,81 @@
 
 ---
 
+## Phase 5.5: 寻路碰撞系统重构（OpenRA 对齐）
+
+> 本 Phase 为**插入式重构任务**，目标是将当前简化版寻路/碰撞系统（Task 17/19 的临时实现）替换为更可靠的 OpenRA 风格架构。完成后 Phase 6 及后续功能将建立在可靠的移动底层之上。
+>
+> **上一轮失败教训（Task 23.1–23.4 首轮实现）**：
+> 1. **过度抽象**：引入 `Locomotor` + `Mobile` trait + `ActorMap` 三层中间层，状态同步极其脆弱
+> 2. **双格占用陷阱**：`fromCell`/`toCell` 与浮点位置 `x/y` 的同步是核心 bug 来源，边界条件无穷无尽
+> 3. **notify 回调链副作用**：`notifyBlockersAt` → `cellIsEvacuating` 会意外触发 idle 单位移动，形成级联混乱
+> 4. **重寻路终点混淆**：重寻路时误用当前阻塞节点作为终点，导致 A* 永远失败 → `GiveUp` 死循环
+>
+> **本轮重构核心原则**：
+> 1. **单格精确占用**：每个单位在 `ActorMap` 中只占据 `Math.round(x), Math.round(y)` 这一个格子
+> 2. **零 notify 机制**：不使用任何"通知其他单位"的回调；阻塞处理完全由被阻塞单位自驱
+> 3. **A* 负责宏观绕开**：初始寻路时排除其他单位位置，路径本身就不会主动穿过其他单位
+> 4. **阻塞时自驱 fallback**：暂停 → 等待 → 重寻路（到**原始目标**）→ Nudge → GiveUp
+> 5. **增量可验证**：每个子任务完成后都能独立测试（"两辆坦克相向而行"作为最低验收标准）
+>
+> **OpenRA 参考**（仅借鉴核心概念，不直译 C# trait 系统）：
+> - `OpenRA.Mods.Common/Traits/World/ActorMap.cs` — 格子占用映射
+> - `OpenRA.Mods.Common/Traits/World/Locomotor.cs` — `BlockedByActor` 分级思想
+> - `OpenRA.Mods.Common/Activities/Move/Move.cs` — `PopPath()` 阻塞 fallback 链
+> - `OpenRA.Mods.Common/Activities/Move/Nudge.cs` — 空闲单位避让
+
+### Task 23.1: ActorMap — 格子占用映射
+- **目标**：实现一个极简的格子级单位占用映射。key = `"x,y"`，value = 该格子内的单位 ID 集合。每个单位只在其当前 `Math.round(x), Math.round(y)` 位置注册。
+- **文件**：`src/game/world/ActorMap.ts`
+- **接口**：`occupy(id, x, y)` / `vacate(id, x, y)` / `move(id, fx, fy, tx, ty)` / `getOccupants(x, y)` / `isOccupied(x, y)` / `getAllOccupiedCells()`
+- **验收**：创建 5 辆坦克，ActorMap 查询每个坦克所在格子返回正确 ID；移动后旧格子清空、新格子有记录。
+- **状态**：[ ] `done`
+
+### Task 23.2: UnitCollision 重构 — 格子级阻塞查询
+- **目标**：彻底替换当前浮点距离检测。`isPositionBlocked` 和 `getBlockedCells` 改为查询 ActorMap 的格子占用状态。移除 `MIN_SEPARATION` 浮点阈值。
+- **文件**：`src/game/unit/UnitCollision.ts`
+- **关键变更**：
+  - `isPositionBlocked(x, y, excludeId)` → 查询 `Math.round(x), Math.round(y)` 是否被其他单位占用
+  - `getBlockedCells(excludeId)` → 返回 ActorMap 中所有被占格子的 `"x,y"` 集合
+  - 建筑阻塞仍由 Pathfinder 的动态回调处理，此处不再包含建筑
+- **验收**：两辆坦克相距 1 格，各自朝对方移动；第一步 A* 就把对方位置视为阻塞，路径自动绕开。
+- **状态**：[ ] `done`
+
+### Task 23.3: UnitMovement 重构 — 简化阻塞 fallback 链
+- **目标**：移除 `fromCell`/`toCell` 双格概念、移除 `notifyBlockersAt`/`cellIsEvacuating`。实现自驱式阻塞处理：暂停 → 等待 → 重寻路（到原始目标）→ Nudge → GiveUp。
+- **文件**：`src/game/unit/UnitMovement.ts`
+- **阻塞处理逻辑**：
+  1. 移动中检测到下一步目标格被占 → 暂停（不前进）
+  2. 等待 `WAIT_DURATION_MS`（800ms），期间面朝目标
+  3. 重寻路到**原始目标** `controller.moveTarget`（起点 = 当前 `Math.round(x), Math.round(y)`）
+  4. 如果找到路径 → 走新路径，重置等待状态
+  5. 如果 3 次重寻路都失败 → 找相邻空闲格（nudge），朝该格移动一步后回到 Idle
+  6. 如果连 nudge 也找不到 → GiveUp，停止，进入 Idle
+- **关键约束**：重寻路终点**必须是原始目标**，绝不使用当前被阻塞的路径节点。
+- **验收**：两辆坦克相向而行碰撞后，等待片刻自动绕开对方，最终都到达目标点。
+- **状态**：[ ] `done`
+
+### Task 23.4: 步兵 SubCell 共享
+- **目标**：ActorMap 允许多个步兵共享同一格子（参考 OpenRA SubCell）。车辆独占格子（一个格子只能有一个车辆）。
+- **文件**：`src/game/world/ActorMap.ts`, `src/game/unit/UnitCollision.ts`
+- **实现**：ActorMap 的 `getOccupants` 返回所有 ID；UnitCollision 在检查阻塞时，若目标格内全是步兵则放行（步兵可重叠），若有车辆则阻塞。
+- **验收**：5 名步枪兵站在同一格子，互相不阻塞；1 辆坦克驶入该格时，步兵自动被"推开"（或坦克绕开）。
+- **状态**：[ ] `done`
+
+### Task 23.5: 密集场景压力测试
+- **目标**：在狭窄地形（如桥梁、峡谷）中测试 10+ 单位交叉移动，验证无死锁、无穿透、无异常漂移。
+- **文件**：`src/main.ts`（测试场景）
+- **验收**：10 辆坦克分别从地图两侧出发前往对侧，所有单位最终到达目标或合理停止（无死锁）。
+- **状态**：[ ] `done`
+
+### Task 23.6: 框选 + 群体移动回归
+- **目标**：恢复 Task 24 的框选功能（在 Phase 5.5 之前的版本中已实现，随回滚一并移除）。将框选与重构后的移动系统对接。
+- **文件**：`src/core/RTSCamera.ts`, `src/core/SelectionBox.ts`, `src/game/SelectionManager.ts`, `src/main.ts`
+- **验收**：按住左键拖动出现绿色矩形框，松开时框内单位被选中（多选）；右键点击地面，所有选中单位同步移动；框选功能在群体移动时无卡顿。
+- **状态**：[ ] `done`
+
+---
+
 ## Phase 6: 交互与输入（Interaction）
 
 ### Task 24: 鼠标输入层（框选 + 点击）
@@ -831,7 +906,8 @@
 | Phase 2 3D核心 | 5 | 5 | |
 | Phase 3 数据层 | 4 | 4 | |
 | Phase 4 单位系统 | 5 | 5 | |
-| Phase 5 建筑系统 | 4 | 2 | Task 22–23 待开发 |
+| Phase 5 建筑系统 | 4 | 4 | Task 20–23 全部完成 |
+| Phase 5.5 寻路碰撞重构 | 6 | 0 | 首轮实现已回滚，新方案待开发 |
 | Phase 6 交互 | 4 | 0 | 选择环已存在（SelectionManager.ts），框选/编队待开发 |
 | Phase 7 战斗经济 | 4 | 0 | |
 | Phase 8 循环发布 | 4 | 0 | |
@@ -844,7 +920,7 @@
 | Phase 15 AI高级 | 7 | 0 | Bot、超级武器、空军、桥梁 |
 | Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
 | Phase 17 发布平台 | 3 | 0 | 桌面打包、移动端、Steam |
-| **总计** | **100** | **27** | |
+| **总计** | **106** | **31** | |
 
 ---
 
