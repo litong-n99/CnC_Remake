@@ -88,6 +88,7 @@ export class UnitController {
   // ── OpenRA 阻塞标记 ──
   isBlocking = false; // 被通知后标记"我也在阻塞别人"
   isNudging = false; // 正在 nudge 让路中，不响应 notify
+  isWaiting = false; // 正在 handleBlocked 中等待，用于 CellIsEvacuating 死锁检测
 
   // ── 移动控制器 ──
   readonly movement: UnitMovement;

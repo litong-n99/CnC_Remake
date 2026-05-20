@@ -144,13 +144,20 @@ export class UnitMovement {
     const nextY = controller.y + dy * ratio;
 
     // ── Task 24.3: 阻塞检测与 OpenRA fallback 链 ──
-    if (UnitCollision.isPositionBlocked(nextX, nextY, controller.unitId, BlockedByActor.All)) {
-      this.handleBlocked(controller, deltaTime);
-      return;
+    // 如果 round(nextX,nextY) 仍然是 fromCell，说明单位还在离开原格子的过程中，
+    // 不应该因为 fromCell 被其他单位占用而阻塞自己（fromCell 自锁 bug）。
+    const nextCX = Math.round(nextX);
+    const nextCY = Math.round(nextY);
+    if (nextCX !== controller.fromCellX || nextCY !== controller.fromCellY) {
+      if (UnitCollision.isPositionBlocked(nextX, nextY, controller.unitId, BlockedByActor.All)) {
+        this.handleBlocked(controller, deltaTime);
+        return;
+      }
     }
 
     controller.x = nextX;
     controller.y = nextY;
+    controller.isWaiting = false;
     controller.targetBodyFacing = this.dirToFacing(dx, dy);
   }
 
@@ -159,6 +166,8 @@ export class UnitMovement {
    * NotifyBlocker → Wait → CellIsEvacuating → Repath(四级回退) → Nudge → Backup → GiveUp
    */
   private handleBlocked(controller: UnitController, deltaTime: number): void {
+    controller.isWaiting = true;
+
     const dest = controller.moveTarget;
     if (!dest) {
       this.stop(controller);
@@ -229,6 +238,7 @@ export class UnitMovement {
         this.hasWaited = false;
         this.waitRemainingMs = 0;
         this.repathAttempts = 0;
+        controller.isWaiting = false;
 
         // 更新双格状态为新的路径起点
         controller.fromCellX = Math.round(controller.x);
@@ -252,6 +262,7 @@ export class UnitMovement {
       this.hasWaited = false;
       this.waitRemainingMs = 0;
       this.repathAttempts = 0;
+      controller.isWaiting = false;
       return;
     }
 
@@ -264,6 +275,7 @@ export class UnitMovement {
         this.hasWaited = false;
         this.waitRemainingMs = 0;
         this.repathAttempts = 0;
+        controller.isWaiting = false;
         return;
       }
     }
@@ -303,6 +315,8 @@ export class UnitMovement {
       if (!obj || obj.type !== GameObjectType.Unit) return false;
       const unit = obj as import('../objects/Unit').Unit;
       if (!unit.logic.isMovingBetweenCells) return false;
+      // 如果对方也在 handleBlocked 中等待，说明它也被阻塞了，不算正在离开
+      if (unit.logic.isWaiting) return false;
       // 关键：如果该单位的 toCell 就是当前格子，说明它要进入/停留，不是在离开
       if (unit.logic.toCellX === x && unit.logic.toCellY === y) return false;
     }
@@ -366,6 +380,7 @@ export class UnitMovement {
     controller.moveTarget = undefined;
     controller.isMovingBetweenCells = false;
     controller.isBlocking = false;
+    controller.isWaiting = false;
     controller.toCellX = controller.fromCellX;
     controller.toCellY = controller.fromCellY;
   }

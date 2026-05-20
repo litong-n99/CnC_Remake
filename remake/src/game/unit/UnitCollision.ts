@@ -25,17 +25,10 @@ export class UnitCollision {
 
     const cx = Math.round(x);
     const cy = Math.round(y);
-    const fx = Math.floor(x);
-    const fy = Math.floor(y);
     const am = ActorMap.getInstance();
 
     // 检查 round 格子
     if (this.isCellBlockedByActor(am.getOccupants(cx, cy), excludeId, check)) return true;
-
-    // 若 floor 与 round 不同，也检查 floor 格子（覆盖 round 边界盲区）
-    if (fx !== cx || fy !== cy) {
-      if (this.isCellBlockedByActor(am.getOccupants(fx, fy), excludeId, check)) return true;
-    }
 
     return false;
   }
