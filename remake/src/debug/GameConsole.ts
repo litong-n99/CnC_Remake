@@ -16,6 +16,7 @@ import { TerrainGrid, LandType } from '../game/terrain/TerrainGrid';
 import { UnitCollision } from '../game/unit/UnitCollision';
 import { ActorMap } from '../game/world/ActorMap';
 import { BuildingPlacer } from '../game/building/BuildingPlacer';
+import type { PathNode, Pathfinder } from '../game/terrain/Pathfinder';
 
 /**
  * Debug console — exposes `window.cnc` commands for runtime spawning,
@@ -32,7 +33,8 @@ export class GameConsole {
     private readonly lighting: Lighting,
     private readonly rtsCamera: RTSCamera,
     private readonly terrain: TerrainGrid,
-    private readonly placer: BuildingPlacer
+    private readonly placer: BuildingPlacer,
+    private readonly pathfinder?: Pathfinder
   ) {}
 
   /** Register all commands on `window.cnc`. */
@@ -46,6 +48,8 @@ export class GameConsole {
       clear: this.clear.bind(this),
       list: this.list.bind(this),
       actorMap: this.actorMap.bind(this),
+      collision: this.collision.bind(this),
+      pathfind: this.pathfind.bind(this),
       help: this.help.bind(this),
     };
     // eslint-disable-next-line no-console
@@ -274,6 +278,31 @@ export class GameConsole {
     }
   }
 
+  /** Check whether a cell is blocked by another unit.
+   * @returns true if the cell contains at least one unit other than excludeId.
+   */
+  private collision(x: number, y: number, excludeId?: string): boolean {
+    const blocked = UnitCollision.isPositionBlocked(x, y, excludeId ?? '');
+    // eslint-disable-next-line no-console
+    console.info(`Collision (${x}, ${y}): ${blocked ? 'BLOCKED' : 'FREE'}`);
+    return blocked;
+  }
+
+  /** Run A* pathfinding with current unit blockers.
+   * @returns Path nodes (incl. start & end) or null if no path.
+   */
+  private pathfind(startX: number, startY: number, endX: number, endY: number): PathNode[] | null {
+    if (!this.pathfinder) {
+      console.warn('Pathfinder not available in GameConsole');
+      return null;
+    }
+    const blockedCells = UnitCollision.getBlockedCells('');
+    const path = this.pathfinder.findPath(startX, startY, endX, endY, blockedCells);
+    // eslint-disable-next-line no-console
+    console.info(`Pathfind (${startX},${startY}) → (${endX},${endY}):`, path ? `${path.length} nodes` : 'NO PATH');
+    return path;
+  }
+
   /** Inspect ActorMap occupancy.
    * @returns Structured data for programmatic access (e.g. E2E tests).
    */
@@ -340,6 +369,14 @@ export class GameConsole {
 ║ cnc.actorMap(x?, y?)                                         ║
 ║   Inspect ActorMap occupancy. Omit x,y to list all cells.    ║
 ║   Example: cnc.actorMap(30, 30)                              ║
+║                                                              ║
+║ cnc.collision(x, y, excludeId?)                              ║
+║   Check if a cell is blocked by another unit.                ║
+║   Example: cnc.collision(30, 30, 'unit-id')                  ║
+║                                                              ║
+║ cnc.pathfind(startX, startY, endX, endY)                     ║
+║   Run A* with current unit blockers. Returns path or null.   ║
+║   Example: cnc.pathfind(30, 30, 40, 30)                      ║
 ║                                                              ║
 ║ cnc.help()                                                   ║
 ║   Show this help message.                                    ║

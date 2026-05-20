@@ -70,6 +70,33 @@ export class GamePage {
     );
   }
 
+  /** Check whether a cell is blocked by another unit. */
+  async collision(x: number, y: number, excludeId?: string): Promise<boolean> {
+    return await this.page.evaluate(
+      ({ cx, cy, exId }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (cnc.collision?.(cx, cy, exId) as boolean) ?? false;
+      },
+      { cx: x, cy: y, exId: excludeId }
+    );
+  }
+
+  /** Run A* pathfinding with current unit blockers. */
+  async pathfind(
+    startX: number,
+    startY: number,
+    endX: number,
+    endY: number
+  ): Promise<Array<{ x: number; y: number }> | null> {
+    return await this.page.evaluate(
+      ({ sx, sy, ex, ey }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (cnc.pathfind?.(sx, sy, ex, ey) as Array<{ x: number; y: number }> | null) ?? null;
+      },
+      { sx: startX, sy: startY, ex: endX, ey: endY }
+    );
+  }
+
   /** List all units and buildings (returns via console, mainly for debugging). */
   async list(): Promise<void> {
     await this.page.evaluate(() => {

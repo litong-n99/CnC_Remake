@@ -592,7 +592,7 @@ const bootstrap = async (): Promise<void> => {
   });
 
   // ── Debug Console ──
-  const gameConsole = new GameConsole(scene, lighting, rtsCamera, terrain, placer);
+  const gameConsole = new GameConsole(scene, lighting, rtsCamera, terrain, placer, pathfinder);
   gameConsole.install();
 
   // ── Verification ──
