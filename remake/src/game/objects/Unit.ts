@@ -25,16 +25,19 @@ export class Unit extends GameObject {
   /** 炮塔旋转轴心（TransformNode），仅 hasTurret 单位有值。 */
   turretPivot?: TransformNode;
 
-  /** 上次在 ActorMap 中注册的格子坐标。 */
-  private lastCellX = 0;
-  private lastCellY = 0;
+  /** 上次在 ActorMap 中注册的所有格子坐标（支持双格占用）。 */
+  private lastOccupiedCells: Array<{ x: number; y: number }> = [];
 
   constructor(id: string, definition: UnitDefinition, house: House, x: number, y: number) {
     super(id, GameObjectType.Unit, definition.id, house, x, y, definition.strength);
     this.definition = definition;
     this.logic = new UnitController(definition, house, x, y, this.id);
-    this.lastCellX = Math.round(x);
-    this.lastCellY = Math.round(y);
+
+    // 初始 occupy — 静止单位只占用一个格子
+    const cx = Math.round(x);
+    const cy = Math.round(y);
+    ActorMap.getInstance().occupy(this.id, cx, cy);
+    this.lastOccupiedCells = [{ x: cx, y: cy }];
   }
 
   createMesh(scene: Scene): void {
@@ -56,14 +59,24 @@ export class Unit extends GameObject {
     this.x = this.logic.x;
     this.y = this.logic.y;
 
-    // ── ActorMap 格子占用同步 ──
-    const cx = Math.round(this.x);
-    const cy = Math.round(this.y);
-    if (cx !== this.lastCellX || cy !== this.lastCellY) {
-      ActorMap.getInstance().move(this.id, this.lastCellX, this.lastCellY, cx, cy);
-      this.lastCellX = cx;
-      this.lastCellY = cy;
+    // ── ActorMap 多格占用同步（OpenRA 双格占用）──
+    const currentCells = this.logic.getOccupiedCells();
+
+    // vacate 离开的格子
+    for (const last of this.lastOccupiedCells) {
+      if (!currentCells.some((c) => c.x === last.x && c.y === last.y)) {
+        ActorMap.getInstance().vacate(this.id, last.x, last.y);
+      }
     }
+
+    // occupy 新进入的格子
+    for (const curr of currentCells) {
+      if (!this.lastOccupiedCells.some((c) => c.x === curr.x && c.y === curr.y)) {
+        ActorMap.getInstance().occupy(this.id, curr.x, curr.y);
+      }
+    }
+
+    this.lastOccupiedCells = currentCells.map((c) => ({ x: c.x, y: c.y }));
 
     if (this.mesh) {
       // 同步位置
@@ -82,7 +95,10 @@ export class Unit extends GameObject {
 
   /** 释放资源并注销 ActorMap 占用。 */
   override dispose(): void {
-    ActorMap.getInstance().vacate(this.id, this.lastCellX, this.lastCellY);
+    for (const cell of this.lastOccupiedCells) {
+      ActorMap.getInstance().vacate(this.id, cell.x, cell.y);
+    }
+    this.lastOccupiedCells = [];
     super.dispose();
   }
 }

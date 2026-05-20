@@ -65,6 +65,14 @@ export class UnitMovement {
     this.pathIndex = 1; // 跳过起点
     this.isMoving = true;
     this.pathfinder = pathfinder;
+
+    // ── 设置双格占用状态（OpenRA FromCell → ToCell）──
+    controller.fromCellX = Math.round(controller.x);
+    controller.fromCellY = Math.round(controller.y);
+    controller.toCellX = path[1].x;
+    controller.toCellY = path[1].y;
+    controller.isMovingBetweenCells = true;
+
     controller.stateMachine.transition(UnitState.Moving);
     controller.isDriving = true;
     controller.moveTarget = { x: targetX, y: targetY };
@@ -89,7 +97,19 @@ export class UnitMovement {
       // 到达当前路径点，进入下一格
       controller.x = target.x;
       controller.y = target.y;
+
+      // ── 更新双格占用状态 ──
+      controller.fromCellX = controller.toCellX;
+      controller.fromCellY = controller.toCellY;
       this.pathIndex++;
+
+      if (this.pathIndex < this.path.length) {
+        const nextTarget = this.path[this.pathIndex];
+        controller.toCellX = nextTarget.x;
+        controller.toCellY = nextTarget.y;
+      } else {
+        controller.isMovingBetweenCells = false;
+      }
       return;
     }
 
@@ -195,6 +215,9 @@ export class UnitMovement {
     controller.stateMachine.transition(UnitState.Idle);
     controller.isDriving = false;
     controller.moveTarget = undefined;
+    controller.isMovingBetweenCells = false;
+    controller.toCellX = controller.fromCellX;
+    controller.toCellY = controller.fromCellY;
   }
 
   /**

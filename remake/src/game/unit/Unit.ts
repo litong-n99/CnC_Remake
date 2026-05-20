@@ -78,6 +78,13 @@ export class UnitController {
   x = 0;
   y = 0;
 
+  // ── 双格占用状态（OpenRA FromCell / ToCell）──
+  fromCellX = 0;
+  fromCellY = 0;
+  toCellX = 0;
+  toCellY = 0;
+  isMovingBetweenCells = false;
+
   // ── 移动控制器 ──
   readonly movement: UnitMovement;
 
@@ -107,6 +114,28 @@ export class UnitController {
     this.speedBias = 1.0;
 
     this.movement = new UnitMovement(this.speed);
+
+    // 初始化双格状态（静止时 from=to）
+    const cx = Math.round(x);
+    const cy = Math.round(y);
+    this.fromCellX = cx;
+    this.fromCellY = cy;
+    this.toCellX = cx;
+    this.toCellY = cy;
+  }
+
+  /**
+   * 返回当前占用的所有格子坐标。
+   * 静止时返回 [fromCell]；移动中返回 [fromCell, toCell]。
+   */
+  getOccupiedCells(): ReadonlyArray<{ readonly x: number; readonly y: number }> {
+    if (this.isMovingBetweenCells) {
+      return [
+        { x: this.fromCellX, y: this.fromCellY },
+        { x: this.toCellX, y: this.toCellY },
+      ];
+    }
+    return [{ x: this.fromCellX, y: this.fromCellY }];
   }
 
   /**
