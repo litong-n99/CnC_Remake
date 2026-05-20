@@ -1,3 +1,5 @@
+import { BlockedByActor } from '../unit/BlockedByActor';
+
 /**
  * A* 寻路 — 基于格子地图的**八方向**路径搜索，支持动态阻塞（建筑 footprint）。
  *
@@ -30,7 +32,7 @@ export class Pathfinder {
   private readonly width: number;
   private readonly height: number;
   private readonly isPassable: (x: number, y: number) => boolean;
-  private readonly getBlockedCells?: () => ReadonlySet<string>;
+  private readonly getBlockedCells?: (check?: BlockedByActor) => ReadonlySet<string>;
 
   /** 八方向邻居（含对角线），代价：直线=1，对角线=√2。 */
   private static readonly NEIGHBORS: readonly Neighbor[] = [
@@ -48,7 +50,7 @@ export class Pathfinder {
     width: number,
     height: number,
     isPassable: (x: number, y: number) => boolean,
-    getBlockedCells?: () => ReadonlySet<string>
+    getBlockedCells?: (check?: BlockedByActor) => ReadonlySet<string>
   ) {
     this.width = width;
     this.height = height;
@@ -66,11 +68,12 @@ export class Pathfinder {
     startY: number,
     endX: number,
     endY: number,
-    extraBlocked?: ReadonlySet<string>
+    extraBlocked?: ReadonlySet<string>,
+    check = BlockedByActor.All
   ): PathNode[] | null {
     if (!this.isInside(endX, endY) || !this.isPassable(endX, endY)) return null;
 
-    const dynamicBlocked = this.getBlockedCells?.() ?? new Set<string>();
+    const dynamicBlocked = this.getBlockedCells?.(check) ?? new Set<string>();
     if (dynamicBlocked.has(`${endX},${endY}`) || extraBlocked?.has(`${endX},${endY}`)) return null;
 
     const openSet: AStarNode[] = [];

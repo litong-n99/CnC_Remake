@@ -81,19 +81,22 @@ export class GamePage {
     );
   }
 
-  /** Run A* pathfinding with current unit blockers. */
+  /** Run A* pathfinding with current unit blockers.
+   * @param check — 'All' | 'Stationary' | 'Immovable' | 'None' (default 'All')
+   */
   async pathfind(
     startX: number,
     startY: number,
     endX: number,
-    endY: number
+    endY: number,
+    check = 'All'
   ): Promise<Array<{ x: number; y: number }> | null> {
     return await this.page.evaluate(
-      ({ sx, sy, ex, ey }) => {
+      ({ sx, sy, ex, ey, ck }) => {
         const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
-        return (cnc.pathfind?.(sx, sy, ex, ey) as Array<{ x: number; y: number }> | null) ?? null;
+        return (cnc.pathfind?.(sx, sy, ex, ey, ck) as Array<{ x: number; y: number }> | null) ?? null;
       },
-      { sx: startX, sy: startY, ex: endX, ey: endY }
+      { sx: startX, sy: startY, ex: endX, ey: endY, ck: check }
     );
   }
 

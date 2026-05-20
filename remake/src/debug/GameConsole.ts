@@ -14,6 +14,7 @@ import type { House } from '../game/house/House';
 import { RTSCamera } from '../core/RTSCamera';
 import { TerrainGrid, LandType } from '../game/terrain/TerrainGrid';
 import { UnitCollision } from '../game/unit/UnitCollision';
+import { BlockedByActor } from '../game/unit/BlockedByActor';
 import { ActorMap } from '../game/world/ActorMap';
 import { BuildingPlacer } from '../game/building/BuildingPlacer';
 import type { PathNode, Pathfinder } from '../game/terrain/Pathfinder';
@@ -316,18 +317,36 @@ export class GameConsole {
   }
 
   /** Run A* pathfinding with current unit blockers.
+   * @param check — 'All' | 'Stationary' | 'Immovable' | 'None' (default 'All')
    * @returns Path nodes (incl. start & end) or null if no path.
    */
-  private pathfind(startX: number, startY: number, endX: number, endY: number): PathNode[] | null {
+  private pathfind(startX: number, startY: number, endX: number, endY: number, checkName = 'All'): PathNode[] | null {
     if (!this.pathfinder) {
       console.warn('Pathfinder not available in GameConsole');
       return null;
     }
-    const blockedCells = UnitCollision.getBlockedCells('');
-    const path = this.pathfinder.findPath(startX, startY, endX, endY, blockedCells);
+    const check = this.parseBlockedByActor(checkName);
+    const blockedCells = UnitCollision.getBlockedCells('', check);
+    const path = this.pathfinder.findPath(startX, startY, endX, endY, blockedCells, check);
     // eslint-disable-next-line no-console
-    console.info(`Pathfind (${startX},${startY}) → (${endX},${endY}):`, path ? `${path.length} nodes` : 'NO PATH');
+    console.info(
+      `Pathfind (${startX},${startY}) → (${endX},${endY}) [${checkName}]:`,
+      path ? `${path.length} nodes` : 'NO PATH'
+    );
     return path;
+  }
+
+  private parseBlockedByActor(name: string): BlockedByActor {
+    switch (name) {
+      case 'None':
+        return BlockedByActor.None;
+      case 'Immovable':
+        return BlockedByActor.Immovable;
+      case 'Stationary':
+        return BlockedByActor.Stationary;
+      default:
+        return BlockedByActor.All;
+    }
   }
 
   /** Inspect ActorMap occupancy.

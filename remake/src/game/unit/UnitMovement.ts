@@ -2,6 +2,7 @@ import { UnitState } from './UnitState';
 import type { UnitController } from './Unit';
 import type { PathNode, Pathfinder } from '../terrain/Pathfinder';
 import { UnitCollision } from './UnitCollision';
+import { BlockedByActor } from './BlockedByActor';
 
 /**
  * 单位移动控制器 — 沿 A* 路径进行插值移动，支持阻塞自驱 fallback 链（Task 23.3）。
@@ -51,13 +52,14 @@ export class UnitMovement {
     this.waitRemainingMs = 0;
     this.repathAttempts = 0;
 
-    const blockedCells = UnitCollision.getBlockedCells(controller.unitId);
+    const blockedCells = UnitCollision.getBlockedCells(controller.unitId, BlockedByActor.All);
     const path = pathfinder.findPath(
       Math.round(controller.x),
       Math.round(controller.y),
       targetX,
       targetY,
-      blockedCells
+      blockedCells,
+      BlockedByActor.All
     );
     if (!path || path.length <= 1) return false;
 
@@ -160,10 +162,10 @@ export class UnitMovement {
     // Step 2: Repath（到原始目标，起点=当前 round 位置）
     if (this.repathAttempts < UnitMovement.MAX_REPATH_ATTEMPTS) {
       this.repathAttempts++;
-      const blockedCells = UnitCollision.getBlockedCells(controller.unitId);
+      const blockedCells = UnitCollision.getBlockedCells(controller.unitId, BlockedByActor.All);
       const startX = Math.round(controller.x);
       const startY = Math.round(controller.y);
-      const newPath = this.pathfinder?.findPath(startX, startY, dest.x, dest.y, blockedCells);
+      const newPath = this.pathfinder?.findPath(startX, startY, dest.x, dest.y, blockedCells, BlockedByActor.All);
       if (newPath && newPath.length > 1) {
         this.path = newPath;
         this.pathIndex = 1;
