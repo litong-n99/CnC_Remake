@@ -343,29 +343,51 @@
   - `cellIsEvacuating()`：检查格子内所有 occupants 是否都在离开（`isMovingBetweenCells && toCell ≠ 当前格`）
   - `Pathfinder` 新增 `allowBlockedEnd` 参数：终点允许被移动中的单位暂时占用，因为对方可能正在离开
   - Repath 时拒绝与当前路径完全相同的结果，避免无限循环
-  - `notifyBlockersAt` / `onNotifyBlockingMove` 骨架预埋（Task 23.7 实现响应）
+  - `notifyBlockersAt` / `onNotifyBlockingMove` 骨架预埋（Task 23.8 实现响应）
 - **验收**：
   1. CellIsEvacuating：B 离开 (31,30) 时，A 等待而非 repath
   2. Repath fallback：静止阻塞者挡住路径时，A 自动绕路
   3. Head-on：两车相向而行，最终都到达目标无死锁
 - **状态**：[x] `done`
 
-### Task 23.7: 步兵 SubCell 共享
-- **目标**：ActorMap 允许多个步兵共享同一格子（参考 OpenRA SubCell）。车辆独占格子（一个格子只能有一个车辆）。
-- **文件**：`src/game/world/ActorMap.ts`, `src/game/unit/UnitCollision.ts`
-- **实现**：ActorMap 的 `getOccupants` 返回所有 ID；UnitCollision 在检查阻塞时，若目标格内全是步兵则放行（步兵可重叠），若有车辆则阻塞。
-- **验收**：5 名步枪兵站在同一格子，互相不阻塞；1 辆坦克驶入该格时，步兵自动被"推开"（或坦克绕开）。
+### Task 23.7: Locomotor 配置层 + TerrainSpeeds
+- **目标**：建立 OpenRA 风格的 Locomotor 配置层，将移动属性从"硬编码/全局统一"改为"按单位类型配置"。
+- **文件**：`src/game/rules/Locomotor.ts`, `src/game/terrain/Pathfinder.ts`, `src/game/unit/UnitMovement.ts`
+- **OpenRA 对标**：`LocomotorInfo`（`WaitAverage`、`WaitSpread`、`SharesCell`、`TerrainSpeeds`）
+- **关键变更**：
+  - 新建 `Locomotor` 配置类，按 `UnitDefinitions.locomotion`（Foot/Track/Wheel）映射不同移动规则
+  - `Foot`：步兵，`SharesCell: true`，可穿过岩石缝隙（`TerrainSpeeds` 中岩石代价 > 0）
+  - `Track`/`Wheel`：车辆，`SharesCell: false`，不可穿过岩石（`TerrainSpeeds` 中岩石代价 = 0 / 不可通行）
+  - `UnitMovement` 的 `WAIT_DURATION_MS` / `WAIT_SPREAD_MS` 改为从 Locomotor 读取
+  - `Pathfinder` 的 A* 边代价从固定值改为按 Locomotor `TerrainSpeeds` 计算：`cost = distance / terrainSpeed`
+- **验收**：同一地图，步兵路径穿过岩石缝隙，车辆路径自动绕开岩石；步兵与车辆的寻路代价不同。
 - **状态**：[ ] `done`
 
-### Task 23.8: 密集场景压力测试
+### Task 23.8: SubCell 步兵共享 + NotifyBlocker 完整实现
+- **目标**：基于 Locomotor 的 `SharesCell` 实现步兵共享格子，并完成阻塞者的主动避让响应。
+- **文件**：`src/game/world/ActorMap.ts`, `src/game/unit/UnitCollision.ts`, `src/game/unit/Unit.ts`
+- **OpenRA 对标**：`LocomotorInfo.SharesCell` + `Mobile.OnNotifyBlockingMove` → `Nudge`
+- **关键变更**：
+  - `UnitCollision.isCellBlockedByActor`：检查 occupants，若**全是步兵**（所有 occupant 的 `Locomotor.SharesCell === true`）则放行
+  - `Pathfinder.getBlockedCells`：同上，全是步兵的格子不加入阻塞集合
+  - `UnitController.onNotifyBlockingMove`：从骨架变为完整实现。若阻塞者 `IsIdle`，向旁边移动一格（Nudge/Scatter）
+- **验收**：5 名步枪兵站在同一格子，互相不阻塞；1 辆坦克驶入该格时，步兵被推开（或坦克绕开）。
+- **状态**：[ ] `done`
+
+### Task 23.9: 密集场景压力测试
 - **目标**：在狭窄地形（如桥梁、峡谷）中测试 10+ 单位交叉移动，验证无死锁、无穿透、无异常漂移。
 - **文件**：`src/main.ts`（测试场景）
 - **验收**：10 辆坦克分别从地图两侧出发前往对侧，所有单位最终到达目标或合理停止（无死锁）。
 - **状态**：[ ] `done`
 
-### Task 23.9: 框选 + 群体移动回归
+### Task 23.10: 框选 + 群体移动回归
 - **目标**：恢复 Task 24 的框选功能（在 Phase 5.5 之前的版本中已实现，随回滚一并移除）。将框选与重构后的移动系统对接。
 - **文件**：`src/core/RTSCamera.ts`, `src/core/SelectionBox.ts`, `src/game/SelectionManager.ts`, `src/main.ts`
+- **OpenRA 对标**：`MoveOrderGenerator` — 为每个选中单位生成独立的 `Move` 活动，各单位独立寻路到目标附近
+- **关键变更**：
+  - 框选：绿色矩形框 + 多选
+  - 右键地面：为每个选中单位调用 `moveTo(targetX, targetY)`
+  - 群体移动时自动兼容 SubCell（步兵群可拥挤在同一目标格子附近）
 - **验收**：按住左键拖动出现绿色矩形框，松开时框内单位被选中（多选）；右键点击地面，所有选中单位同步移动；框选功能在群体移动时无卡顿。
 - **状态**：[ ] `done`
 
