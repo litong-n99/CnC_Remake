@@ -1,4 +1,5 @@
 import { BlockedByActor } from '../unit/BlockedByActor';
+import type { LandType } from './TerrainGrid';
 
 /**
  * A* 寻路 — 基于格子地图的**八方向**路径搜索，支持动态阻塞（建筑 footprint）。
@@ -34,6 +35,13 @@ export class Pathfinder {
   private readonly isPassable: (x: number, y: number) => boolean;
   private readonly getBlockedCells?: (check?: BlockedByActor) => ReadonlySet<string>;
 
+  /**
+   * Optional callback to query the terrain type at a cell.
+   * Used together with `getTerrainCost` in `findPath` to compute
+   * per-locomotor A* edge costs.
+   */
+  readonly getTerrainType?: (x: number, y: number) => LandType;
+
   /** 八方向邻居（含对角线），代价：直线=1，对角线=√2。 */
   private static readonly NEIGHBORS: readonly Neighbor[] = [
     { x: 1, y: 0, cost: 1 },
@@ -50,17 +58,21 @@ export class Pathfinder {
     width: number,
     height: number,
     isPassable: (x: number, y: number) => boolean,
-    getBlockedCells?: (check?: BlockedByActor) => ReadonlySet<string>
+    getBlockedCells?: (check?: BlockedByActor) => ReadonlySet<string>,
+    getTerrainType?: (x: number, y: number) => LandType
   ) {
     this.width = width;
     this.height = height;
     this.isPassable = isPassable;
     this.getBlockedCells = getBlockedCells;
+    this.getTerrainType = getTerrainType;
   }
 
   /**
    * A* 寻路（八方向）。
    * @param extraBlocked 可选的额外阻塞格子集合（格式 `"x,y"`），用于单位间动态避障。
+   * @param getTerrainCost 可选的地形代价回调，返回该格子的速度倍率（0 = 不可通行）。
+   *                       当提供时，A* 边代价 = `distance / terrainCost`。
    * @returns 从起点到终点的格子路径（含起点和终点），无路径时返回 `null`。
    */
   findPath(
@@ -71,7 +83,8 @@ export class Pathfinder {
     extraBlocked?: ReadonlySet<string>,
     check = BlockedByActor.All,
     biasSeed = 0,
-    allowBlockedEnd = false
+    allowBlockedEnd = false,
+    getTerrainCost?: (x: number, y: number) => number
   ): PathNode[] | null {
     if (!this.isInside(endX, endY) || !this.isPassable(endX, endY)) return null;
 
@@ -124,6 +137,12 @@ export class Pathfinder {
         if (!isEndCell && (dynamicBlocked.has(key) || extraBlocked?.has(key))) continue;
         if (!allowBlockedEnd && isEndCell && (dynamicBlocked.has(key) || extraBlocked?.has(key))) continue;
 
+        // ── 地形代价（Locomotor TerrainSpeeds）──
+        // 若提供了 getTerrainCost，按 Locomotor 的速度倍率调整边代价。
+        // terrainCost <= 0 表示该地形对此 Locomotor 不可通行。
+        const terrainCost = getTerrainCost?.(nx, ny) ?? 1;
+        if (terrainCost <= 0) continue;
+
         // ── 对角线剪枝（Corner Cutting）──
         // 沿对角线移动时，必须确保两个正交相邻格子也可通行，
         // 否则单位会"穿过"墙角。
@@ -136,7 +155,7 @@ export class Pathfinder {
           if (dynamicBlocked.has(`${current.x},${vy}`) || extraBlocked?.has(`${current.x},${vy}`)) continue;
         }
 
-        const g = current.g + offset.cost;
+        const g = current.g + offset.cost / terrainCost;
         const existing = openSet.find((o) => o.x === nx && o.y === ny);
 
         if (!existing) {

@@ -82,10 +82,13 @@ const bootstrap = async (): Promise<void> => {
     64,
     64,
     (x, y) => {
+      // isPassable 只检查绝对不可通行的地形（Water）。
+      // Rock / Wall / River 的通行性由各单位的 Locomotor 的 TerrainSpeeds 控制。
       const type = terrain.getCellLandType(x, y);
-      return type !== LandType.Water && type !== LandType.Rock && type !== LandType.Wall && type !== LandType.River;
+      return type !== LandType.Water;
     },
-    getBuildingBlockedCells
+    getBuildingBlockedCells,
+    (x, y) => terrain.getCellLandType(x, y)
   );
 
   // ── Houses ──

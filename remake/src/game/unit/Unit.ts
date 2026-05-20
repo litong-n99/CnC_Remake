@@ -5,6 +5,7 @@ import type { ArmorType } from '../rules/UnitDefinitions';
 import { UnitMovement } from './UnitMovement';
 import { UnitRotation } from './UnitRotation';
 import type { Pathfinder } from '../terrain/Pathfinder';
+import { getLocomotor } from '../rules/Locomotor';
 
 /**
  * 格子坐标目标 — 用于 moveTarget / attackTarget。
@@ -118,7 +119,7 @@ export class UnitController {
     this.firepowerBias = 1.0;
     this.speedBias = 1.0;
 
-    this.movement = new UnitMovement(this.speed);
+    this.movement = new UnitMovement(getLocomotor(definition.locomotion), this.speed);
 
     // 初始化双格状态（静止时 from=to）
     const cx = Math.round(x);

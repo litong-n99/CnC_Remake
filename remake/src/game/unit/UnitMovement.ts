@@ -6,12 +6,18 @@ import { BlockedByActor } from './BlockedByActor';
 import { ActorMap } from '../world/ActorMap';
 import { GameObjectManager } from '../objects/GameObjectManager';
 import { GameObjectType } from '../objects/GameObject';
+import type { LocomotorInfo } from '../rules/Locomotor';
+import { makeTerrainCostCallback } from '../rules/Locomotor';
 
 /**
  * 单位移动控制器 — 沿 A* 路径进行插值移动，支持 OpenRA 风格阻塞 fallback 链（Task 24.3）。
  *
  * Fallback 链：
  *   NotifyBlocker → Wait → CellIsEvacuating → Repath(四级回退) → Nudge → Backup → GiveUp
+ *
+ * Task 23.7: Locomotor 配置层
+ *   - Wait 时间从 Locomotor 读取（不再是全局硬编码）
+ *   - A* 边代价按 Locomotor 的 TerrainSpeeds 计算（步兵可穿过岩石，车辆自动绕开）
  */
 export class UnitMovement {
   private path: PathNode[] = [];
@@ -25,15 +31,18 @@ export class UnitMovement {
   private repathAttempts = 0;
   private removedInfluence: Array<{ x: number; y: number }> = [];
 
-  private static readonly WAIT_DURATION_MS = 400;
-  private static readonly WAIT_SPREAD_MS = 300; // unitId 决定 0/150/300ms 额外等待
+  // ── Locomotor 配置 ──
+  private readonly locomotor: LocomotorInfo;
+  private readonly speed: number;
+  private getTerrainCost?: (x: number, y: number) => number;
+
   private static readonly MAX_REPATH_ATTEMPTS = 3;
   private static readonly SPEED_SCALE = 0.0006;
 
   /** 根据 unitId 生成确定性等待偏移，防止多单位同步死锁。 */
   private getWaitOffset(unitId: string): number {
     const code = unitId.charCodeAt(unitId.length - 1);
-    return (code % 3) * (UnitMovement.WAIT_SPREAD_MS / 2);
+    return (code % 3) * (this.locomotor.waitSpread / 2);
   }
 
   /** 根据 unitId 生成 A* 方向偏好种子，让不同单位绕路时分流。 */
@@ -57,7 +66,10 @@ export class UnitMovement {
     { x: 1, y: 1 },
   ];
 
-  constructor(private readonly speed: number) {}
+  constructor(locomotor: LocomotorInfo, speed: number) {
+    this.locomotor = locomotor;
+    this.speed = speed;
+  }
 
   /**
    * 请求移动到目标格子。
@@ -70,6 +82,11 @@ export class UnitMovement {
     this.repathAttempts = 0;
     controller.isBlocking = false;
 
+    // 缓存 Locomotor 的地形代价回调（首次使用时创建）
+    if (!this.getTerrainCost && pathfinder.getTerrainType) {
+      this.getTerrainCost = makeTerrainCostCallback(this.locomotor, pathfinder.getTerrainType);
+    }
+
     const blockedCells = UnitCollision.getBlockedCells(controller.unitId, BlockedByActor.All);
     const path = pathfinder.findPath(
       Math.round(controller.x),
@@ -79,7 +96,8 @@ export class UnitMovement {
       blockedCells,
       BlockedByActor.All,
       0,
-      true // allowBlockedEnd: 终点可能被移动中的单位暂时占用
+      true, // allowBlockedEnd: 终点可能被移动中的单位暂时占用
+      this.getTerrainCost
     );
     if (!path || path.length <= 1) return false;
 
@@ -196,7 +214,7 @@ export class UnitMovement {
     // 2. Wait（带基于 unitId 的偏移，防止同步死锁）
     if (!this.hasWaited) {
       this.hasWaited = true;
-      this.waitRemainingMs = UnitMovement.WAIT_DURATION_MS + this.getWaitOffset(controller.unitId);
+      this.waitRemainingMs = this.locomotor.waitAverage + this.getWaitOffset(controller.unitId);
     }
     this.waitRemainingMs -= deltaTime;
 
@@ -210,7 +228,7 @@ export class UnitMovement {
 
     // 3. CellIsEvacuating — 如果阻塞者都在离开，继续等待
     if (this.cellIsEvacuating(nextCell.x, nextCell.y, controller.unitId)) {
-      this.waitRemainingMs = UnitMovement.WAIT_DURATION_MS * 0.5;
+      this.waitRemainingMs = this.locomotor.waitAverage * 0.5;
       return;
     }
 
@@ -230,7 +248,17 @@ export class UnitMovement {
         const startX = controller.fromCellX;
         const startY = controller.fromCellY;
         newPath =
-          this.pathfinder?.findPath(startX, startY, dest.x, dest.y, blockedCells, check, biasSeed, true) ?? null;
+          this.pathfinder?.findPath(
+            startX,
+            startY,
+            dest.x,
+            dest.y,
+            blockedCells,
+            check,
+            biasSeed,
+            true,
+            this.getTerrainCost
+          ) ?? null;
         if (newPath && newPath.length > 1) break;
       }
 
@@ -243,7 +271,7 @@ export class UnitMovement {
           newPath.length === this.path.length &&
           newPath.every((n, i) => n.x === this.path[i].x && n.y === this.path[i].y);
         if (samePath) {
-          this.waitRemainingMs = UnitMovement.WAIT_DURATION_MS * 0.5;
+          this.waitRemainingMs = this.locomotor.waitAverage * 0.5;
           return;
         }
 
@@ -264,7 +292,7 @@ export class UnitMovement {
       }
 
       // 重寻路失败，短暂等待后再试
-      this.waitRemainingMs = UnitMovement.WAIT_DURATION_MS * 0.5;
+      this.waitRemainingMs = this.locomotor.waitAverage * 0.5;
       return;
     }
 

@@ -361,7 +361,7 @@
   - `UnitMovement` 的 `WAIT_DURATION_MS` / `WAIT_SPREAD_MS` 改为从 Locomotor 读取
   - `Pathfinder` 的 A* 边代价从固定值改为按 Locomotor `TerrainSpeeds` 计算：`cost = distance / terrainSpeed`
 - **验收**：同一地图，步兵路径穿过岩石缝隙，车辆路径自动绕开岩石；步兵与车辆的寻路代价不同。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 23.8: SubCell 步兵共享 + NotifyBlocker 完整实现
 - **目标**：基于 Locomotor 的 `SharesCell` 实现步兵共享格子，并完成阻塞者的主动避让响应。
