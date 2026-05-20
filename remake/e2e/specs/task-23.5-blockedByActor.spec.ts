@@ -2,13 +2,13 @@ import { test, expect } from '@playwright/test';
 import { GamePage } from '../fixtures/GamePage';
 
 /**
- * Task 24.2 E2E Test — BlockedByActor 四级阻塞分级
+ * Task 23.5 E2E Test — BlockedByActor 四级阻塞分级
  *
  * Verifies that pathfinding respects different levels of actor blocking:
  * All (strict), Stationary (ignore moving), Immovable (ignore movable), None.
  */
 
-test.describe('Task 24.2 — BlockedByActor分级', () => {
+test.describe('Task 23.5 — BlockedByActor分级', () => {
   let game: GamePage;
 
   test.beforeEach(async ({ page }) => {

@@ -53,6 +53,7 @@ export class GameConsole {
       pathfind: this.pathfind.bind(this),
       moveUnit: this.moveUnit.bind(this),
       distance: this.distance.bind(this),
+      debugState: this.debugState.bind(this),
       help: this.help.bind(this),
     };
     // eslint-disable-next-line no-console
@@ -378,6 +379,28 @@ export class GameConsole {
       }
       return { cells: result };
     }
+  }
+
+  /** Return debug state for all units. */
+  private debugState(): Array<Record<string, unknown>> {
+    const manager = GameObjectManager.getInstance();
+    const result: Array<Record<string, unknown>> = [];
+    for (const obj of manager.getUnits()) {
+      const unit = obj as Unit;
+      result.push({
+        id: unit.id,
+        x: unit.x,
+        y: unit.y,
+        fromCellX: unit.logic.fromCellX,
+        fromCellY: unit.logic.fromCellY,
+        toCellX: unit.logic.toCellX,
+        toCellY: unit.logic.toCellY,
+        isMoving: unit.logic.isMovingBetweenCells,
+        isBlocking: unit.logic.isBlocking,
+        state: unit.logic.stateMachine.state,
+      });
+    }
+    return result;
   }
 
   /** Return Euclidean distance between two units. */

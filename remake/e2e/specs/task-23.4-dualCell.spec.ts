@@ -2,13 +2,13 @@ import { test, expect } from '@playwright/test';
 import { GamePage } from '../fixtures/GamePage';
 
 /**
- * Task 24.1 E2E Test — Dual-Cell Occupancy
+ * Task 23.4 E2E Test — Dual-Cell Occupancy
  *
  * Verifies that moving units occupy both fromCell and toCell
  * (OpenRA-style), while stationary units occupy only one cell.
  */
 
-test.describe('Task 24.1 — Dual-Cell Occupancy', () => {
+test.describe('Task 23.4 — Dual-Cell Occupancy', () => {
   let game: GamePage;
 
   test.beforeEach(async ({ page }) => {

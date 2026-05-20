@@ -85,6 +85,10 @@ export class UnitController {
   toCellY = 0;
   isMovingBetweenCells = false;
 
+  // ── OpenRA 阻塞标记 ──
+  isBlocking = false; // 被通知后标记"我也在阻塞别人"
+  isNudging = false; // 正在 nudge 让路中，不响应 notify
+
   // ── 移动控制器 ──
   readonly movement: UnitMovement;
 
@@ -136,6 +140,16 @@ export class UnitController {
       ];
     }
     return [{ x: this.fromCellX, y: this.fromCellY }];
+  }
+
+  /** 被其他单位通知阻塞时的回调（OpenRA NotifyBlocker）。
+   *  Task 24.4 将填充完整实现（idle nudge / moving set IsBlocking）。
+   */
+  onNotifyBlockingMove(_blockerId: string): void {
+    if (this.isNudging) return;
+    if (this.stateMachine.state !== UnitState.Idle) {
+      this.isBlocking = true;
+    }
   }
 
   /**

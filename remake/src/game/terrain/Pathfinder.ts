@@ -69,12 +69,17 @@ export class Pathfinder {
     endX: number,
     endY: number,
     extraBlocked?: ReadonlySet<string>,
-    check = BlockedByActor.All
+    check = BlockedByActor.All,
+    biasSeed = 0,
+    allowBlockedEnd = false
   ): PathNode[] | null {
     if (!this.isInside(endX, endY) || !this.isPassable(endX, endY)) return null;
 
     const dynamicBlocked = this.getBlockedCells?.(check) ?? new Set<string>();
-    if (dynamicBlocked.has(`${endX},${endY}`) || extraBlocked?.has(`${endX},${endY}`)) return null;
+    // 默认情况下终点被阻塞时直接失败；allowBlockedEnd=true 时允许终点被动态/单位占用，
+    // 因为对方可能正在离开。只拒绝地形不可通行（上面已检查）。
+    if (!allowBlockedEnd && (dynamicBlocked.has(`${endX},${endY}`) || extraBlocked?.has(`${endX},${endY}`)))
+      return null;
 
     const openSet: AStarNode[] = [];
     const closedSet = new Set<string>();
@@ -105,7 +110,8 @@ export class Pathfinder {
       openSet.splice(currentIdx, 1);
       closedSet.add(`${current.x},${current.y}`);
 
-      for (const offset of Pathfinder.NEIGHBORS) {
+      const neighbors = biasSeed !== 0 ? this.getNeighborsWithBias(biasSeed) : Pathfinder.NEIGHBORS;
+      for (const offset of neighbors) {
         const nx = current.x + offset.x;
         const ny = current.y + offset.y;
         const key = `${nx},${ny}`;
@@ -113,7 +119,10 @@ export class Pathfinder {
         if (closedSet.has(key)) continue;
         if (!this.isInside(nx, ny)) continue;
         if (!this.isPassable(nx, ny)) continue;
-        if (dynamicBlocked.has(key) || extraBlocked?.has(key)) continue;
+        // allowBlockedEnd: 终点允许被动态阻塞（单位占用），因为对方可能正在离开
+        const isEndCell = nx === endX && ny === endY;
+        if (!isEndCell && (dynamicBlocked.has(key) || extraBlocked?.has(key))) continue;
+        if (!allowBlockedEnd && isEndCell && (dynamicBlocked.has(key) || extraBlocked?.has(key))) continue;
 
         // ── 对角线剪枝（Corner Cutting）──
         // 沿对角线移动时，必须确保两个正交相邻格子也可通行，
@@ -161,6 +170,21 @@ export class Pathfinder {
     const dy = Math.abs(y1 - y2);
     // 切比雪夫距离适合八方向：直线移动代价 1，对角线代价 ≈1.414
     return Math.max(dx, dy) + (Math.sqrt(2) - 1) * Math.min(dx, dy);
+  }
+
+  /**
+   * 根据 biasSeed 调整邻居遍历顺序。
+   * seed 为偶数：保持默认（优先南/东）
+   * seed 为奇数：交换南北优先级（优先北/东）
+   * 这让不同单位在绕路时自然分流到不同侧。
+   */
+  private getNeighborsWithBias(seed: number): readonly Neighbor[] {
+    const dirs = [...Pathfinder.NEIGHBORS];
+    if (seed % 2 === 1) {
+      // 交换 "下" 和 "上" 的遍历顺序（索引 2 和 3）
+      [dirs[2], dirs[3]] = [dirs[3], dirs[2]];
+    }
+    return dirs;
   }
 
   private reconstructPath(endNode: AStarNode): PathNode[] {

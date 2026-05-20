@@ -272,11 +272,11 @@
 > 3. **notify 回调链副作用**：`notifyBlockersAt` → `cellIsEvacuating` 会意外触发 idle 单位移动，形成级联混乱
 > 4. **重寻路终点混淆**：重寻路时误用当前阻塞节点作为终点，导致 A* 永远失败 → `GiveUp` 死循环
 >
-> **本轮重构核心原则**：
-> 1. **单格精确占用**：每个单位在 `ActorMap` 中只占据 `Math.round(x), Math.round(y)` 这一个格子
-> 2. **零 notify 机制**：不使用任何"通知其他单位"的回调；阻塞处理完全由被阻塞单位自驱
-> 3. **A* 负责宏观绕开**：初始寻路时排除其他单位位置，路径本身就不会主动穿过其他单位
-> 4. **阻塞时自驱 fallback**：暂停 → 等待 → 重寻路（到**原始目标**）→ Nudge → GiveUp
+> **本轮重构核心原则（已演进）**：
+> 1. **双格精确占用（OpenRA 对齐）**：移动中单位同时占据 `fromCell` 和 `toCell`，确保交叉移动时不会发生穿透
+> 2. **A* 负责宏观绕开**：初始寻路时排除其他单位位置，路径本身就不会主动穿过其他单位
+> 3. **阻塞时自驱 fallback**：Wait → CellIsEvacuating → Repath(四级回退) → Nudge → Backup → GiveUp
+> 4. **Notify 预留骨架**：`notifyBlockersAt` / `onNotifyBlockingMove` 作为 Task 24.4 的接口预埋，当前仅设置 `isBlocking` 标记
 > 5. **增量可验证**：每个子任务完成后都能独立测试（"两辆坦克相向而行"作为最低验收标准）
 >
 > **OpenRA 参考**（仅借鉴核心概念，不直译 C# trait 系统）：
@@ -302,12 +302,12 @@
 - **验收**：两辆坦克相距 1 格，各自朝对方移动；第一步 A* 就把对方位置视为阻塞，路径自动绕开。
 - **状态**：[x] `done`
 
-### Task 23.3: UnitMovement 重构 — 简化阻塞 fallback 链
-- **目标**：移除 `fromCell`/`toCell` 双格概念、移除 `notifyBlockersAt`/`cellIsEvacuating`。实现自驱式阻塞处理：暂停 → 等待 → 重寻路（到原始目标）→ Nudge → GiveUp。
+### Task 23.3: UnitMovement 重构 — 自驱阻塞 fallback 链
+- **目标**：实现自驱式阻塞处理基础链：暂停 → 等待 → 重寻路 → Nudge → GiveUp。保留 `fromCell`/`toCell` 占位用于后续双格升级。
 - **文件**：`src/game/unit/UnitMovement.ts`
 - **阻塞处理逻辑**：
   1. 移动中检测到下一步目标格被占 → 暂停（不前进）
-  2. 等待 `WAIT_DURATION_MS`（800ms），期间面朝目标
+  2. 等待 `WAIT_DURATION_MS`（400ms + unitId 哈希偏移），期间面朝目标
   3. 重寻路到**原始目标** `controller.moveTarget`（起点 = 当前 `Math.round(x), Math.round(y)`）
   4. 如果找到路径 → 走新路径，重置等待状态
   5. 如果 3 次重寻路都失败 → 找相邻空闲格（nudge），朝该格移动一步后回到 Idle
@@ -316,20 +316,54 @@
 - **验收**：两辆坦克相向而行碰撞后，等待片刻自动绕开对方，最终都到达目标点。
 - **状态**：[x] `done`
 
-### Task 23.4: 步兵 SubCell 共享
+### Task 23.4: 双格占用（Dual-Cell Occupancy）
+- **目标**：将 ActorMap 占用从单格升级为双格（OpenRA FromCell + ToCell）。移动中单位同时注册当前格和下一格，解决交叉移动穿透问题。
+- **文件**：`src/game/unit/Unit.ts`, `src/game/unit/UnitMovement.ts`, `src/game/objects/Unit.ts`
+- **关键变更**：
+  - `UnitController` 新增 `fromCellX/Y`、`toCellX/Y`、`isMovingBetweenCells`
+  - `UnitMovement.moveTo()` 初始化双格占用；`update()` 到达节点时更新 `fromCell = toCell`
+  - `Unit.update()` 使用 diff-based ActorMap 同步（`lastOccupiedCells` vs `getOccupiedCells()`）
+- **验收**：两辆车交叉移动（A: (30,30)→(32,30)，B: (32,30)→(30,30)）不会穿透。
+- **状态**：[x] `done`
+
+### Task 23.5: BlockedByActor 四级阻塞分级
+- **目标**：引入 OpenRA 风格的四级阻塞分级：`All` → `Stationary` → `Immovable` → `None`。Pathfinder 和 UnitCollision 支持按级别过滤阻塞者。
+- **文件**：`src/game/unit/BlockedByActor.ts`, `src/game/unit/UnitCollision.ts`, `src/game/terrain/Pathfinder.ts`
+- **关键变更**：
+  - 新增 `BlockedByActor` 枚举
+  - `UnitCollision.isPositionBlocked()` 和 `getBlockedCells()` 支持 `check` 参数
+  - `Pathfinder.findPath()` 支持 `check` 参数，根据级别决定是否将某格视为阻塞
+- **验收**：`Stationary` 级别忽略移动中单位；`None` 级别完全忽略所有单位阻塞。
+- **状态**：[x] `done`
+
+### Task 23.6: Fallback 链完整实现
+- **目标**：实现 OpenRA 风格的完整阻塞处理链：Wait → CellIsEvacuating → Repath(四级回退) → Nudge → Backup → GiveUp。解决 head-on 相向而行死锁。
+- **文件**：`src/game/unit/UnitMovement.ts`, `src/game/terrain/Pathfinder.ts`
+- **关键变更**：
+  - `cellIsEvacuating()`：检查格子内所有 occupants 是否都在离开（`isMovingBetweenCells && toCell ≠ 当前格`）
+  - `Pathfinder` 新增 `allowBlockedEnd` 参数：终点允许被移动中的单位暂时占用，因为对方可能正在离开
+  - Repath 时拒绝与当前路径完全相同的结果，避免无限循环
+  - `notifyBlockersAt` / `onNotifyBlockingMove` 骨架预埋（Task 23.7 实现响应）
+- **验收**：
+  1. CellIsEvacuating：B 离开 (31,30) 时，A 等待而非 repath
+  2. Repath fallback：静止阻塞者挡住路径时，A 自动绕路
+  3. Head-on：两车相向而行，最终都到达目标无死锁
+- **状态**：[x] `done`
+
+### Task 23.7: 步兵 SubCell 共享
 - **目标**：ActorMap 允许多个步兵共享同一格子（参考 OpenRA SubCell）。车辆独占格子（一个格子只能有一个车辆）。
 - **文件**：`src/game/world/ActorMap.ts`, `src/game/unit/UnitCollision.ts`
 - **实现**：ActorMap 的 `getOccupants` 返回所有 ID；UnitCollision 在检查阻塞时，若目标格内全是步兵则放行（步兵可重叠），若有车辆则阻塞。
 - **验收**：5 名步枪兵站在同一格子，互相不阻塞；1 辆坦克驶入该格时，步兵自动被"推开"（或坦克绕开）。
 - **状态**：[ ] `done`
 
-### Task 23.5: 密集场景压力测试
+### Task 23.8: 密集场景压力测试
 - **目标**：在狭窄地形（如桥梁、峡谷）中测试 10+ 单位交叉移动，验证无死锁、无穿透、无异常漂移。
 - **文件**：`src/main.ts`（测试场景）
 - **验收**：10 辆坦克分别从地图两侧出发前往对侧，所有单位最终到达目标或合理停止（无死锁）。
 - **状态**：[ ] `done`
 
-### Task 23.6: 框选 + 群体移动回归
+### Task 23.9: 框选 + 群体移动回归
 - **目标**：恢复 Task 24 的框选功能（在 Phase 5.5 之前的版本中已实现，随回滚一并移除）。将框选与重构后的移动系统对接。
 - **文件**：`src/core/RTSCamera.ts`, `src/core/SelectionBox.ts`, `src/game/SelectionManager.ts`, `src/main.ts`
 - **验收**：按住左键拖动出现绿色矩形框，松开时框内单位被选中（多选）；右键点击地面，所有选中单位同步移动；框选功能在群体移动时无卡顿。
