@@ -274,23 +274,34 @@ export class GameConsole {
     }
   }
 
-  /** Inspect ActorMap occupancy. */
-  private actorMap(x?: number, y?: number): void {
+  /** Inspect ActorMap occupancy.
+   * @returns Structured data for programmatic access (e.g. E2E tests).
+   */
+  private actorMap(
+    x?: number,
+    y?: number
+  ):
+    | { cells: Array<{ x: number; y: number; occupants: readonly string[] }> }
+    | { x: number; y: number; occupants: readonly string[] } {
     const am = ActorMap.getInstance();
     if (x !== undefined && y !== undefined) {
       const occupants = am.getOccupants(x, y);
       // eslint-disable-next-line no-console
       console.info(`Cell (${x}, ${y}): ${occupants.length} unit(s) — [${occupants.join(', ')}]`);
+      return { x, y, occupants };
     } else {
       const cells = am.getAllOccupiedCells();
       // eslint-disable-next-line no-console
       console.info(`ActorMap — ${cells.size} occupied cell(s):`);
+      const result: Array<{ x: number; y: number; occupants: readonly string[] }> = [];
       for (const key of cells) {
         const [cx, cy] = key.split(',').map(Number);
         const occupants = am.getOccupants(cx, cy);
         // eslint-disable-next-line no-console
         console.info(`  (${cx}, ${cy}): [${occupants.join(', ')}]`);
+        result.push({ x: cx, y: cy, occupants });
       }
+      return { cells: result };
     }
   }
 
