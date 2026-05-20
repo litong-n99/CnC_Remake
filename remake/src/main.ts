@@ -9,7 +9,6 @@ import { Pathfinder } from './game/terrain/Pathfinder';
 import { GameRules } from './game/rules/GameRules';
 import { UNIT_DEFINITIONS } from './game/rules/UnitDefinitions';
 import { getBuildingFootprint } from './game/rules/BuildingDefinitions';
-import { BUILDING_DEFINITIONS } from './game/rules/BuildingDefinitions';
 import { HouseManager } from './game/house/HouseManager';
 import { HouseType } from './game/house/House';
 import { GameObjectFactory } from './game/objects/GameObjectFactory';
@@ -22,7 +21,6 @@ import { ConstructionQueue } from './game/building/ConstructionQueue';
 import { BuildingPlacer } from './game/building/BuildingPlacer';
 import { Sidebar } from './renderer/ui/Sidebar';
 import { GameConsole } from './debug/GameConsole';
-import { PowerManager } from './game/building/PowerManager';
 
 const bootstrap = async (): Promise<void> => {
   // ── Engine ──
@@ -59,6 +57,23 @@ const bootstrap = async (): Promise<void> => {
   } catch (err) {
     console.warn('Failed to load map, falling back to test pattern:', err);
     terrain.generateTestPattern();
+  }
+
+  // ── Task 23.7 验收场景：岩石峡谷 ──
+  // 在中间区域创建一道完整的 Rock 墙。
+  // 步兵（Foot）Rock=0.5 可直接穿过岩石，车辆（Track）Rock=0 必须绕路。
+  for (let x = 24; x <= 36; x++) {
+    terrain.setCellLandType(x, 22, LandType.Rock);
+    terrain.setCellLandType(x, 23, LandType.Rock);
+  }
+
+  // 将所有 Water 改为 Clear，方便测试（避免车辆在水上）
+  for (let y = 0; y < 64; y++) {
+    for (let x = 0; x < 64; x++) {
+      if (terrain.getCellLandType(x, y) === LandType.Water) {
+        terrain.setCellLandType(x, y, LandType.Clear);
+      }
+    }
   }
 
   // ── Pathfinder ──
@@ -106,175 +121,49 @@ const bootstrap = async (): Promise<void> => {
     capacity: 2000,
   });
 
-  // ── Spawn all building types for both houses ──
-  // GDI base (top-right quadrant)
-  const gdiBuildings = [
-    GameObjectFactory.createBuilding({
-      definition: BUILDING_DEFINITIONS.ConstructionYard,
-      house: gdi,
-      x: 34,
-      y: 6,
-      scene,
-    }),
-    GameObjectFactory.createBuilding({ definition: BUILDING_DEFINITIONS.PowerPlant, house: gdi, x: 40, y: 6, scene }),
-    GameObjectFactory.createBuilding({
-      definition: BUILDING_DEFINITIONS.AdvancedPower,
-      house: gdi,
-      x: 44,
-      y: 6,
-      scene,
-    }),
-    GameObjectFactory.createBuilding({ definition: BUILDING_DEFINITIONS.Barracks, house: gdi, x: 48, y: 6, scene }),
-    GameObjectFactory.createBuilding({ definition: BUILDING_DEFINITIONS.WarFactory, house: gdi, x: 38, y: 10, scene }),
-    GameObjectFactory.createBuilding({ definition: BUILDING_DEFINITIONS.Radar, house: gdi, x: 42, y: 10, scene }),
-    GameObjectFactory.createBuilding({ definition: BUILDING_DEFINITIONS.Helipad, house: gdi, x: 46, y: 10, scene }),
-    GameObjectFactory.createBuilding({
-      definition: BUILDING_DEFINITIONS.RepairFacility,
-      house: gdi,
-      x: 50,
-      y: 10,
-      scene,
-    }),
-  ];
-
-  // Nod base (bottom-right quadrant)
-  const nodBuildings = [
-    GameObjectFactory.createBuilding({
-      definition: BUILDING_DEFINITIONS.ConstructionYard,
-      house: nod,
-      x: 34,
-      y: 38,
-      scene,
-    }),
-    GameObjectFactory.createBuilding({ definition: BUILDING_DEFINITIONS.PowerPlant, house: nod, x: 40, y: 38, scene }),
-    GameObjectFactory.createBuilding({ definition: BUILDING_DEFINITIONS.OreRefinery, house: nod, x: 44, y: 38, scene }),
-    GameObjectFactory.createBuilding({ definition: BUILDING_DEFINITIONS.WarFactory, house: nod, x: 48, y: 38, scene }),
-    GameObjectFactory.createBuilding({ definition: BUILDING_DEFINITIONS.Radar, house: nod, x: 52, y: 38, scene }),
-    GameObjectFactory.createBuilding({ definition: BUILDING_DEFINITIONS.Helipad, house: nod, x: 40, y: 42, scene }),
-    GameObjectFactory.createBuilding({
-      definition: BUILDING_DEFINITIONS.RepairFacility,
-      house: nod,
-      x: 44,
-      y: 42,
-      scene,
-    }),
-    GameObjectFactory.createBuilding({ definition: BUILDING_DEFINITIONS.Shipyard, house: nod, x: 52, y: 42, scene }),
-  ];
-
-  const gdiTank = GameObjectFactory.createUnit({
+  // ── Task 23.7 验收：步兵穿岩石缝隙 vs 坦克绕路 ──
+  const infantryLeft = GameObjectFactory.createUnit({
+    definition: UNIT_DEFINITIONS.RifleInfantry,
+    house: gdi,
+    x: 25,
+    y: 20,
+    scene,
+  });
+  const tankLeft = GameObjectFactory.createUnit({
     definition: UNIT_DEFINITIONS.MediumTank,
     house: gdi,
-    x: 42,
-    y: 14,
+    x: 25,
+    y: 21,
     scene,
   });
-  const gdiJeep = GameObjectFactory.createUnit({ definition: UNIT_DEFINITIONS.Jeep, house: gdi, x: 45, y: 15, scene });
-  const nodTank = GameObjectFactory.createUnit({
-    definition: UNIT_DEFINITIONS.LightTank,
+  const infantryRight = GameObjectFactory.createUnit({
+    definition: UNIT_DEFINITIONS.RifleInfantry,
     house: nod,
-    x: 46,
-    y: 40,
+    x: 35,
+    y: 24,
     scene,
   });
-  const nodRocket = GameObjectFactory.createUnit({
-    definition: UNIT_DEFINITIONS.V2Rocket,
+  const tankRight = GameObjectFactory.createUnit({
+    definition: UNIT_DEFINITIONS.MediumTank,
     house: nod,
-    x: 50,
-    y: 40,
+    x: 35,
+    y: 25,
     scene,
   });
+  const task237Units: Unit[] = [infantryLeft, tankLeft, infantryRight, tankRight];
 
-  // ── Infantry spawn ──
-  const gdiRifle1 = GameObjectFactory.createUnit({
-    definition: UNIT_DEFINITIONS.RifleInfantry,
-    house: gdi,
-    x: 41,
-    y: 16,
-    scene,
-  });
-  const gdiRifle2 = GameObjectFactory.createUnit({
-    definition: UNIT_DEFINITIONS.RifleInfantry,
-    house: gdi,
-    x: 43,
-    y: 16,
-    scene,
-  });
-  const gdiRocket = GameObjectFactory.createUnit({
-    definition: UNIT_DEFINITIONS.RocketSoldier,
-    house: gdi,
-    x: 44,
-    y: 17,
-    scene,
-  });
-  const gdiEngineer = GameObjectFactory.createUnit({
-    definition: UNIT_DEFINITIONS.Engineer,
-    house: gdi,
-    x: 42,
-    y: 17,
-    scene,
-  });
-
-  const nodRifle1 = GameObjectFactory.createUnit({
-    definition: UNIT_DEFINITIONS.RifleInfantry,
-    house: nod,
-    x: 45,
-    y: 42,
-    scene,
-  });
-  const nodRifle2 = GameObjectFactory.createUnit({
-    definition: UNIT_DEFINITIONS.RifleInfantry,
-    house: nod,
-    x: 47,
-    y: 42,
-    scene,
-  });
-  const nodFlame = GameObjectFactory.createUnit({
-    definition: UNIT_DEFINITIONS.Flamethrower,
-    house: nod,
-    x: 46,
-    y: 43,
-    scene,
-  });
-  const nodDog = GameObjectFactory.createUnit({
-    definition: UNIT_DEFINITIONS.AttackDog,
-    house: nod,
-    x: 48,
-    y: 43,
-    scene,
-  });
-
-  // ── Task 23.1 验收：5 辆 GDI MediumTank 排成一排 ──
-  const testTanks: Unit[] = [];
-  for (let i = 0; i < 5; i++) {
-    testTanks.push(
-      GameObjectFactory.createUnit({
-        definition: UNIT_DEFINITIONS.MediumTank,
-        house: gdi,
-        x: 25 + i,
-        y: 30,
-        scene,
-      })
-    );
-  }
+  // 自动下达移动命令（延迟 1s 确保场景初始化完成）
+  setTimeout(() => {
+    infantryLeft.logic.moveTo(35, 24, pathfinder);
+    tankLeft.logic.moveTo(35, 24, pathfinder);
+    infantryRight.logic.moveTo(25, 20, pathfinder);
+    tankRight.logic.moveTo(25, 20, pathfinder);
+    // eslint-disable-next-line no-console
+    console.info('Task 23.7: Move orders issued — infantry through rock gap, tanks around');
+  }, 1000);
 
   // Enable shadows on all spawned objects
-  const allSpawned = [
-    ...gdiBuildings,
-    ...nodBuildings,
-    gdiTank,
-    gdiJeep,
-    nodTank,
-    nodRocket,
-    gdiRifle1,
-    gdiRifle2,
-    gdiRocket,
-    gdiEngineer,
-    nodRifle1,
-    nodRifle2,
-    nodFlame,
-    nodDog,
-    ...testTanks,
-  ];
+  const allSpawned = [...task237Units];
   for (const obj of allSpawned) {
     if (obj.mesh) {
       lighting.addShadowCaster(obj.mesh);
@@ -282,13 +171,11 @@ const bootstrap = async (): Promise<void> => {
     }
   }
 
-  // ── Task 22: Construction Queue & Sidebar ──
+  // ── Minimal infrastructure for interaction ──
   const queue = new ConstructionQueue(gdi);
   const placer = new BuildingPlacer(scene, rtsCamera.getCamera(), terrain);
 
-  // ── Sidebar mode state ──
-  let sidebarMode: import('./renderer/ui/Sidebar').SidebarMode = 'normal';
-
+  // ── Sidebar ──
   const sidebar = new Sidebar(
     scene,
     gdi,
@@ -308,8 +195,6 @@ const bootstrap = async (): Promise<void> => {
       }
     },
     (mode) => {
-      sidebarMode = mode;
-      // Update cursor color to indicate mode
       if (mode === 'repair') {
         rtsCamera.setCursorColor('#0f0');
       } else if (mode === 'sell') {
@@ -319,24 +204,6 @@ const bootstrap = async (): Promise<void> => {
       }
     }
   );
-
-  /** 更新 House 电力（遍历所有建筑重新计算）。 */
-  const updateHousePower = (house: import('./game/house/House').House): void => {
-    let production = 0;
-    let consumption = 0;
-    for (const obj of GameObjectManager.getInstance().getBuildings()) {
-      if (obj.house !== house || !obj.isAlive()) continue;
-      const building = obj as import('./game/objects/Building').Building;
-      const p = building.definition.power;
-      if (p > 0) production += p;
-      else consumption += Math.abs(p);
-    }
-    house.updatePower(production, consumption);
-  };
-
-  // 初始化电力（初始建筑已放置但尚未计算）
-  updateHousePower(gdi);
-  updateHousePower(nod);
 
   // ── Task 17: Selection & Right-click to move ──
   const selectionManager = SelectionManager.getInstance();
@@ -371,105 +238,8 @@ const bootstrap = async (): Promise<void> => {
     return closest;
   };
 
-  /** 将屏幕坐标转为地面坐标，再查找最近的建筑（2 格半径内）。 */
-  const pickBuildingAt = (screenX: number, screenY: number): import('./game/objects/Building').Building | null => {
-    const groundPos = rtsCamera.screenToGround(screenX, screenY);
-    if (!groundPos) return null;
-
-    let closest: import('./game/objects/Building').Building | null = null;
-    let closestDist = Infinity;
-
-    for (const obj of GameObjectManager.getInstance().getBuildings()) {
-      if (obj.type !== GameObjectType.Building) continue;
-      const b = obj as import('./game/objects/Building').Building;
-      const pos = b.getPosition?.() ?? new Vector3(b.x - 31.5, 0, b.y - 31.5);
-      const dx = pos.x - groundPos.x;
-      const dz = pos.z - groundPos.z;
-      const dist = Math.sqrt(dx * dx + dz * dz);
-
-      if (dist < 2.0 && dist < closestDist) {
-        closest = b;
-        closestDist = dist;
-      }
-    }
-    return closest;
-  };
-
-  // 左键：放置建筑 / 选中单位 / 维修 / 出售
+  // 左键：选中单位
   rtsCamera.onLeftClick = (screenX, screenY) => {
-    // 放置模式优先
-    if (placer.isPlacing()) {
-      const ptr = rtsCamera.getPointerPosition();
-      placer.updateFromScreen(ptr.x, ptr.y);
-      const cell = placer.confirmPlacement();
-      if (cell) {
-        let building: import('./game/objects/Building').Building | null;
-        if (gameConsole.hasPendingBuilding()) {
-          building = gameConsole.tryPlaceBuilding(cell.x, cell.y, scene);
-        } else {
-          building = queue.placeBuilding(cell.x, cell.y, scene);
-        }
-        if (building) {
-          updateHousePower(gdi);
-          if (building.mesh) {
-            lighting.addShadowCaster(building.mesh);
-            lighting.enableShadowsOnMesh(building.mesh);
-          }
-          // eslint-disable-next-line no-console
-          console.info(`Placed ${building.definition.name} at (${cell.x}, ${cell.y})`);
-        }
-      } else {
-        console.warn('Invalid placement position');
-      }
-      return;
-    }
-
-    // ── Repair mode ──
-    if (sidebarMode === 'repair') {
-      const b = pickBuildingAt(screenX, screenY);
-      if (b && b.house === gdi && b.isAlive()) {
-        const repairCost = Math.floor(b.definition.cost * 0.1);
-        if (gdi.credits < repairCost) {
-          console.warn(`Not enough credits to repair ${b.definition.name} (need $${repairCost})`);
-          return;
-        }
-        const oldHp = b.health;
-        b.health = Math.min(b.definition.strength, b.health + Math.floor(b.definition.strength * 0.25));
-        if (b.health > oldHp) {
-          gdi.spendCredits(repairCost);
-          // eslint-disable-next-line no-console
-          console.info(`Repaired ${b.definition.name} (+${b.health - oldHp} HP) for $${repairCost}`);
-        } else {
-          console.warn(`${b.definition.name} is already at full health`);
-        }
-      } else {
-        console.warn('No friendly building found to repair');
-      }
-      return;
-    }
-
-    // ── Sell mode ──
-    if (sidebarMode === 'sell') {
-      const b = pickBuildingAt(screenX, screenY);
-      if (b && b.house === gdi && b.isAlive()) {
-        const refund = Math.floor(b.definition.cost * 0.5);
-        gdi.addCredits(refund);
-        b.dispose();
-        GameObjectManager.getInstance().unregister(b.id);
-        // 检查是否还有其他同类型建筑存活，没有则从 availableBuildings 中删除
-        const hasOther = GameObjectManager.getInstance()
-          .getBuildings()
-          .some((obj) => obj.definitionId === b.definition.id && obj.house.id === gdi.id && obj.isAlive());
-        gdi.removeBuilding(b.definition.id, !hasOther);
-        updateHousePower(gdi);
-        // eslint-disable-next-line no-console
-        console.info(`Sold ${b.definition.name} for $${refund}`);
-      } else {
-        console.warn('No friendly building found to sell');
-      }
-      return;
-    }
-
     // ── Normal mode: select unit ──
     console.warn('Left-click detected at', screenX, screenY);
 
@@ -490,14 +260,6 @@ const bootstrap = async (): Promise<void> => {
       placer.cancelPlacement();
       gameConsole.clearPendingBuilding();
       console.warn('Placement cancelled');
-      return;
-    }
-
-    // Repair / Sell 模式下右键 = 取消模式
-    if (sidebarMode !== 'normal') {
-      sidebarMode = 'normal';
-      rtsCamera.setCursorColor('#fff');
-      console.warn('Mode cancelled');
       return;
     }
 
@@ -555,25 +317,12 @@ const bootstrap = async (): Promise<void> => {
   scene.onBeforeRenderObservable.add(() => {
     const dt = engine.getDeltaTime();
 
-    // Task 22: update construction queue + ghost + sidebar
     queue.tick(dt);
     if (placer.isPlacing()) {
       const ptr = rtsCamera.getPointerPosition();
       placer.updateFromScreen(ptr.x, ptr.y);
     }
     sidebar.refresh(dt);
-
-    // Task 23: 电力检查 — 输出因电力不足而停摆的建筑
-    const powerMgr = PowerManager.getInstance();
-    const unpowered = powerMgr.getUnpoweredBuildingsForHouse(gdi.id);
-    if (unpowered.length > 0 && Math.random() < 0.02) {
-      // 低频率日志，避免刷屏
-      console.warn(
-        `LOW POWER — ${unpowered.length} buildings offline:`,
-        unpowered.map((b) => b.definition.name).join(', ')
-      );
-    }
-
     GameObjectManager.getInstance().update(dt);
   });
 
@@ -584,7 +333,6 @@ const bootstrap = async (): Promise<void> => {
   window.addEventListener('beforeunload', () => {
     sidebar.dispose();
     placer.dispose();
-    PowerManager.getInstance().dispose();
     GameObjectManager.getInstance().dispose();
     houseManager.dispose();
     terrain.dispose();
