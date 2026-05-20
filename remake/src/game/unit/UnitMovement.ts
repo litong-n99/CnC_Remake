@@ -116,19 +116,33 @@ export class UnitMovement {
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (dist < 0.05) {
-      // 到达当前路径点，进入下一格
+      // 到达当前路径点，准备进入下一格
       controller.x = target.x;
       controller.y = target.y;
 
       // ── 更新双格占用状态 ──
       controller.fromCellX = controller.toCellX;
       controller.fromCellY = controller.toCellY;
+
+      // ── 提前阻塞检测：在进入下一格前检查 ──
+      // 这样可以避免单位已经走到半格位置才急停
+      const nextIdx = this.pathIndex + 1;
+      if (nextIdx < this.path.length) {
+        const nextTarget = this.path[nextIdx];
+        if (UnitCollision.isPositionBlocked(nextTarget.x, nextTarget.y, controller.unitId, BlockedByActor.All)) {
+          // 下一格被阻塞：不进入，直接触发 fallback 链
+          this.handleBlocked(controller, deltaTime, nextTarget);
+          return;
+        }
+      }
+
       this.pathIndex++;
 
       if (this.pathIndex < this.path.length) {
         const nextTarget = this.path[this.pathIndex];
         controller.toCellX = nextTarget.x;
         controller.toCellY = nextTarget.y;
+        controller.isMovingBetweenCells = true;
       } else {
         controller.isMovingBetweenCells = false;
       }
@@ -165,7 +179,7 @@ export class UnitMovement {
    * OpenRA 风格阻塞自驱 fallback 链：
    * NotifyBlocker → Wait → CellIsEvacuating → Repath(四级回退) → Nudge → Backup → GiveUp
    */
-  private handleBlocked(controller: UnitController, deltaTime: number): void {
+  private handleBlocked(controller: UnitController, deltaTime: number, blockedCell?: { x: number; y: number }): void {
     controller.isWaiting = true;
 
     const dest = controller.moveTarget;
@@ -174,7 +188,7 @@ export class UnitMovement {
       return;
     }
 
-    const nextCell = this.path[this.pathIndex];
+    const nextCell = blockedCell ?? this.path[this.pathIndex];
 
     // 1. NotifyBlocker — 通知阻塞者（Task 24.4 实现响应）
     this.notifyBlockers(controller, nextCell.x, nextCell.y);
