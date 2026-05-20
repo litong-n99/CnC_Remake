@@ -2,6 +2,7 @@ import { ActorMap } from '../world/ActorMap';
 import { GameObjectManager } from '../objects/GameObjectManager';
 import { GameObjectType } from '../objects/GameObject';
 import { BlockedByActor } from './BlockedByActor';
+import { getLocomotor } from '../rules/Locomotor';
 
 /**
  * 单位碰撞与避障系统 — Task 24.2 BlockedByActor 分级 + 双格占用。
@@ -27,24 +28,67 @@ export class UnitCollision {
     const cy = Math.round(y);
     const am = ActorMap.getInstance();
 
+    // Task 23.8: 查询调用者的 sharesCell（步兵 vs 车辆行为不同）
+    const callerObj = GameObjectManager.getInstance().get(excludeId);
+    let callerSharesCell: boolean | undefined;
+    if (callerObj && callerObj.type === GameObjectType.Unit) {
+      const callerUnit = callerObj as import('../objects/Unit').Unit;
+      callerSharesCell = getLocomotor(callerUnit.definition.locomotion).sharesCell;
+    }
+
     // 检查 round 格子
-    if (this.isCellBlockedByActor(am.getOccupants(cx, cy), excludeId, check)) return true;
+    if (this.isCellBlockedByActor(am.getOccupants(cx, cy), excludeId, check, callerSharesCell)) return true;
 
     return false;
   }
 
   /**
    * 判断指定格子的 occupants 中是否有阻塞者。
+   *
+   * Task 23.8: SubCell 共享
+   *   - 若格子内**所有**存活 occupant 都是步兵（sharesCell=true）：
+   *     - Pathfinder 模式（callerSharesCell=undefined）：不阻塞（步兵格子可通行）
+   *     - 步兵进入（callerSharesCell=true）：不阻塞（共享）
+   *     - 车辆进入（callerSharesCell=false）：阻塞（触发 NotifyBlocker → Nudge）
    */
-  private static isCellBlockedByActor(occupants: readonly string[], excludeId: string, check: BlockedByActor): boolean {
+  private static isCellBlockedByActor(
+    occupants: readonly string[],
+    excludeId: string,
+    check: BlockedByActor,
+    callerSharesCell?: boolean
+  ): boolean {
     const manager = GameObjectManager.getInstance();
+
+    if (check === BlockedByActor.All) {
+      let hasOccupant = false;
+      let allSharesCell = true;
+      for (const id of occupants) {
+        if (id === excludeId) continue;
+        hasOccupant = true;
+        const obj = manager.get(id);
+        if (!obj || obj.type !== GameObjectType.Unit || !obj.isAlive()) {
+          allSharesCell = false;
+          break;
+        }
+        const unit = obj as import('../objects/Unit').Unit;
+        if (!getLocomotor(unit.definition.locomotion).sharesCell) {
+          allSharesCell = false;
+          break;
+        }
+      }
+      if (hasOccupant && allSharesCell) {
+        // 所有 occupant 都是步兵
+        // undefined = Pathfinder 模式：不阻塞
+        // true   = 步兵进入：不阻塞（共享）
+        // false  = 车辆进入：阻塞（触发 Nudge）
+        return callerSharesCell === false;
+      }
+      // 否则回到原来的逻辑：有任何其他 occupant 就阻塞
+      return occupants.some((id) => id !== excludeId);
+    }
 
     for (const id of occupants) {
       if (id === excludeId) continue;
-
-      if (check === BlockedByActor.All) {
-        return true;
-      }
 
       // 查询单位状态
       const obj = manager.get(id);

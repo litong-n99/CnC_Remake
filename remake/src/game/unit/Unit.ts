@@ -6,6 +6,8 @@ import { UnitMovement } from './UnitMovement';
 import { UnitRotation } from './UnitRotation';
 import type { Pathfinder } from '../terrain/Pathfinder';
 import { getLocomotor } from '../rules/Locomotor';
+import { UnitCollision } from './UnitCollision';
+import { BlockedByActor } from './BlockedByActor';
 
 /**
  * 格子坐标目标 — 用于 moveTarget / attackTarget。
@@ -145,13 +147,76 @@ export class UnitController {
   }
 
   /** 被其他单位通知阻塞时的回调（OpenRA NotifyBlocker）。
-   *  Task 24.4 将填充完整实现（idle nudge / moving set IsBlocking）。
+   *
+   * Task 23.8 完整实现：
+   *   - Idle 状态 → 尝试向旁边空闲格 Nudge 让路
+   *   - Moving 状态 → 设置 isBlocking 标记，后续 Backup 会处理
    */
-  onNotifyBlockingMove(_blockerId: string): void {
+  onNotifyBlockingMove(_blockerId: string, pathfinder?: Pathfinder): void {
     if (this.isNudging) return;
-    if (this.stateMachine.state !== UnitState.Idle) {
+    if (this.stateMachine.state === UnitState.Idle && pathfinder) {
+      const nudged = this.tryNudge(pathfinder);
+      if (nudged) {
+        this.isNudging = true;
+      }
+    } else {
       this.isBlocking = true;
     }
+  }
+
+  /**
+   * 向相邻空闲格移动一格（OpenRA Nudge / Scatter）。
+   *
+   * OpenRA 使用随机方向（GetAdjacentCell 从 availCells 中随机选取）。
+   * 这里使用基于 unitId 的确定性随机，确保测试稳定，同时让多个步兵
+   * 分散到不同方向。
+   *
+   * @returns 是否成功开始 Nudge 移动。
+   */
+  private tryNudge(pathfinder: Pathfinder): boolean {
+    const cx = Math.round(this.x);
+    const cy = Math.round(this.y);
+    const dirs = this.getShuffledNudgeDirs();
+    for (const dir of dirs) {
+      const nx = cx + dir.x;
+      const ny = cy + dir.y;
+      if (
+        pathfinder.isCellPassable(nx, ny) &&
+        !UnitCollision.isPositionBlocked(nx, ny, this.unitId, BlockedByActor.All)
+      ) {
+        return this.moveTo(nx, ny, pathfinder);
+      }
+    }
+    return false;
+  }
+
+  /** 基于 unitId 的 Fisher-Yates 确定性随机，打乱 Nudge 方向顺序。 */
+  private getShuffledNudgeDirs(): Array<{ x: number; y: number }> {
+    const dirs = [
+      { x: 0, y: -1 },
+      { x: 0, y: 1 },
+      { x: -1, y: 0 },
+      { x: 1, y: 0 },
+      { x: -1, y: -1 },
+      { x: 1, y: -1 },
+      { x: -1, y: 1 },
+      { x: 1, y: 1 },
+    ];
+
+    // 用 unitId 生成确定性种子
+    let seed = 0;
+    for (let i = 0; i < this.unitId.length; i++) {
+      seed = (seed * 31 + this.unitId.charCodeAt(i)) % 1000000007;
+    }
+
+    // Fisher-Yates shuffle
+    for (let i = dirs.length - 1; i > 0; i--) {
+      const j = seed % (i + 1);
+      seed = (seed * 48271 + 1) % 2147483647;
+      [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
+    }
+
+    return dirs;
   }
 
   /**
@@ -204,7 +269,10 @@ export class UnitController {
   // ── 各状态 Tick 钩子（Phase 4+ 逐步填充）──
 
   private tickIdle(): void {
-    // TODO: Phase 4+ — Enter_Idle_Mode() 逻辑、守卫/采集任务分配
+    // Nudge 移动完成后回到 Idle，重置 isNudging 标志
+    if (this.isNudging) {
+      this.isNudging = false;
+    }
   }
 
   private tickMoving(deltaTime: number): void {

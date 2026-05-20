@@ -121,49 +121,38 @@ const bootstrap = async (): Promise<void> => {
     capacity: 2000,
   });
 
-  // ── Task 23.7 验收：步兵穿岩石缝隙 vs 坦克绕路 ──
-  const infantryLeft = GameObjectFactory.createUnit({
-    definition: UNIT_DEFINITIONS.RifleInfantry,
-    house: gdi,
-    x: 25,
-    y: 20,
-    scene,
-  });
-  const tankLeft = GameObjectFactory.createUnit({
+  // ── Task 23.8 验收：SubCell 步兵共享 + NotifyBlocker Nudge ──
+  // 5 名步兵共享 (30,20)，1 辆坦克从 (30,18) 驶入触发 Nudge
+  const task238Units: Unit[] = [];
+  for (let i = 0; i < 5; i++) {
+    task238Units.push(
+      GameObjectFactory.createUnit({
+        definition: UNIT_DEFINITIONS.RifleInfantry,
+        house: gdi,
+        x: 30,
+        y: 20,
+        scene,
+      })
+    );
+  }
+  const nudgeTank = GameObjectFactory.createUnit({
     definition: UNIT_DEFINITIONS.MediumTank,
     house: gdi,
-    x: 25,
-    y: 21,
+    x: 30,
+    y: 18,
     scene,
   });
-  const infantryRight = GameObjectFactory.createUnit({
-    definition: UNIT_DEFINITIONS.RifleInfantry,
-    house: nod,
-    x: 35,
-    y: 24,
-    scene,
-  });
-  const tankRight = GameObjectFactory.createUnit({
-    definition: UNIT_DEFINITIONS.MediumTank,
-    house: nod,
-    x: 35,
-    y: 25,
-    scene,
-  });
-  const task237Units: Unit[] = [infantryLeft, tankLeft, infantryRight, tankRight];
+  task238Units.push(nudgeTank);
 
   // 自动下达移动命令（延迟 1s 确保场景初始化完成）
   setTimeout(() => {
-    infantryLeft.logic.moveTo(35, 24, pathfinder);
-    tankLeft.logic.moveTo(35, 24, pathfinder);
-    infantryRight.logic.moveTo(25, 20, pathfinder);
-    tankRight.logic.moveTo(25, 20, pathfinder);
+    nudgeTank.logic.moveTo(30, 20, pathfinder);
     // eslint-disable-next-line no-console
-    console.info('Task 23.7: Move orders issued — infantry through rock gap, tanks around');
+    console.info('Task 23.8: Tank ordered to (30,20) — infantry should Nudge away');
   }, 1000);
 
   // Enable shadows on all spawned objects
-  const allSpawned = [...task237Units];
+  const allSpawned = [...task238Units];
   for (const obj of allSpawned) {
     if (obj.mesh) {
       lighting.addShadowCaster(obj.mesh);

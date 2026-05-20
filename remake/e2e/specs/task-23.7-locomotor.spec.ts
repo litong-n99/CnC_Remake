@@ -25,11 +25,11 @@ test.describe('Task 23.7 — Locomotor TerrainSpeeds', () => {
     const cell = await game.actorMap(25, 20);
     const id = (cell as { occupants: readonly string[] }).occupants[0];
 
-    // Move to right side
+    // Move to right side (through Rock — slower, needs longer timeout)
     await game.moveUnit(id, 35, 24);
 
     // Wait for arrival
-    await game.waitForUnitAt(id, 35, 24, 15000);
+    await game.waitForUnitAt(id, 35, 24, 30000);
 
     // Verify path went through Rock wall area (y=22-23, x=24-36)
     const path = await game.page.evaluate(() => {

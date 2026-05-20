@@ -334,7 +334,7 @@ export class UnitMovement {
       const obj = GameObjectManager.getInstance().get(id);
       if (obj && obj.type === GameObjectType.Unit) {
         const unit = obj as import('../objects/Unit').Unit;
-        unit.logic.onNotifyBlockingMove(controller.unitId);
+        unit.logic.onNotifyBlockingMove(controller.unitId, this.pathfinder ?? undefined);
       }
     }
   }
