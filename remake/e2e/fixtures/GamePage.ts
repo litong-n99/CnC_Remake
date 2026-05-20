@@ -97,6 +97,41 @@ export class GamePage {
     );
   }
 
+  /** Order a specific unit to move to a target cell. */
+  async moveUnit(unitId: string, targetX: number, targetY: number): Promise<boolean> {
+    return await this.page.evaluate(
+      ({ id, tx, ty }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (cnc.moveUnit?.(id, tx, ty) as boolean) ?? false;
+      },
+      { id: unitId, tx: targetX, ty: targetY }
+    );
+  }
+
+  /** Get Euclidean distance between two units. */
+  async unitDistance(idA: string, idB: string): Promise<number> {
+    return await this.page.evaluate(
+      ({ a, b }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (cnc.distance?.(a, b) as number) ?? -1;
+      },
+      { a: idA, b: idB }
+    );
+  }
+
+  /** Poll ActorMap until a unit reaches the target cell (or timeout). */
+  async waitForUnitAt(unitId: string, targetX: number, targetY: number, timeout = 15000): Promise<void> {
+    await this.page.waitForFunction(
+      ({ id, tx, ty }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        const result = cnc.actorMap?.(tx, ty) as { x: number; y: number; occupants: readonly string[] } | undefined;
+        return result ? result.occupants.includes(id) : false;
+      },
+      { id: unitId, tx: targetX, ty: targetY },
+      { timeout }
+    );
+  }
+
   /** List all units and buildings (returns via console, mainly for debugging). */
   async list(): Promise<void> {
     await this.page.evaluate(() => {

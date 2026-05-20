@@ -300,7 +300,7 @@
   - `getBlockedCells(excludeId)` → 返回 ActorMap 中所有被占格子的 `"x,y"` 集合
   - 建筑阻塞仍由 Pathfinder 的动态回调处理，此处不再包含建筑
 - **验收**：两辆坦克相距 1 格，各自朝对方移动；第一步 A* 就把对方位置视为阻塞，路径自动绕开。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 23.3: UnitMovement 重构 — 简化阻塞 fallback 链
 - **目标**：移除 `fromCell`/`toCell` 双格概念、移除 `notifyBlockersAt`/`cellIsEvacuating`。实现自驱式阻塞处理：暂停 → 等待 → 重寻路（到原始目标）→ Nudge → GiveUp。
@@ -314,7 +314,7 @@
   6. 如果连 nudge 也找不到 → GiveUp，停止，进入 Idle
 - **关键约束**：重寻路终点**必须是原始目标**，绝不使用当前被阻塞的路径节点。
 - **验收**：两辆坦克相向而行碰撞后，等待片刻自动绕开对方，最终都到达目标点。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 23.4: 步兵 SubCell 共享
 - **目标**：ActorMap 允许多个步兵共享同一格子（参考 OpenRA SubCell）。车辆独占格子（一个格子只能有一个车辆）。

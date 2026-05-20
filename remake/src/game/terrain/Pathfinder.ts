@@ -145,6 +145,13 @@ export class Pathfinder {
     return x >= 0 && x < this.width && y >= 0 && y < this.height;
   }
 
+  /** 检查指定格子是否在地图范围内且地形可通行。
+   * 用于 UnitMovement nudge 时的快速地形检查。
+   */
+  isCellPassable(x: number, y: number): boolean {
+    return this.isInside(x, y) && this.isPassable(x, y);
+  }
+
   /** 八方向启发函数：切比雪夫距离（max(|dx|, |dy|)）。 */
   private heuristic(x1: number, y1: number, x2: number, y2: number): number {
     const dx = Math.abs(x1 - x2);

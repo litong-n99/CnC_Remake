@@ -4,21 +4,40 @@ import type { PathNode, Pathfinder } from '../terrain/Pathfinder';
 import { UnitCollision } from './UnitCollision';
 
 /**
- * 单位移动控制器 — 沿 A* 路径进行插值移动，支持简单碰撞避障（Task 19）。
+ * 单位移动控制器 — 沿 A* 路径进行插值移动，支持阻塞自驱 fallback 链（Task 23.3）。
  *
  * 对应 C++ `FootClass::AI()` / `DriveClass::AI()` 中的路径步进逻辑。
  * 速度直接取自 `UnitDefinition.speed`，经 `SPEED_SCALE` 转换为世界坐标/秒。
  *
- * 注意：建筑阻塞已由 Pathfinder 动态回调处理（A* 路径自动绕开建筑），
- * 本类只处理运行时单位间碰撞（暂停等待）和极偶然的建筑边缘碰撞。
+ * 阻塞处理（OpenRA 简化版）：
+ *   检测到下一步被占 → Wait(800ms) → Repath(原始目标) → Nudge(相邻空闲格) → GiveUp
  */
 export class UnitMovement {
   private path: PathNode[] = [];
   private pathIndex = 0;
   private isMoving = false;
+  private pathfinder: Pathfinder | null = null;
 
-  /** 速度缩放因子：将 C++ 内部 speed 转换为 格/毫秒。 */
+  // ── 阻塞 fallback 状态 ──
+  private hasWaited = false;
+  private waitRemainingMs = 0;
+  private repathAttempts = 0;
+
+  private static readonly WAIT_DURATION_MS = 800;
+  private static readonly MAX_REPATH_ATTEMPTS = 3;
   private static readonly SPEED_SCALE = 0.0006;
+
+  /** Nudge 方向：正交优先，对角线次之。 */
+  private static readonly NUDGE_DIRS: readonly { readonly x: number; readonly y: number }[] = [
+    { x: 0, y: -1 },
+    { x: 0, y: 1 },
+    { x: -1, y: 0 },
+    { x: 1, y: 0 },
+    { x: -1, y: -1 },
+    { x: 1, y: -1 },
+    { x: -1, y: 1 },
+    { x: 1, y: 1 },
+  ];
 
   constructor(private readonly speed: number) {}
 
@@ -27,7 +46,11 @@ export class UnitMovement {
    * @returns 是否成功找到路径并开始移动。
    */
   moveTo(controller: UnitController, targetX: number, targetY: number, pathfinder: Pathfinder): boolean {
-    // 将其他单位位置作为临时阻塞传入 A*（建筑已由 pathfinder 动态回调处理）
+    // 重置所有阻塞 fallback 状态
+    this.hasWaited = false;
+    this.waitRemainingMs = 0;
+    this.repathAttempts = 0;
+
     const blockedCells = UnitCollision.getBlockedCells(controller.unitId);
     const path = pathfinder.findPath(
       Math.round(controller.x),
@@ -41,6 +64,7 @@ export class UnitMovement {
     this.path = path;
     this.pathIndex = 1; // 跳过起点
     this.isMoving = true;
+    this.pathfinder = pathfinder;
     controller.stateMachine.transition(UnitState.Moving);
     controller.isDriving = true;
     controller.moveTarget = { x: targetX, y: targetY };
@@ -77,10 +101,9 @@ export class UnitMovement {
     const nextX = controller.x + dx * ratio;
     const nextY = controller.y + dy * ratio;
 
-    // ── Task 19: 碰撞避障 — 运行时检测其他单位或建筑边缘 ──
-    // 建筑已由 Pathfinder 绕开，此处主要处理其他移动单位
+    // ── Task 23.3: 阻塞检测与自驱 fallback ──
     if (UnitCollision.isPositionBlocked(nextX, nextY, controller.unitId)) {
-      // 暂停移动，等待前方清空（不自动重新寻路，避免抖动）
+      this.handleBlocked(controller, deltaTime);
       return;
     }
 
@@ -89,8 +112,86 @@ export class UnitMovement {
     controller.targetBodyFacing = this.dirToFacing(dx, dy);
   }
 
+  /**
+   * 阻塞自驱 fallback 链：Wait → Repath → Nudge → GiveUp
+   */
+  private handleBlocked(controller: UnitController, deltaTime: number): void {
+    const dest = controller.moveTarget;
+    if (!dest) {
+      this.stop(controller);
+      return;
+    }
+
+    // Step 1: Wait
+    if (!this.hasWaited) {
+      this.hasWaited = true;
+      this.waitRemainingMs = UnitMovement.WAIT_DURATION_MS;
+    }
+    this.waitRemainingMs -= deltaTime;
+
+    if (this.waitRemainingMs > 0) {
+      // 等待期间面朝目标
+      const dx = dest.x - controller.x;
+      const dy = dest.y - controller.y;
+      controller.targetBodyFacing = this.dirToFacing(dx, dy);
+      return;
+    }
+
+    // Step 2: Repath（到原始目标，起点=当前 round 位置）
+    if (this.repathAttempts < UnitMovement.MAX_REPATH_ATTEMPTS) {
+      this.repathAttempts++;
+      const blockedCells = UnitCollision.getBlockedCells(controller.unitId);
+      const startX = Math.round(controller.x);
+      const startY = Math.round(controller.y);
+      const newPath = this.pathfinder?.findPath(startX, startY, dest.x, dest.y, blockedCells);
+      if (newPath && newPath.length > 1) {
+        this.path = newPath;
+        this.pathIndex = 1;
+        this.hasWaited = false;
+        this.waitRemainingMs = 0;
+        this.repathAttempts = 0;
+        return;
+      }
+      // 重寻路失败，短暂等待后再试
+      this.waitRemainingMs = UnitMovement.WAIT_DURATION_MS * 0.5;
+      return;
+    }
+
+    // Step 3: Nudge — 找相邻空闲格
+    const nudgeCell = this.findNudgeCell(controller);
+    if (nudgeCell) {
+      this.path = [nudgeCell];
+      this.pathIndex = 0;
+      this.hasWaited = false;
+      this.waitRemainingMs = 0;
+      this.repathAttempts = 0;
+      return;
+    }
+
+    // Step 4: GiveUp
+    this.stop(controller);
+  }
+
+  /** 在 8 方向中找第一个地形可通行且无其他单位占用的相邻格。 */
+  private findNudgeCell(controller: UnitController): PathNode | null {
+    const cx = Math.round(controller.x);
+    const cy = Math.round(controller.y);
+    for (const dir of UnitMovement.NUDGE_DIRS) {
+      const nx = cx + dir.x;
+      const ny = cy + dir.y;
+      if (this.pathfinder?.isCellPassable(nx, ny) === false) continue;
+      if (UnitCollision.isPositionBlocked(nx, ny, controller.unitId)) continue;
+      return { x: nx, y: ny };
+    }
+    return null;
+  }
+
   private stop(controller: UnitController): void {
     this.isMoving = false;
+    this.pathfinder = null;
+    this.hasWaited = false;
+    this.waitRemainingMs = 0;
+    this.repathAttempts = 0;
     controller.stateMachine.transition(UnitState.Idle);
     controller.isDriving = false;
     controller.moveTarget = undefined;

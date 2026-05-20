@@ -50,6 +50,8 @@ export class GameConsole {
       actorMap: this.actorMap.bind(this),
       collision: this.collision.bind(this),
       pathfind: this.pathfind.bind(this),
+      moveUnit: this.moveUnit.bind(this),
+      distance: this.distance.bind(this),
       help: this.help.bind(this),
     };
     // eslint-disable-next-line no-console
@@ -288,6 +290,31 @@ export class GameConsole {
     return blocked;
   }
 
+  /** Move a specific unit to a target cell.
+   * @returns true if a path was found and movement started.
+   */
+  private moveUnit(unitId: string, targetX: number, targetY: number): boolean {
+    if (!this.pathfinder) {
+      console.warn('Pathfinder not available in GameConsole');
+      return false;
+    }
+    const manager = GameObjectManager.getInstance();
+    for (const obj of manager.getAll()) {
+      if (obj.id === unitId && obj.type === GameObjectType.Unit) {
+        const unit = obj as Unit;
+        const success = unit.logic.moveTo(targetX, targetY, this.pathfinder);
+        // eslint-disable-next-line no-console
+        console.info(
+          `Move ${unit.definition.name} (${unitId}) → (${targetX}, ${targetY}):`,
+          success ? 'STARTED' : 'FAILED'
+        );
+        return success;
+      }
+    }
+    console.warn(`Unit not found: ${unitId}`);
+    return false;
+  }
+
   /** Run A* pathfinding with current unit blockers.
    * @returns Path nodes (incl. start & end) or null if no path.
    */
@@ -334,6 +361,23 @@ export class GameConsole {
     }
   }
 
+  /** Return Euclidean distance between two units. */
+  private distance(idA: string, idB: string): number {
+    const manager = GameObjectManager.getInstance();
+    const a = manager.get(idA);
+    const b = manager.get(idB);
+    if (!a || !b) {
+      console.warn(`One or both units not found: ${idA}, ${idB}`);
+      return -1;
+    }
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    // eslint-disable-next-line no-console
+    console.info(`Distance ${idA} ↔ ${idB}: ${dist.toFixed(3)}`);
+    return dist;
+  }
+
   /** Show help text. */
   private help(): void {
     // eslint-disable-next-line no-console
@@ -377,6 +421,14 @@ export class GameConsole {
 ║ cnc.pathfind(startX, startY, endX, endY)                     ║
 ║   Run A* with current unit blockers. Returns path or null.   ║
 ║   Example: cnc.pathfind(30, 30, 40, 30)                      ║
+║                                                              ║
+║ cnc.moveUnit(unitId, targetX, targetY)                       ║
+║   Order a specific unit to move to target cell.              ║
+║   Example: cnc.moveUnit('unit-abc', 40, 30)                  ║
+║                                                              ║
+║ cnc.distance(unitIdA, unitIdB)                               ║
+║   Return Euclidean distance between two units.               ║
+║   Example: cnc.distance('unit-a', 'unit-b')                  ║
 ║                                                              ║
 ║ cnc.help()                                                   ║
 ║   Show this help message.                                    ║
