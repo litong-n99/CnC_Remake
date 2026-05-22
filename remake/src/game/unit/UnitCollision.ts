@@ -1,76 +1,139 @@
+import { ActorMap } from '../world/ActorMap';
 import { GameObjectManager } from '../objects/GameObjectManager';
 import { GameObjectType } from '../objects/GameObject';
-import { Building } from '../objects/Building';
-import { getBuildingFootprint } from '../rules/BuildingDefinitions';
+import { BlockedByActor } from './BlockedByActor';
+import { getLocomotor } from '../rules/Locomotor';
 
 /**
- * 单位碰撞与避障系统 — Task 19（简单版）。
+ * 单位碰撞与避障系统 — Task 24.2 BlockedByActor 分级 + 双格占用。
  *
- * 对应 C++ 中 `DriveClass::AI()` 的简易碰撞处理逻辑。
- * 当前为简化实现：
- * - 建筑阻塞已由 Pathfinder 动态回调处理（A* 初始路径自动绕开建筑）
- * - 本类只处理单位与单位、单位与建筑的**运行时碰撞检测**
- * - 若被阻挡则暂停等待，不自动重新寻路（由玩家或上层逻辑重新下令）
+ * 核心机制：
+ * - `isPositionBlocked` 支持四级阻塞检测（All / Stationary / Immovable / None）
+ * - 双格占用下，单位同时注册 fromCell 和 toCell
+ * - 建筑阻塞仍由 Pathfinder 动态回调处理，此处不再包含建筑
  */
 export class UnitCollision {
-  /** 单位之间的最小安全间距（格）。 */
-  static readonly MIN_SEPARATION = 0.75;
-
   /**
-   * 检查指定位置是否被其他存活对象（单位或建筑）占据。
-   * @param x          要检查的格子 X 坐标
-   * @param y          要检查的格子 Y 坐标
-   * @param excludeId  需要排除的对象 ID（自身）
+   * 检查指定位置是否被其他存活单位占据。
+   * @param x          要检查的世界坐标 X
+   * @param y          要检查的世界坐标 Y
+   * @param excludeId  需要排除的单位 ID（自身）
+   * @param check      阻塞检测级别（默认 All）
    * @returns true 表示该位置被阻挡
    */
-  static isPositionBlocked(x: number, y: number, excludeId: string): boolean {
-    const manager = GameObjectManager.getInstance();
-    for (const obj of manager.getAll()) {
-      if (!obj.isAlive()) continue;
-      if (obj.id === excludeId) continue;
+  static isPositionBlocked(x: number, y: number, excludeId: string, check = BlockedByActor.All): boolean {
+    if (check === BlockedByActor.None) return false;
 
-      if (obj.type === GameObjectType.Unit) {
-        const dx = obj.x - x;
-        const dy = obj.y - y;
-        const distSq = dx * dx + dy * dy;
-        if (distSq < this.MIN_SEPARATION * this.MIN_SEPARATION) {
-          return true;
-        }
-      } else if (obj.type === GameObjectType.Building) {
-        const building = obj as Building;
-        const def = building.definition;
-        // 快速 AABB 排除（bounding box）
-        if (x < building.x || x >= building.x + def.width || y < building.y || y >= building.y + def.height) {
-          continue;
-        }
-        // 精确 footprint 检测
-        const bx = Math.floor(x);
-        const by = Math.floor(y);
-        for (const cell of getBuildingFootprint(def)) {
-          if (bx === building.x + cell.dx && by === building.y + cell.dy) {
-            return true;
-          }
-        }
-      }
+    const cx = Math.round(x);
+    const cy = Math.round(y);
+    const am = ActorMap.getInstance();
+
+    // Task 23.8: 查询调用者的 sharesCell（步兵 vs 车辆行为不同）
+    const callerObj = GameObjectManager.getInstance().get(excludeId);
+    let callerSharesCell: boolean | undefined;
+    if (callerObj && callerObj.type === GameObjectType.Unit) {
+      const callerUnit = callerObj as import('../objects/Unit').Unit;
+      callerSharesCell = getLocomotor(callerUnit.definition.locomotion).sharesCell;
     }
+
+    // 检查 round 格子
+    if (this.isCellBlockedByActor(am.getOccupants(cx, cy), excludeId, check, callerSharesCell)) return true;
+
     return false;
   }
 
   /**
-   * 获取所有其他存活单位当前占据的格子集合（用于 A* 单位间动态避障）。
-   * 注意：建筑阻塞已由 Pathfinder 动态回调处理，此处不再包含建筑。
+   * 判断指定格子的 occupants 中是否有阻塞者。
+   *
+   * Task 23.8: SubCell 共享
+   *   - 若格子内**所有**存活 occupant 都是步兵（sharesCell=true）：
+   *     - Pathfinder 模式（callerSharesCell=undefined）：不阻塞（步兵格子可通行）
+   *     - 步兵进入（callerSharesCell=true）：不阻塞（共享）
+   *     - 车辆进入（callerSharesCell=false）：阻塞（触发 NotifyBlocker → Nudge）
+   */
+  private static isCellBlockedByActor(
+    occupants: readonly string[],
+    excludeId: string,
+    check: BlockedByActor,
+    callerSharesCell?: boolean
+  ): boolean {
+    const manager = GameObjectManager.getInstance();
+
+    if (check === BlockedByActor.All) {
+      let hasOccupant = false;
+      let allSharesCell = true;
+      for (const id of occupants) {
+        if (id === excludeId) continue;
+        hasOccupant = true;
+        const obj = manager.get(id);
+        if (!obj || obj.type !== GameObjectType.Unit || !obj.isAlive()) {
+          allSharesCell = false;
+          break;
+        }
+        const unit = obj as import('../objects/Unit').Unit;
+        if (!getLocomotor(unit.definition.locomotion).sharesCell) {
+          allSharesCell = false;
+          break;
+        }
+      }
+      if (hasOccupant && allSharesCell) {
+        // 所有 occupant 都是步兵
+        // undefined = Pathfinder 模式：不阻塞
+        // true   = 步兵进入：不阻塞（共享）
+        // false  = 车辆进入：阻塞（触发 Nudge）
+        return callerSharesCell === false;
+      }
+      // 否则回到原来的逻辑：有任何其他 occupant 就阻塞
+      return occupants.some((id) => id !== excludeId);
+    }
+
+    for (const id of occupants) {
+      if (id === excludeId) continue;
+
+      // 查询单位状态
+      const obj = manager.get(id);
+      if (!obj || obj.type !== GameObjectType.Unit) {
+        // 非单位对象（建筑等）视为不可移动阻塞
+        if (check >= BlockedByActor.Immovable) return true;
+        continue;
+      }
+
+      const unit = obj as import('../objects/Unit').Unit;
+      const isMoving = unit.logic.isMovingBetweenCells;
+
+      if (check === BlockedByActor.Stationary) {
+        // 只被静止单位阻塞，忽略移动中的单位
+        if (!isMoving) return true;
+      } else if (check === BlockedByActor.Immovable) {
+        // 忽略所有可移动单位（静止 + 移动中）
+        // 当前所有单位都是可移动的，所以直接 continue
+        continue;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * 获取所有被其他单位占据的格子集合（用于 A* 单位间动态避障）。
    * @param excludeId 需要排除的单位 ID（自身）
+   * @param check     阻塞检测级别（默认 All）
    * @returns Set<"x,y"> 格式的格子坐标集合
    */
-  static getBlockedCells(excludeId: string): Set<string> {
+  static getBlockedCells(excludeId: string, check = BlockedByActor.All): Set<string> {
+    if (check === BlockedByActor.None) return new Set<string>();
+
     const blocked = new Set<string>();
-    const manager = GameObjectManager.getInstance();
-    for (const obj of manager.getAll()) {
-      if (!obj.isAlive()) continue;
-      if (obj.id === excludeId) continue;
-      if (obj.type !== GameObjectType.Unit) continue;
-      blocked.add(`${Math.round(obj.x)},${Math.round(obj.y)}`);
+    const am = ActorMap.getInstance();
+
+    for (const key of am.getAllOccupiedCells()) {
+      const [x, y] = key.split(',').map(Number);
+      const occupants = am.getOccupants(x, y);
+      if (this.isCellBlockedByActor(occupants, excludeId, check)) {
+        blocked.add(key);
+      }
     }
+
     return blocked;
   }
 }

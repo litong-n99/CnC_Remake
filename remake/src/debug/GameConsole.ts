@@ -14,8 +14,10 @@ import type { House } from '../game/house/House';
 import { RTSCamera } from '../core/RTSCamera';
 import { TerrainGrid, LandType } from '../game/terrain/TerrainGrid';
 import { UnitCollision } from '../game/unit/UnitCollision';
+import { BlockedByActor } from '../game/unit/BlockedByActor';
 import { ActorMap } from '../game/world/ActorMap';
 import { BuildingPlacer } from '../game/building/BuildingPlacer';
+import type { PathNode, Pathfinder } from '../game/terrain/Pathfinder';
 
 /**
  * Debug console — exposes `window.cnc` commands for runtime spawning,
@@ -32,7 +34,8 @@ export class GameConsole {
     private readonly lighting: Lighting,
     private readonly rtsCamera: RTSCamera,
     private readonly terrain: TerrainGrid,
-    private readonly placer: BuildingPlacer
+    private readonly placer: BuildingPlacer,
+    private readonly pathfinder?: Pathfinder
   ) {}
 
   /** Register all commands on `window.cnc`. */
@@ -46,6 +49,11 @@ export class GameConsole {
       clear: this.clear.bind(this),
       list: this.list.bind(this),
       actorMap: this.actorMap.bind(this),
+      collision: this.collision.bind(this),
+      pathfind: this.pathfind.bind(this),
+      moveUnit: this.moveUnit.bind(this),
+      distance: this.distance.bind(this),
+      debugState: this.debugState.bind(this),
       help: this.help.bind(this),
     };
     // eslint-disable-next-line no-console
@@ -274,24 +282,142 @@ export class GameConsole {
     }
   }
 
-  /** Inspect ActorMap occupancy. */
-  private actorMap(x?: number, y?: number): void {
+  /** Check whether a cell is blocked by another unit.
+   * @returns true if the cell contains at least one unit other than excludeId.
+   */
+  private collision(x: number, y: number, excludeId?: string): boolean {
+    const blocked = UnitCollision.isPositionBlocked(x, y, excludeId ?? '');
+    // eslint-disable-next-line no-console
+    console.info(`Collision (${x}, ${y}): ${blocked ? 'BLOCKED' : 'FREE'}`);
+    return blocked;
+  }
+
+  /** Move a specific unit to a target cell.
+   * @returns true if a path was found and movement started.
+   */
+  private moveUnit(unitId: string, targetX: number, targetY: number): boolean {
+    if (!this.pathfinder) {
+      console.warn('Pathfinder not available in GameConsole');
+      return false;
+    }
+    const manager = GameObjectManager.getInstance();
+    for (const obj of manager.getAll()) {
+      if (obj.id === unitId && obj.type === GameObjectType.Unit) {
+        const unit = obj as Unit;
+        const success = unit.logic.moveTo(targetX, targetY, this.pathfinder);
+        // eslint-disable-next-line no-console
+        console.info(
+          `Move ${unit.definition.name} (${unitId}) → (${targetX}, ${targetY}):`,
+          success ? 'STARTED' : 'FAILED'
+        );
+        return success;
+      }
+    }
+    console.warn(`Unit not found: ${unitId}`);
+    return false;
+  }
+
+  /** Run A* pathfinding with current unit blockers.
+   * @param check — 'All' | 'Stationary' | 'Immovable' | 'None' (default 'All')
+   * @returns Path nodes (incl. start & end) or null if no path.
+   */
+  private pathfind(startX: number, startY: number, endX: number, endY: number, checkName = 'All'): PathNode[] | null {
+    if (!this.pathfinder) {
+      console.warn('Pathfinder not available in GameConsole');
+      return null;
+    }
+    const check = this.parseBlockedByActor(checkName);
+    const blockedCells = UnitCollision.getBlockedCells('', check);
+    const path = this.pathfinder.findPath(startX, startY, endX, endY, blockedCells, check);
+    // eslint-disable-next-line no-console
+    console.info(
+      `Pathfind (${startX},${startY}) → (${endX},${endY}) [${checkName}]:`,
+      path ? `${path.length} nodes` : 'NO PATH'
+    );
+    return path;
+  }
+
+  private parseBlockedByActor(name: string): BlockedByActor {
+    switch (name) {
+      case 'None':
+        return BlockedByActor.None;
+      case 'Immovable':
+        return BlockedByActor.Immovable;
+      case 'Stationary':
+        return BlockedByActor.Stationary;
+      default:
+        return BlockedByActor.All;
+    }
+  }
+
+  /** Inspect ActorMap occupancy.
+   * @returns Structured data for programmatic access (e.g. E2E tests).
+   */
+  private actorMap(
+    x?: number,
+    y?: number
+  ):
+    | { cells: Array<{ x: number; y: number; occupants: readonly string[] }> }
+    | { x: number; y: number; occupants: readonly string[] } {
     const am = ActorMap.getInstance();
     if (x !== undefined && y !== undefined) {
       const occupants = am.getOccupants(x, y);
       // eslint-disable-next-line no-console
       console.info(`Cell (${x}, ${y}): ${occupants.length} unit(s) — [${occupants.join(', ')}]`);
+      return { x, y, occupants };
     } else {
       const cells = am.getAllOccupiedCells();
       // eslint-disable-next-line no-console
       console.info(`ActorMap — ${cells.size} occupied cell(s):`);
+      const result: Array<{ x: number; y: number; occupants: readonly string[] }> = [];
       for (const key of cells) {
         const [cx, cy] = key.split(',').map(Number);
         const occupants = am.getOccupants(cx, cy);
         // eslint-disable-next-line no-console
         console.info(`  (${cx}, ${cy}): [${occupants.join(', ')}]`);
+        result.push({ x: cx, y: cy, occupants });
       }
+      return { cells: result };
     }
+  }
+
+  /** Return debug state for all units. */
+  private debugState(): Array<Record<string, unknown>> {
+    const manager = GameObjectManager.getInstance();
+    const result: Array<Record<string, unknown>> = [];
+    for (const obj of manager.getUnits()) {
+      const unit = obj as Unit;
+      result.push({
+        id: unit.id,
+        x: unit.x,
+        y: unit.y,
+        fromCellX: unit.logic.fromCellX,
+        fromCellY: unit.logic.fromCellY,
+        toCellX: unit.logic.toCellX,
+        toCellY: unit.logic.toCellY,
+        isMoving: unit.logic.isMovingBetweenCells,
+        isBlocking: unit.logic.isBlocking,
+        state: unit.logic.stateMachine.state,
+      });
+    }
+    return result;
+  }
+
+  /** Return Euclidean distance between two units. */
+  private distance(idA: string, idB: string): number {
+    const manager = GameObjectManager.getInstance();
+    const a = manager.get(idA);
+    const b = manager.get(idB);
+    if (!a || !b) {
+      console.warn(`One or both units not found: ${idA}, ${idB}`);
+      return -1;
+    }
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    // eslint-disable-next-line no-console
+    console.info(`Distance ${idA} ↔ ${idB}: ${dist.toFixed(3)}`);
+    return dist;
   }
 
   /** Show help text. */
@@ -329,6 +455,22 @@ export class GameConsole {
 ║ cnc.actorMap(x?, y?)                                         ║
 ║   Inspect ActorMap occupancy. Omit x,y to list all cells.    ║
 ║   Example: cnc.actorMap(30, 30)                              ║
+║                                                              ║
+║ cnc.collision(x, y, excludeId?)                              ║
+║   Check if a cell is blocked by another unit.                ║
+║   Example: cnc.collision(30, 30, 'unit-id')                  ║
+║                                                              ║
+║ cnc.pathfind(startX, startY, endX, endY)                     ║
+║   Run A* with current unit blockers. Returns path or null.   ║
+║   Example: cnc.pathfind(30, 30, 40, 30)                      ║
+║                                                              ║
+║ cnc.moveUnit(unitId, targetX, targetY)                       ║
+║   Order a specific unit to move to target cell.              ║
+║   Example: cnc.moveUnit('unit-abc', 40, 30)                  ║
+║                                                              ║
+║ cnc.distance(unitIdA, unitIdB)                               ║
+║   Return Euclidean distance between two units.               ║
+║   Example: cnc.distance('unit-a', 'unit-b')                  ║
 ║                                                              ║
 ║ cnc.help()                                                   ║
 ║   Show this help message.                                    ║

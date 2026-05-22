@@ -5,8 +5,23 @@ import prettier from 'eslint-config-prettier';
 export default tseslint.config(
   js.configs.recommended,
   tseslint.configs.recommended,
+  // ── E2E tests ──
   {
-    files: ['**/*.ts', '**/*.tsx'],
+    files: ['e2e/**/*.ts'],
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        project: './tsconfig.e2e.json',
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      'no-console': 'off',
+    },
+  },
+  // ── Source code ──
+  {
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
