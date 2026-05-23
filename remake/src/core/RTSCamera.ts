@@ -47,6 +47,11 @@ export class RTSCamera {
   private readonly options: Required<RTSCameraOptions>;
 
   private targetZoom: number;
+  private isLeftDragging = false;
+  private leftDragStartX = 0;
+  private leftDragStartY = 0;
+  private leftDragHappened = false;
+  private readonly leftDragThreshold = 5;
   private isRightDragging = false;
   private isMouseOverCanvas = false;
   private isPointerLocked = false;
@@ -61,11 +66,22 @@ export class RTSCamera {
   private isRotatingRight = false;
   /** Camera rotation speed in radians per second (Insert / Delete). */
   private rotationSpeed = 1.5;
+  /**
+   * 当左键按下期间按下了右键时标记为 true。
+   * 用于防止左键释放时的 click 事件错误触发 onLeftClick（清除选择）。
+   */
+  private rightButtonPressedDuringLeftDrag = false;
 
   /** 右键单击回调（非拖拽）。参数为屏幕像素坐标。 */
   onRightClick: ((screenX: number, screenY: number) => void) | null = null;
-  /** 左键单击回调。参数为屏幕像素坐标。 */
+  /** 左键单击回调（仅在未发生拖拽时触发）。参数为屏幕像素坐标。 */
   onLeftClick: ((screenX: number, screenY: number) => void) | null = null;
+  /** 左键拖动开始回调。参数为起始屏幕像素坐标。 */
+  onLeftDragStart: ((startX: number, startY: number) => void) | null = null;
+  /** 左键拖动中回调。参数为 (startX, startY, currentX, currentY)。 */
+  onLeftDragMove: ((startX: number, startY: number, currentX: number, currentY: number) => void) | null = null;
+  /** 左键拖动结束回调。参数为 (startX, startY, endX, endY)。 */
+  onLeftDragEnd: ((startX: number, startY: number, endX: number, endY: number) => void) | null = null;
 
   private boundMouseMove: (e: MouseEvent) => void;
   private boundMouseDown: (e: MouseEvent) => void;
@@ -221,6 +237,19 @@ export class RTSCamera {
       this.mouseY = e.clientY - rect.top;
     }
 
+    if (this.isLeftDragging) {
+      const dragDist = Math.abs(this.mouseX - this.leftDragStartX) + Math.abs(this.mouseY - this.leftDragStartY);
+      if (dragDist > this.leftDragThreshold && !this.leftDragHappened) {
+        this.leftDragHappened = true;
+        if (this.onLeftDragStart) {
+          this.onLeftDragStart(this.leftDragStartX, this.leftDragStartY);
+        }
+      }
+      if (this.leftDragHappened && this.onLeftDragMove) {
+        this.onLeftDragMove(this.leftDragStartX, this.leftDragStartY, this.mouseX, this.mouseY);
+      }
+    }
+
     if (this.isRightDragging) {
       this.handlePan(this.mouseX, this.mouseY);
       const dragDist = Math.abs(this.mouseX - this.rightDragStartX) + Math.abs(this.mouseY - this.rightDragStartY);
@@ -231,7 +260,34 @@ export class RTSCamera {
   }
 
   private handleMouseDown(e: MouseEvent): void {
-    if (e.button === 2) {
+    // Sync mouse position from the event (mousemove may not have fired yet, e.g. in tests)
+    this.updateMousePositionFromEvent(e);
+
+    if (e.button === 0) {
+      // Left button — start selection drag
+      this.isLeftDragging = true;
+      this.leftDragHappened = false;
+      this.rightButtonPressedDuringLeftDrag = false;
+      this.leftDragStartX = this.mouseX;
+      this.leftDragStartY = this.mouseY;
+
+      // Request pointer lock on left-click so the cursor is captured for RTS play.
+      if (this.options.pointerLock && !this.isPointerLocked) {
+        const canvas = this.engine.getRenderingCanvas();
+        if (canvas) {
+          try {
+            canvas.requestPointerLock();
+          } catch (err) {
+            console.warn('Pointer lock request failed:', err);
+          }
+        }
+      }
+
+      // 如果右键正在平移中按下了左键，标记为组合键，避免左键释放时的 click 触发 onLeftClick
+      if (this.isRightDragging) {
+        this.rightButtonPressedDuringLeftDrag = true;
+      }
+    } else if (e.button === 2) {
       // Right button — start panning
       this.isRightDragging = true;
       this.rightClickPending = true;
@@ -243,7 +299,26 @@ export class RTSCamera {
   }
 
   private handleMouseUp(e: MouseEvent): void {
-    if (e.button === 2) {
+    // Sync mouse position from the event (mousemove may not have fired, e.g. in tests)
+    this.updateMousePositionFromEvent(e);
+
+    if (e.button === 0) {
+      if (this.isLeftDragging) {
+        if (this.leftDragHappened && this.onLeftDragEnd) {
+          this.onLeftDragEnd(this.leftDragStartX, this.leftDragStartY, this.mouseX, this.mouseY);
+        }
+        // 如果左键按下期间按了右键，标记为"已发生拖动"，
+        // 防止左键释放时的 click 事件错误触发 onLeftClick（清除选择）。
+        if (this.rightButtonPressedDuringLeftDrag) {
+          this.leftDragHappened = true;
+        }
+        // 注意：左键单击逻辑（onLeftClick）完全由 handleClick 处理，
+        // 避免 mouseup 和 click 事件重复触发。
+        this.isLeftDragging = false;
+        this.rightButtonPressedDuringLeftDrag = false;
+        // leftDragHappened 不在这里重置，留给 handleClick 检查
+      }
+    } else if (e.button === 2) {
       const wasPending = this.rightClickPending;
       this.isRightDragging = false;
       this.rightClickPending = false;
@@ -258,8 +333,11 @@ export class RTSCamera {
     }
   }
 
-  private handleClick(_e: MouseEvent): void {
-    // Request pointer lock on left-click so the cursor is captured for RTS play.
+  private handleClick(e: MouseEvent): void {
+    // 安全过滤：某些浏览器/环境下右键可能意外触发 click 事件
+    if (e.button !== 0) return;
+
+    // 浏览器通常要求在 click 的同步上下文中请求 pointer lock（比 mousedown 更可靠）
     if (this.options.pointerLock && !this.isPointerLocked) {
       const canvas = this.engine.getRenderingCanvas();
       if (canvas) {
@@ -271,10 +349,14 @@ export class RTSCamera {
       }
     }
 
-    if (this.onLeftClick) {
-      // Use tracked mouse position so pointer-lock works correctly.
+    // click 作为 onLeftClick 的后备触发（某些环境如 Playwright headless
+    // 不触发 mousedown/mouseup，只触发 click）
+    if (!this.leftDragHappened && this.onLeftClick) {
       this.onLeftClick(this.mouseX, this.mouseY);
     }
+    // 重置拖动标志，为下一次交互做准备
+    this.leftDragHappened = false;
+    this.isLeftDragging = false;
   }
 
   private handleMouseEnter(): void {
@@ -354,6 +436,27 @@ export class RTSCamera {
   }
 
   // ── Panning ──
+
+  /**
+   * Update internal mouseX/mouseY from a MouseEvent.
+   * Called from handleMouseDown/handleMouseUp because those events may arrive
+   * without a preceding handleMouseMove (e.g. Playwright fast-click or JS dispatch).
+   */
+  private updateMousePositionFromEvent(e: MouseEvent): void {
+    const canvas = this.engine.getRenderingCanvas();
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+
+    if (this.isPointerLocked) {
+      this.mouseX += e.movementX;
+      this.mouseX = Math.max(0, Math.min(rect.width - 1, this.mouseX));
+      this.mouseY += e.movementY;
+      this.mouseY = Math.max(0, Math.min(rect.height - 1, this.mouseY));
+    } else {
+      this.mouseX = e.clientX - rect.left;
+      this.mouseY = e.clientY - rect.top;
+    }
+  }
 
   private handlePan(screenX: number, screenY: number): void {
     if (!this.panningStartPoint || !this.panningStartTarget) return;

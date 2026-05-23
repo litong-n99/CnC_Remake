@@ -212,14 +212,14 @@ export class UnitMovement {
     if (nextCX !== controller.fromCellX || nextCY !== controller.fromCellY) {
       if (UnitCollision.isPositionBlocked(nextX, nextY, controller.unitId, BlockedByActor.All)) {
         this.handleBlocked(controller, deltaTime);
-        // 弹回 fromCell 边缘（保留朝向 toCell 的 0.1 偏移），
-        // 避免停在边界与其他单位发生物理重叠。
-        const offsetX =
-          controller.toCellX > controller.fromCellX ? 0.1 : controller.toCellX < controller.fromCellX ? -0.1 : 0;
-        const offsetY =
-          controller.toCellY > controller.fromCellY ? 0.1 : controller.toCellY < controller.fromCellY ? -0.1 : 0;
-        controller.x = controller.fromCellX + offsetX;
-        controller.y = controller.fromCellY + offsetY;
+        // 不再弹回 fromCell + 0.1（会导致明显抖动），
+        // 而是将车辆限制在 fromCell 的边界内（maxOffset=0.499 确保 round() 仍在 fromCell），
+        // 这样车辆只回退极短距离，视觉上像是"停在边界"而非"弹回格子"。
+        const maxOffset = 0.499;
+        controller.x =
+          controller.fromCellX + Math.max(-maxOffset, Math.min(maxOffset, controller.x - controller.fromCellX));
+        controller.y =
+          controller.fromCellY + Math.max(-maxOffset, Math.min(maxOffset, controller.y - controller.fromCellY));
         return;
       }
     } else {

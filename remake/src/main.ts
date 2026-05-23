@@ -15,8 +15,8 @@ import { GameObjectFactory } from './game/objects/GameObjectFactory';
 import { GameObjectManager } from './game/objects/GameObjectManager';
 import { GameObjectType } from './game/objects/GameObject';
 import { SelectionManager } from './game/SelectionManager';
+import { InputManager } from './core/InputManager';
 import { Unit } from './game/objects/Unit';
-import { UnitState } from './game/unit/UnitState';
 import { ConstructionQueue } from './game/building/ConstructionQueue';
 import { BuildingPlacer } from './game/building/BuildingPlacer';
 import { Sidebar } from './renderer/ui/Sidebar';
@@ -215,6 +215,38 @@ const bootstrap = async (): Promise<void> => {
     }, 2000);
   }
 
+  // ── Task 24 默认场景：框选 + 群体移动测试单位 ──
+  // 放置在地图东南角 (45-50, 45-50)，避免与 task-23.1~23.8 的 e2e 测试坐标 (22-38, 18-26) 冲突
+  if (!enableTask239) {
+    // GDI 6 辆 MediumTank，3x2 编队
+    for (let i = 0; i < 6; i++) {
+      const row = Math.floor(i / 3);
+      const col = i % 3;
+      gdiTanks.push(
+        GameObjectFactory.createUnit({
+          definition: UNIT_DEFINITIONS.MediumTank,
+          house: gdi,
+          x: 45 + col,
+          y: 45 + row,
+          scene,
+        })
+      );
+    }
+
+    // Nod 2 辆 LightTank 作为攻击目标
+    for (let i = 0; i < 2; i++) {
+      nodTanks.push(
+        GameObjectFactory.createUnit({
+          definition: UNIT_DEFINITIONS.LightTank,
+          house: nod,
+          x: 50 + i,
+          y: 45 + i,
+          scene,
+        })
+      );
+    }
+  }
+
   // Enable shadows on all spawned objects
   const allSpawned = [...gdiTanks, ...nodTanks];
   for (const obj of allSpawned) {
@@ -258,112 +290,15 @@ const bootstrap = async (): Promise<void> => {
     }
   );
 
-  // ── Task 17: Selection & Right-click to move ──
+  // ── Debug Console ──
+  const gameConsole = new GameConsole(scene, lighting, rtsCamera, terrain, placer, pathfinder);
+  gameConsole.install();
+
+  // ── Task 24: InputManager（鼠标输入层）──
   const selectionManager = SelectionManager.getInstance();
+  const inputManager = new InputManager(rtsCamera, scene, selectionManager, pathfinder, placer, gameConsole);
 
-  /** 将世界坐标转换为格子坐标。 */
-  const worldToCell = (worldPos: Vector3): { x: number; y: number } => ({
-    x: Math.floor(worldPos.x + 32),
-    y: Math.floor(worldPos.z + 32),
-  });
-
-  /** 将屏幕坐标转为地面坐标，再查找最近的单位（1.5 格半径内）。 */
-  const pickUnitAt = (screenX: number, screenY: number): Unit | null => {
-    const groundPos = rtsCamera.screenToGround(screenX, screenY);
-    if (!groundPos) return null;
-
-    let closest: Unit | null = null;
-    let closestDist = Infinity;
-
-    for (const obj of GameObjectManager.getInstance().getUnits()) {
-      if (obj.type !== GameObjectType.Unit) continue;
-      const unit = obj as Unit;
-      const pos = unit.getPosition();
-      const dx = pos.x - groundPos.x;
-      const dz = pos.z - groundPos.z;
-      const dist = Math.sqrt(dx * dx + dz * dz);
-
-      if (dist < 1.5 && dist < closestDist) {
-        closest = unit;
-        closestDist = dist;
-      }
-    }
-    return closest;
-  };
-
-  // 左键：选中单位
-  rtsCamera.onLeftClick = (screenX, screenY) => {
-    // ── Normal mode: select unit ──
-    console.warn('Left-click detected at', screenX, screenY);
-
-    const unit = pickUnitAt(screenX, screenY);
-    if (unit) {
-      selectionManager.select(unit, scene);
-      console.warn(`Selected unit: ${unit.definition.name} (${unit.id}) at (${unit.x}, ${unit.y})`);
-    } else {
-      selectionManager.clear();
-      console.warn('No unit found at click position');
-    }
-  };
-
-  // 右键：取消放置 或 对选中单位下达命令（移动 / 攻击）
-  rtsCamera.onRightClick = (screenX, screenY) => {
-    // 放置模式下右键 = 取消
-    if (placer.isPlacing()) {
-      placer.cancelPlacement();
-      gameConsole.clearPendingBuilding();
-      console.warn('Placement cancelled');
-      return;
-    }
-
-    console.warn('Right-click detected at', screenX, screenY);
-
-    const worldPos = rtsCamera.screenToGround(screenX, screenY);
-    if (!worldPos) {
-      console.warn('screenToGround returned null');
-      return;
-    }
-
-    const cell = worldToCell(worldPos);
-    console.warn('Ground cell:', cell.x, cell.y, 'world:', worldPos.x, worldPos.z);
-
-    if (cell.x < 0 || cell.x >= 64 || cell.y < 0 || cell.y >= 64) {
-      console.warn('Cell out of bounds:', cell);
-      return;
-    }
-
-    const selected = selectionManager.getSelected();
-    if (selected.length === 0) {
-      console.warn('No unit selected — click a unit first (left click)');
-      return;
-    }
-
-    // 检查是否右键点击了某个单位（攻击目标）
-    const targetUnit = pickUnitAt(screenX, screenY);
-    const isEnemyTarget = targetUnit && targetUnit.house !== selected[0].house;
-
-    for (const unit of selected) {
-      if (isEnemyTarget && targetUnit) {
-        // 攻击命令：设置攻击目标，有炮塔的单位进入 TurretTracking
-        unit.logic.attackTarget = { x: targetUnit.x, y: targetUnit.y };
-        if (unit.definition.hasTurret) {
-          unit.logic.stateMachine.transition(UnitState.TurretTracking);
-        }
-        // eslint-disable-next-line no-console
-        console.info(`Attack order: ${unit.definition.name} → ${targetUnit.definition.name}`);
-      } else {
-        // 移动命令：清除攻击目标
-        unit.logic.attackTarget = undefined;
-        const success = unit.logic.moveTo(cell.x, cell.y, pathfinder);
-        if (success) {
-          // eslint-disable-next-line no-console
-          console.info(`Move order: ${unit.definition.name} → (${cell.x}, ${cell.y})`);
-        } else {
-          console.warn(`Move failed for ${unit.definition.name} → (${cell.x}, ${cell.y})`);
-        }
-      }
-    }
-  };
+  // worldToScreen 通过 inputManager.worldToScreen 暴露给 e2e 测试
 
   // ── Game loop ──
   const engine = engineManager.getEngine();
@@ -411,6 +346,7 @@ const bootstrap = async (): Promise<void> => {
 
   // ── Lifecycle cleanup ──
   window.addEventListener('beforeunload', () => {
+    inputManager.dispose();
     sidebar.dispose();
     placer.dispose();
     GameObjectManager.getInstance().dispose();
@@ -422,9 +358,16 @@ const bootstrap = async (): Promise<void> => {
     engineManager.dispose();
   });
 
-  // ── Debug Console ──
-  const gameConsole = new GameConsole(scene, lighting, rtsCamera, terrain, placer, pathfinder);
-  gameConsole.install();
+  // ── Expose internals for e2e tests ──
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const w = window as any;
+  w._engine = engineManager.getEngine();
+  w._scene = scene;
+  w._selectionManager = selectionManager;
+  w._goManager = GameObjectManager.getInstance();
+  w._worldToScreen = (worldX: number, worldY: number, worldZ: number) => {
+    return inputManager.worldToScreen(new Vector3(worldX, worldY, worldZ));
+  };
 
   // ── Verification ──
   const goManager = GameObjectManager.getInstance();

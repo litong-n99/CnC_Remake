@@ -5,13 +5,13 @@ import { MeshBuilder, StandardMaterial, Color3, Vector3, type Scene } from '@bab
  * 选中单位管理器 — 跟踪当前选中的单位列表，并渲染选择环。
  *
  * 对应 C++ 中的选择状态（`CurrentObject` / `CurrentObjects`）。
- * 当前仅支持单选；多选/框选（Task 25）后续扩展。
+ * 支持单选、多选（框选）、Shift 切换选择。
  */
 export class SelectionManager {
   private static instance: SelectionManager | null = null;
 
   private selected = new Set<Unit>();
-  private selectionRing: ReturnType<typeof MeshBuilder.CreateTorus> | null = null;
+  private selectionRings: ReturnType<typeof MeshBuilder.CreateTorus>[] = [];
   private selectionMaterial: StandardMaterial | null = null;
   private scene: Scene | null = null;
 
@@ -36,18 +36,44 @@ export class SelectionManager {
     this.selectionMaterial.disableLighting = true;
   }
 
-  /** 选中一个单位（单选模式会清除之前的选择）。 */
+  /** 选中单个单位（单选模式，清除之前的选择）。 */
   select(unit: Unit, scene: Scene): void {
     this.ensureScene(scene);
     this.clear();
     this.selected.add(unit);
-    this.showRing(unit);
+    this.showRings();
+  }
+
+  /** 多选：设置选中单位列表（框选用）。 */
+  selectMultiple(units: Unit[], scene: Scene): void {
+    this.ensureScene(scene);
+    this.clear();
+    for (const unit of units) {
+      this.selected.add(unit);
+    }
+    this.showRings();
+  }
+
+  /** Shift+点击：切换单个单位的选择状态。 */
+  toggleSelect(unit: Unit, scene: Scene): void {
+    this.ensureScene(scene);
+    if (this.selected.has(unit)) {
+      this.selected.delete(unit);
+    } else {
+      this.selected.add(unit);
+    }
+    this.showRings();
+  }
+
+  /** 判断单位是否被选中。 */
+  isSelected(unit: Unit): boolean {
+    return this.selected.has(unit);
   }
 
   /** 清除当前选择。 */
   clear(): void {
     this.selected.clear();
-    this.hideRing();
+    this.hideRings();
   }
 
   /** 获取当前选中的单位列表。 */
@@ -60,29 +86,31 @@ export class SelectionManager {
     return this.selected.size > 0;
   }
 
-  private showRing(unit: Unit): void {
-    if (!unit.mesh || !this.scene || !this.selectionMaterial) return;
+  private showRings(): void {
+    this.hideRings();
+    if (!this.scene || !this.selectionMaterial) return;
 
-    this.hideRing();
+    for (const unit of this.selected) {
+      if (!unit.mesh) continue;
 
-    // 选择环大小根据单位尺寸调整（简单估算）
-    const radius = 0.6;
-    this.selectionRing = MeshBuilder.CreateTorus(
-      'selectionRing',
-      { diameter: radius * 2, thickness: 0.08, tessellation: 32 },
-      this.scene
-    );
-    this.selectionRing.material = this.selectionMaterial;
-    // 先挂接父节点，再设局部坐标，避免世界坐标被误读为局部坐标
-    this.selectionRing.parent = unit.mesh;
-    this.selectionRing.position = new Vector3(0, 0.05, 0);
+      const radius = 0.6;
+      const ring = MeshBuilder.CreateTorus(
+        `selectionRing_${unit.id}`,
+        { diameter: radius * 2, thickness: 0.08, tessellation: 32 },
+        this.scene
+      );
+      ring.material = this.selectionMaterial;
+      ring.parent = unit.mesh;
+      ring.position = new Vector3(0, 0.05, 0);
+      this.selectionRings.push(ring);
+    }
   }
 
-  private hideRing(): void {
-    if (this.selectionRing) {
-      this.selectionRing.dispose();
-      this.selectionRing = null;
+  private hideRings(): void {
+    for (const ring of this.selectionRings) {
+      ring.dispose();
     }
+    this.selectionRings = [];
   }
 
   dispose(): void {

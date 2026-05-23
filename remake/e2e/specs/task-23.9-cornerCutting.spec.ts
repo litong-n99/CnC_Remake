@@ -57,6 +57,7 @@ test('A* corner cutting: Track avoids Rock, Foot cuts through', async ({ page })
 });
 
 test('60s stress test: no vehicle on true Rock cells', async ({ page }) => {
+  test.setTimeout(90_000);
   await page.goto('http://localhost:5173/CnC_Remake/?task=23.9');
   await page.waitForTimeout(2000);
 

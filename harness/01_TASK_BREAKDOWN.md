@@ -376,31 +376,37 @@
 
 ### Task 23.9: 密集场景压力测试
 - **目标**：在狭窄地形（如桥梁、峡谷）中测试 10+ 单位交叉移动，验证无死锁、无穿透、无异常漂移。
-- **文件**：`src/main.ts`（测试场景）
-- **验收**：10 辆坦克分别从地图两侧出发前往对侧，所有单位最终到达目标或合理停止（无死锁）。
-- **状态**：[ ] `done`
-
-### Task 23.10: 框选 + 群体移动回归
-- **目标**：恢复 Task 24 的框选功能（在 Phase 5.5 之前的版本中已实现，随回滚一并移除）。将框选与重构后的移动系统对接。
-- **文件**：`src/core/RTSCamera.ts`, `src/core/SelectionBox.ts`, `src/game/SelectionManager.ts`, `src/main.ts`
-- **OpenRA 对标**：`MoveOrderGenerator` — 为每个选中单位生成独立的 `Move` 活动，各单位独立寻路到目标附近
+- **文件**：`src/main.ts`（测试场景）、`src/game/unit/UnitMovement.ts`、`src/game/terrain/Pathfinder.ts`
 - **关键变更**：
-  - 框选：绿色矩形框 + 多选
-  - 右键地面：为每个选中单位调用 `moveTo(targetX, targetY)`
-  - 群体移动时自动兼容 SubCell（步兵群可拥挤在同一目标格子附近）
-- **验收**：按住左键拖动出现绿色矩形框，松开时框内单位被选中（多选）；右键点击地面，所有选中单位同步移动；框选功能在群体移动时无卡顿。
-- **状态**：[ ] `done`
+  - **桥梁场景**：北侧 10 辆 Nod + 南侧 1 辆 GDI，通过 2 格宽桥梁交叉过桥
+  - **对角线剪枝（Corner Cutting）**：`Pathfinder.ts` 和 `UnitMovement.ts` 中对角线移动时检查 `getTerrainCost <= 0`，防止 Track 车辆穿过 Rock 墙角
+  - **Nudge/Backup 剪枝**：`findNudgeCell` 和 `findBackupCell` 中对角线方向增加 Corner Cutting 检查
+  - **阻塞弹回平滑化**：车辆移动被阻塞时不再弹回 `fromCell + 0.1`，而是限制在 `fromCell` 边界内（maxOffset=0.499），消除视觉抖动
+  - **GameConsole 增强**：`cnc.pathfind` 支持指定 `locomotion` 参数
+  - **e2e 测试**：`task-23.9-crossBridge.spec.ts`（60s 过桥验证）+ `task-23.9-cornerCutting.spec.ts`（A* 对角线剪枝 + 60s Rock 压力测试）
+- **验收**：10 辆坦克分别从地图两侧出发前往对侧，所有单位最终到达目标或合理停止（无死锁）；60s 压力测试无车辆进入 Rock 格子；A* Track 路径不切割 Rock 墙角。
+- **状态**：[x] `done`
 
 ---
 
 ## Phase 6: 交互与输入（Interaction）
 
-### Task 24: 鼠标输入层（框选 + 点击）
-- **目标**：翻译 `MOUSE.CPP`。左键框选单位/建筑，右键对选中单位下达移动/攻击指令。
-- **文件**：`src/core/InputManager.ts`, `src/core/SelectionBox.ts`
-- **Dummy 资源**：框选用 Babylon.GUI 矩形，颜色为绿色（友方）/红色（敌方）。
-- **验收**：按住左键拖动出现绿色矩形，松开时框内单位被选中；右键点击地面单位移动。
-- **状态**：[ ] `done`
+### Task 24: 鼠标输入层（框选 + 点击 + 群体移动）
+- **目标**：翻译 `MOUSE.CPP`。左键框选单位/建筑，右键对选中单位下达移动/攻击指令。将框选与重构后的移动系统对接。
+- **文件**：`src/core/InputManager.ts`, `src/core/RTSCamera.ts`, `src/core/SelectionBox.ts`, `src/game/SelectionManager.ts`, `src/main.ts`
+- **OpenRA 对标**：`MoveOrderGenerator` — 为每个选中单位生成独立的 `Move` 活动，各单位独立寻路到目标附近
+- **关键变更**：
+  - **InputManager 抽离**：将鼠标输入逻辑从 `RTSCamera` 和 `main.ts` 集中到 `InputManager.ts`，职责分离：RTSCamera 负责相机控制（平移/缩放/旋转），InputManager 负责输入分发（选择/框选/命令）
+  - **SelectionManager 多选支持**：`selectMultiple(units)` 批量选中 + 多选择环渲染；`toggleSelect(unit)` Shift+切换选择
+  - **SelectionBox**：HTML div 绿色半透明矩形框，fixed 定位，零 Babylon mesh 开销
+  - **RTSCamera 左键拖动检测**：`mousedown` 启动拖动，`mousemove` 计算 dragDist，`mouseup` 区分 click 与 drag；新增 `updateMousePositionFromEvent` 解决 Playwright headless 中 mousemove 不触发导致坐标旧值问题
+  - **框选命中测试**：`worldToScreen` 将单位世界坐标转为屏幕坐标，与框选矩形做 AABB 相交测试
+  - **群体移动**：右键点击地面时，遍历 `selectionManager.getSelected()` 为每个单位调用 `moveTo(targetX, targetY)`；步兵（SharesCell=true）可共享目标格子，车辆由阻塞 fallback 链自动分散
+  - **攻击指令**：右键点击敌方单位时，设置 `attackTarget`，有炮塔的单位进入 `TurretTracking`
+  - **Shift 追加选择**：`Shift+框选` = 追加模式，`Shift+点击` = 单单位切换
+  - **默认测试场景**：`main.ts` 默认在地图东南角 (45-50, 45-50) 生成 6 辆 GDI MediumTank + 2 辆 Nod LightTank，方便手动测试框选与群体移动
+- **验收**：框选多单位（3辆坦克）命中正确；右键移动命令同步下达给所有选中单位；右键敌人下达攻击指令；toggleSelect / selectMultiple API 正确。
+- **状态**：[x] `done`
 
 ### Task 25: 选择系统（单选、框选、编队）
 - **目标**：支持 Ctrl+数字编队，双击选中同屏同类单位，Shift 追加选择。
