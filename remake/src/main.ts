@@ -84,16 +84,18 @@ const bootstrap = async (): Promise<void> => {
     }
 
     // 4. 出发区和目标区清除不可通行地形（dummy_map 残留 Rock/Rough/Water）
+    // 西侧 Nod 出发区 + 东侧 GDI 目标区
     for (let y = 8; y <= 14; y++) {
-      for (let x = 25; x <= 34; x++) {
+      for (let x = 18; x <= 40; x++) {
         const type = terrain.getCellLandType(x, y);
         if (type === LandType.Water || type === LandType.Rock || type === LandType.Rough || type === LandType.River) {
           terrain.setCellLandType(x, y, LandType.Clear);
         }
       }
     }
+    // 东侧 GDI 出发区 + 西侧 Nod 目标区
     for (let y = 36; y <= 44; y++) {
-      for (let x = 25; x <= 34; x++) {
+      for (let x = 18; x <= 40; x++) {
         const type = terrain.getCellLandType(x, y);
         if (type === LandType.Water || type === LandType.Rock || type === LandType.Rough || type === LandType.River) {
           terrain.setCellLandType(x, y, LandType.Clear);
@@ -161,32 +163,32 @@ const bootstrap = async (): Promise<void> => {
     capacity: 2000,
   });
 
-  // ── Task 23.9: 1 GDI + 5 Nod 交叉过桥测试 ──
+  // ── Task 23.9: 西侧10辆Nod + 东侧1辆GDI 交叉过桥测试 ──
   const gdiTanks: Unit[] = [];
   const nodTanks: Unit[] = [];
 
   if (enableTask239) {
-    // GDI 1 辆从北侧桥梁入口出发，前往南岸
+    // GDI 1 辆在东侧，前往西侧
     gdiTanks.push(
       GameObjectFactory.createUnit({
         definition: UNIT_DEFINITIONS.MediumTank,
         house: gdi,
-        x: 29,
-        y: 10,
+        x: 33,
+        y: 40,
         scene,
       })
     );
 
-    // Nod 5 辆从南侧出发，前往北侧
-    for (let i = 0; i < 5; i++) {
-      const x = 29 + (i % 3);
-      const y = 40;
+    // Nod 10 辆在西侧，前往东侧（2排，每排5辆，不重叠）
+    for (let i = 0; i < 10; i++) {
+      const row = Math.floor(i / 5); // 0 or 1
+      const col = i % 5; // 0..4
       nodTanks.push(
         GameObjectFactory.createUnit({
           definition: UNIT_DEFINITIONS.MediumTank,
           house: nod,
-          x: x > 30 ? 29 : x,
-          y,
+          x: 20 + col,
+          y: 10 + row,
           scene,
         })
       );
@@ -195,21 +197,21 @@ const bootstrap = async (): Promise<void> => {
     // 延迟 2s 后同时下达交叉移动命令
     setTimeout(() => {
       const gdiTank = gdiTanks[0];
-      const okGdi = gdiTank.logic.moveTo(29, 40, pathfinder);
+      const okGdi = gdiTank.logic.moveTo(24, 10, pathfinder);
       console.warn(
-        `[Task23.9] GDI moveTo(29,40) = ${okGdi}, path=${JSON.stringify(gdiTank.logic.movement['path']?.map((p: { x: number; y: number }) => [p.x, p.y]))}`
+        `[Task23.9] GDI moveTo(24,10) = ${okGdi}, path=${JSON.stringify(gdiTank.logic.movement['path']?.map((p: { x: number; y: number }) => [p.x, p.y]))}`
       );
 
       for (let i = 0; i < nodTanks.length; i++) {
         const tank = nodTanks[i];
-        const tx = 28 + i;
-        const ty = 10;
+        const tx = 33 + (i % 5);
+        const ty = 40 + Math.floor(i / 5);
         const ok = tank.logic.moveTo(tx, ty, pathfinder);
         console.warn(
           `[Task23.9] Nod-${i} moveTo(${tx},${ty}) = ${ok}, path=${JSON.stringify(tank.logic.movement['path']?.map((p: { x: number; y: number }) => [p.x, p.y]))}`
         );
       }
-      console.warn('Task 23.9: 1 GDI + 5 Nod ordered to cross');
+      console.warn('Task 23.9: 10 Nod + 1 GDI ordered to cross');
     }, 2000);
   }
 
