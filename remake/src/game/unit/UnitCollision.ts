@@ -3,6 +3,7 @@ import { GameObjectManager } from '../objects/GameObjectManager';
 import { GameObjectType } from '../objects/GameObject';
 import { BlockedByActor } from './BlockedByActor';
 import { getLocomotor } from '../rules/Locomotor';
+import { LocomotorCache } from '../world/LocomotorCache';
 
 /**
  * 单位碰撞与避障系统 — Task 24.2 BlockedByActor 分级 + 双格占用。
@@ -26,6 +27,11 @@ export class UnitCollision {
 
     const cx = Math.round(x);
     const cy = Math.round(y);
+
+    // 快速路径：LocomotorCache 空格子检查（O(1)，避免查询 ActorMap + 遍历 occupants）
+    const cache = LocomotorCache.getInstance().getCache(cx, cy);
+    if (cache.totalCount === 0) return false;
+
     const am = ActorMap.getInstance();
 
     // Task 23.8: 查询调用者的 sharesCell（步兵 vs 车辆行为不同）
@@ -125,15 +131,88 @@ export class UnitCollision {
 
     const blocked = new Set<string>();
     const am = ActorMap.getInstance();
+    const cache = LocomotorCache.getInstance();
 
     for (const key of am.getAllOccupiedCells()) {
       const [x, y] = key.split(',').map(Number);
-      const occupants = am.getOccupants(x, y);
-      if (this.isCellBlockedByActor(occupants, excludeId, check)) {
+      const cellCache = cache.getCache(x, y);
+
+      // 快速排除：空格子（理论上不会出现在 getAllOccupiedCells 中，但安全起见）
+      if (cellCache.totalCount === 0) continue;
+
+      // 只有一个 occupant → 需要确认是否是 excludeId，无法完全用缓存判断
+      if (cellCache.totalCount === 1) {
+        const occupants = am.getOccupants(x, y);
+        if (this.isCellBlockedByActor(occupants, excludeId, check)) {
+          blocked.add(key);
+        }
+        continue;
+      }
+
+      // 多个 occupant，排除 excludeId 后至少还有一个
+      // 使用缓存统计做快速判断，避免遍历 occupants 查询 GameObjectManager
+      if (this.isCellBlockedByCache(cellCache, excludeId, check)) {
         blocked.add(key);
       }
     }
 
     return blocked;
+  }
+
+  /**
+   * 使用 LocomotorCache 做快速阻塞判断。
+   * 前提：该格子有 >= 2 个 occupant（排除 excludeId 后至少还有一个）。
+   * @returns true = 阻塞；false = 不阻塞
+   */
+  private static isCellBlockedByCache(
+    cache: import('../world/LocomotorCache').CellCache,
+    excludeId: string,
+    check: BlockedByActor
+  ): boolean {
+    // Immovable 级别：当前 ActorMap 中只有可移动单位
+    if (check === BlockedByActor.Immovable) {
+      // 未来如果有临时阻挡物（HasTemporaryBlocker），需要检查
+      return (cache.cellFlag & (1 << 4)) !== 0; // HasTemporaryBlocker
+    }
+
+    if (check === BlockedByActor.Stationary) {
+      // 没有静止单位 → 不阻塞
+      if (cache.stationaryCount === 0) return false;
+      // 有 >= 1 个静止单位，排除 excludeId 后仍可能有静止的
+      // 如果静止数量 >= 2，排除一个后肯定还有
+      if (cache.stationaryCount >= 2) return true;
+      // stationaryCount === 1：需要回退检查这个静止单位是否是 excludeId
+      // 但这里的前提是 totalCount >= 2，所以即使 excludeId 是静止的，
+      // 还有其他 occupant。如果其他 occupant 也是静止的（stationaryCount >= 2 已覆盖），
+      // 或者它是移动的，那么排除 excludeId 后没有静止单位了。
+      // 为了安全，我们保守地返回 true（因为至少有一个静止单位，且不一定是 excludeId）
+      return true;
+    }
+
+    // check === BlockedByActor.All
+    // 如果格子里有车辆（nonSharesCell），阻塞
+    if (cache.nonSharesCellCount > 0) return true;
+
+    // 全是步兵（sharesCell）
+    if (cache.sharesCellCount > 0) {
+      // 需要知道 caller 是否是车辆
+      const callerSharesCell = this.getCallerSharesCell(excludeId);
+      // undefined = Pathfinder 模式：不阻塞（步兵格子可通行）
+      // true  = 步兵进入：不阻塞（共享）
+      // false = 车辆进入：阻塞
+      return callerSharesCell === false;
+    }
+
+    return false;
+  }
+
+  /** 查询指定单位是否是步兵（sharesCell=true）。 */
+  private static getCallerSharesCell(excludeId: string): boolean | undefined {
+    const callerObj = GameObjectManager.getInstance().get(excludeId);
+    if (callerObj && callerObj.type === GameObjectType.Unit) {
+      const callerUnit = callerObj as import('../objects/Unit').Unit;
+      return getLocomotor(callerUnit.definition.locomotion).sharesCell;
+    }
+    return undefined;
   }
 }

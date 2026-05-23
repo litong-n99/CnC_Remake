@@ -6,6 +6,7 @@ import { UnitController } from '../unit/Unit';
 import { UnitState } from '../unit/UnitState';
 import { UnitMeshFactory } from '../../renderer/meshes/UnitMeshFactory';
 import { ActorMap } from '../world/ActorMap';
+import { LocomotorCache } from '../world/LocomotorCache';
 
 /** 运行时单位实例。
  *
@@ -73,6 +74,18 @@ export class Unit extends GameObject {
     for (const curr of currentCells) {
       if (!this.lastOccupiedCells.some((c) => c.x === curr.x && c.y === curr.y)) {
         ActorMap.getInstance().occupy(this.id, curr.x, curr.y);
+      }
+    }
+
+    // Task 23.12: 对当前占用的所有格子标记 LocomotorCache dirty。
+    // 即使格子坐标没变，occupant 的状态（静止→移动中）变化也需要重建缓存。
+    const cache = LocomotorCache.getInstance();
+    for (const curr of currentCells) {
+      cache.markDirty(curr.x, curr.y);
+    }
+    for (const last of this.lastOccupiedCells) {
+      if (!currentCells.some((c) => c.x === last.x && c.y === last.y)) {
+        cache.markDirty(last.x, last.y);
       }
     }
 

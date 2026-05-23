@@ -16,6 +16,7 @@ import { TerrainGrid, LandType } from '../game/terrain/TerrainGrid';
 import { UnitCollision } from '../game/unit/UnitCollision';
 import { BlockedByActor } from '../game/unit/BlockedByActor';
 import { ActorMap } from '../game/world/ActorMap';
+import { LocomotorCache, CellFlag } from '../game/world/LocomotorCache';
 import { BuildingPlacer } from '../game/building/BuildingPlacer';
 import type { PathNode, Pathfinder } from '../game/terrain/Pathfinder';
 import { getLocomotor, makeTerrainCostCallback } from '../game/rules/Locomotor';
@@ -56,6 +57,7 @@ export class GameConsole {
       moveUnit: this.moveUnit.bind(this),
       distance: this.distance.bind(this),
       debugState: this.debugState.bind(this),
+      locomotorCache: this.locomotorCache.bind(this),
       help: this.help.bind(this),
     };
     // eslint-disable-next-line no-console
@@ -285,12 +287,14 @@ export class GameConsole {
   }
 
   /** Check whether a cell is blocked by another unit.
+   * @param check — 'All' | 'Stationary' | 'Immovable' | 'None' (default 'All')
    * @returns true if the cell contains at least one unit other than excludeId.
    */
-  private collision(x: number, y: number, excludeId?: string): boolean {
-    const blocked = UnitCollision.isPositionBlocked(x, y, excludeId ?? '');
+  private collision(x: number, y: number, excludeId?: string, checkName = 'All'): boolean {
+    const check = this.parseBlockedByActor(checkName);
+    const blocked = UnitCollision.isPositionBlocked(x, y, excludeId ?? '', check);
     // eslint-disable-next-line no-console
-    console.info(`Collision (${x}, ${y}): ${blocked ? 'BLOCKED' : 'FREE'}`);
+    console.info(`Collision (${x}, ${y}) [${checkName}]: ${blocked ? 'BLOCKED' : 'FREE'}`);
     return blocked;
   }
 
@@ -396,6 +400,41 @@ export class GameConsole {
     }
   }
 
+  /** Inspect LocomotorCache at a specific cell.
+   * @returns CellCache data for programmatic access (e.g. E2E tests).
+   */
+  private locomotorCache(x: number, y: number): Record<string, unknown> | undefined {
+    const cache = LocomotorCache.getInstance().getCache(x, y);
+    // eslint-disable-next-line no-console
+    console.info(
+      `LocomotorCache (${x}, ${y}): total=${cache.totalCount}, ` +
+        `sharesCell=${cache.sharesCellCount}, nonSharesCell=${cache.nonSharesCellCount}, ` +
+        `moving=${cache.movingCount}, stationary=${cache.stationaryCount}, ` +
+        `flags=${this.formatCellFlags(cache.cellFlag)}`
+    );
+    return {
+      x,
+      y,
+      cellFlag: cache.cellFlag,
+      sharesCellCount: cache.sharesCellCount,
+      nonSharesCellCount: cache.nonSharesCellCount,
+      movingCount: cache.movingCount,
+      stationaryCount: cache.stationaryCount,
+      totalCount: cache.totalCount,
+    };
+  }
+
+  private formatCellFlags(flag: number): string {
+    const names: string[] = [];
+    if (flag === CellFlag.HasFreeSpace) names.push('HasFreeSpace');
+    if (flag & CellFlag.HasMovingActor) names.push('HasMovingActor');
+    if (flag & CellFlag.HasStationaryActor) names.push('HasStationaryActor');
+    if (flag & CellFlag.HasMovableActor) names.push('HasMovableActor');
+    if (flag & CellFlag.HasCrushableActor) names.push('HasCrushableActor');
+    if (flag & CellFlag.HasTemporaryBlocker) names.push('HasTemporaryBlocker');
+    return names.join(' | ') || '0';
+  }
+
   /** Return debug state for all units. */
   private debugState(): Array<Record<string, unknown>> {
     const manager = GameObjectManager.getInstance();
@@ -470,6 +509,10 @@ export class GameConsole {
 ║ cnc.actorMap(x?, y?)                                         ║
 ║   Inspect ActorMap occupancy. Omit x,y to list all cells.    ║
 ║   Example: cnc.actorMap(30, 30)                              ║
+║                                                              ║
+║ cnc.locomotorCache(x, y)                                     ║
+║   Inspect LocomotorCache cell flags and counts.              ║
+║   Example: cnc.locomotorCache(30, 30)                        ║
 ║                                                              ║
 ║ cnc.collision(x, y, excludeId?)                              ║
 ║   Check if a cell is blocked by another unit.                ║

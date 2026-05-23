@@ -1,3 +1,5 @@
+import { LocomotorCache } from './LocomotorCache';
+
 /**
  * 格子级单位占用映射 — OpenRA ActorMap 简化版。
  *
@@ -32,6 +34,7 @@ export class ActorMap {
       this.cells.set(key, set);
     }
     set.add(id);
+    LocomotorCache.getInstance().markDirty(x, y);
   }
 
   /** 单位离开指定格子。 */
@@ -44,6 +47,7 @@ export class ActorMap {
         this.cells.delete(key);
       }
     }
+    LocomotorCache.getInstance().markDirty(x, y);
   }
 
   /** 单位从一个格子移动到另一个格子（原子操作）。 */
@@ -81,6 +85,7 @@ export class ActorMap {
   /** 清除所有占用记录（用于新游戏或重置）。 */
   clear(): void {
     this.cells.clear();
+    LocomotorCache.getInstance().clear();
   }
 
   /** 释放所有资源。 */
