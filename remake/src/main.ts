@@ -63,6 +63,7 @@ const bootstrap = async (): Promise<void> => {
   // 通过 URL 查询参数 ?task=23.9 启用，避免干扰其他 e2e 测试的地形
   const urlParams = new URLSearchParams(window.location.search);
   const enableTask239 = urlParams.get('task') === '23.9';
+  const enableTask2312 = urlParams.get('task') === '23.12';
 
   if (enableTask239) {
     // 1. 完整北墙和南墙（横向 Rock，x=0-63）
@@ -96,6 +97,16 @@ const bootstrap = async (): Promise<void> => {
     // 东侧 GDI 出发区 + 西侧 Nod 目标区
     for (let y = 36; y <= 44; y++) {
       for (let x = 18; x <= 40; x++) {
+        const type = terrain.getCellLandType(x, y);
+        if (type === LandType.Water || type === LandType.Rock || type === LandType.Rough || type === LandType.River) {
+          terrain.setCellLandType(x, y, LandType.Clear);
+        }
+      }
+    }
+  } else if (enableTask2312) {
+    // Task 23.12: 清除全图障碍，确保大规模单位可以自由移动
+    for (let y = 0; y < 64; y++) {
+      for (let x = 0; x < 64; x++) {
         const type = terrain.getCellLandType(x, y);
         if (type === LandType.Water || type === LandType.Rock || type === LandType.Rough || type === LandType.River) {
           terrain.setCellLandType(x, y, LandType.Clear);
@@ -164,8 +175,10 @@ const bootstrap = async (): Promise<void> => {
   });
 
   // ── Task 23.9: 西侧10辆Nod + 东侧1辆GDI 交叉过桥测试 ──
+  // ── Task 23.12: LocomotorCache 验收场景 — 64+ 单位混合编队 ──
   const gdiTanks: Unit[] = [];
   const nodTanks: Unit[] = [];
+  const patrolUnits: Unit[] = [];
 
   if (enableTask239) {
     // GDI 1 辆在东侧，前往西侧
@@ -213,11 +226,119 @@ const bootstrap = async (): Promise<void> => {
       }
       console.warn('Task 23.9: 10 Nod + 1 GDI ordered to cross');
     }, 2000);
+  } else if (enableTask2312) {
+    // ═══════════════════════════════════════════════════════════════
+    // Task 23.12 验收场景：64+ 单位混合编队
+    // ═══════════════════════════════════════════════════════════════
+    // 目标：验证 LocomotorCache 在 50+ 单位同屏时的性能收益
+    //
+    // 编队构成：
+    //   A. 西北 stationary 方阵 — 16 辆 GDI MediumTank（4×4）
+    //      → 验证 HasStationaryActor flag
+    //   B. 东南 stationary 混合 — 16 辆 Nod LightTank + 16 步兵（4×4 坦克 + 4×4 步兵交错）
+    //      → 验证 HasCrushableActor + sharesCell 计数
+    //   C. 中央巡逻队 — 16 辆坦克（8 GDI + 8 Nod）沿水平线循环移动
+    //      → 验证 HasMovingActor flag + 移动中 cache 更新
+    //
+    // 相机初始位置对准中央，便于观察移动单位与两侧方阵。
+    // ═══════════════════════════════════════════════════════════════
+
+    // A. 西北 GDI 方阵 (5,5)-(14,14) 中取 4×4 = 16 辆
+    for (let i = 0; i < 16; i++) {
+      const row = Math.floor(i / 4);
+      const col = i % 4;
+      gdiTanks.push(
+        GameObjectFactory.createUnit({
+          definition: UNIT_DEFINITIONS.MediumTank,
+          house: gdi,
+          x: 5 + col * 2,
+          y: 5 + row * 2,
+          scene,
+        })
+      );
+    }
+
+    // B. 东南 Nod 方阵 (45,45)-(54,54) — 16 辆 LightTank + 16 步兵交错
+    for (let i = 0; i < 16; i++) {
+      const row = Math.floor(i / 4);
+      const col = i % 4;
+      nodTanks.push(
+        GameObjectFactory.createUnit({
+          definition: UNIT_DEFINITIONS.LightTank,
+          house: nod,
+          x: 45 + col * 2,
+          y: 45 + row * 2,
+          scene,
+        })
+      );
+    }
+    for (let i = 0; i < 16; i++) {
+      const row = Math.floor(i / 4);
+      const col = i % 4;
+      GameObjectFactory.createUnit({
+        definition: UNIT_DEFINITIONS.RifleInfantry,
+        house: nod,
+        x: 46 + col * 2,
+        y: 46 + row * 2,
+        scene,
+      });
+    }
+
+    // C. 中央巡逻队 — 16 辆坦克沿 y=30 水平线分布
+    for (let i = 0; i < 8; i++) {
+      patrolUnits.push(
+        GameObjectFactory.createUnit({
+          definition: UNIT_DEFINITIONS.MediumTank,
+          house: gdi,
+          x: 20 + i * 2,
+          y: 30,
+          scene,
+        })
+      );
+    }
+    for (let i = 0; i < 8; i++) {
+      patrolUnits.push(
+        GameObjectFactory.createUnit({
+          definition: UNIT_DEFINITIONS.LightTank,
+          house: nod,
+          x: 36 + i * 2,
+          y: 30,
+          scene,
+        })
+      );
+    }
+
+    // 相机对准中央
+    rtsCamera.setTarget(new Vector3(0, 0, 0));
+
+    // 巡逻循环：每 6 秒让所有巡逻单位向对面移动
+    let patrolDirection = 1; // 1 = 向右，-1 = 向左
+    const runPatrol = () => {
+      if (patrolUnits.length === 0) return;
+      const targetX = patrolDirection > 0 ? 50 : 14;
+      for (const u of patrolUnits) {
+        if (u.isAlive()) {
+          u.logic.moveTo(targetX, u.logic.fromCellY, pathfinder);
+        }
+      }
+      patrolDirection *= -1;
+    };
+    // 延迟 2s 后开始第一次巡逻
+    setTimeout(() => {
+      runPatrol();
+      // 之后每 8s 切换方向
+      setInterval(runPatrol, 8000);
+    }, 2000);
+
+    console.warn(
+      `[Task23.12] Scene ready: ${gdiTanks.length} GDI tanks + ${nodTanks.length} Nod tanks + 16 infantry + ${patrolUnits.length} patrol units = ${gdiTanks.length + nodTanks.length + 16 + patrolUnits.length} total`
+    );
+    console.warn(`[Task23.12] Console commands: cnc.cacheStats() | cnc.benchmarkPaths(200) | cnc.locomotorCache(x,y)`);
   }
 
   // ── Task 24 默认场景：框选 + 群体移动测试单位 ──
   // 放置在地图东南角 (45-50, 45-50)，避免与 task-23.1~23.8 的 e2e 测试坐标 (22-38, 18-26) 冲突
-  if (!enableTask239) {
+  if (!enableTask239 && !enableTask2312) {
     // GDI 6 辆 MediumTank，3x2 编队
     for (let i = 0; i < 6; i++) {
       const row = Math.floor(i / 3);

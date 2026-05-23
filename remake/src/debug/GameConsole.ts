@@ -58,6 +58,8 @@ export class GameConsole {
       distance: this.distance.bind(this),
       debugState: this.debugState.bind(this),
       locomotorCache: this.locomotorCache.bind(this),
+      cacheStats: this.cacheStats.bind(this),
+      benchmarkPaths: this.benchmarkPaths.bind(this),
       help: this.help.bind(this),
     };
     // eslint-disable-next-line no-console
@@ -424,6 +426,54 @@ export class GameConsole {
     };
   }
 
+  /** Global LocomotorCache statistics. */
+  private cacheStats(): Record<string, unknown> {
+    const stats = LocomotorCache.getInstance().getStats();
+    // eslint-disable-next-line no-console
+    console.info(
+      `LocomotorCache Stats: cachedCells=${stats.cachedCells}, dirtyCells=${stats.dirtyCells}, ` +
+        `HasMoving=${stats.hasMoving}, HasStationary=${stats.hasStationary}, ` +
+        `HasCrushable=${stats.hasCrushable}, HasFreeSpace=${stats.hasFreeSpace}, ` +
+        `HasTemporaryBlocker=${stats.hasTemporaryBlocker}`
+    );
+    return stats;
+  }
+
+  /**
+   * Benchmark pathfinding performance.
+   * @param count — number of random path queries (default 100)
+   * @returns average time per query in ms
+   */
+  private benchmarkPaths(count = 100): number {
+    if (!this.pathfinder) {
+      console.warn('Pathfinder not available');
+      return -1;
+    }
+    const w = 64;
+    const h = 64;
+    const blockedCells = UnitCollision.getBlockedCells('', BlockedByActor.All);
+    let success = 0;
+    let fail = 0;
+    const t0 = performance.now();
+    for (let i = 0; i < count; i++) {
+      const sx = Math.floor(Math.random() * w);
+      const sy = Math.floor(Math.random() * h);
+      const ex = Math.floor(Math.random() * w);
+      const ey = Math.floor(Math.random() * h);
+      const path = this.pathfinder.findPath(sx, sy, ex, ey, blockedCells, BlockedByActor.All);
+      if (path) success++;
+      else fail++;
+    }
+    const t1 = performance.now();
+    const avg = (t1 - t0) / count;
+    // eslint-disable-next-line no-console
+    console.info(
+      `Benchmark ${count} paths: ${(t1 - t0).toFixed(2)}ms total, ${avg.toFixed(3)}ms avg, ` +
+        `${success} success, ${fail} fail`
+    );
+    return avg;
+  }
+
   private formatCellFlags(flag: number): string {
     const names: string[] = [];
     if (flag === CellFlag.HasFreeSpace) names.push('HasFreeSpace');
@@ -513,6 +563,12 @@ export class GameConsole {
 ║ cnc.locomotorCache(x, y)                                     ║
 ║   Inspect LocomotorCache cell flags and counts.              ║
 ║   Example: cnc.locomotorCache(30, 30)                        ║
+║                                                              ║
+║ cnc.cacheStats()                                             ║
+║   Global LocomotorCache statistics.                          ║
+║                                                              ║
+║ cnc.benchmarkPaths(count=100)                                ║
+║   Benchmark random pathfinding. Returns avg ms/query.        ║
 ║                                                              ║
 ║ cnc.collision(x, y, excludeId?)                              ║
 ║   Check if a cell is blocked by another unit.                ║

@@ -105,6 +105,44 @@ export class LocomotorCache {
     this.dirtyCells.clear();
   }
 
+  /** 全局统计 — 用于 HUD 和 benchmark。 */
+  getStats(): {
+    cachedCells: number;
+    dirtyCells: number;
+    hasMoving: number;
+    hasStationary: number;
+    hasCrushable: number;
+    hasFreeSpace: number;
+    hasTemporaryBlocker: number;
+  } {
+    let hasMoving = 0;
+    let hasStationary = 0;
+    let hasCrushable = 0;
+    let hasFreeSpace = 0;
+    let hasTemporaryBlocker = 0;
+
+    for (const cache of this.cache.values()) {
+      if (cache.cellFlag === CellFlag.HasFreeSpace) {
+        hasFreeSpace++;
+      } else {
+        if (cache.cellFlag & CellFlag.HasMovingActor) hasMoving++;
+        if (cache.cellFlag & CellFlag.HasStationaryActor) hasStationary++;
+        if (cache.cellFlag & CellFlag.HasCrushableActor) hasCrushable++;
+        if (cache.cellFlag & CellFlag.HasTemporaryBlocker) hasTemporaryBlocker++;
+      }
+    }
+
+    return {
+      cachedCells: this.cache.size,
+      dirtyCells: this.dirtyCells.size,
+      hasMoving,
+      hasStationary,
+      hasCrushable,
+      hasFreeSpace,
+      hasTemporaryBlocker,
+    };
+  }
+
   /** 释放单例。 */
   dispose(): void {
     this.clear();
