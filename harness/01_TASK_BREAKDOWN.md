@@ -425,7 +425,7 @@
   - `UnitCollision` 和 `Pathfinder` 优先查缓存，缓存无法裁决时回退 ActorMap
 - **依赖**：Task 23.17（Crush Logic）需要 `HasCrushableActor` 标志
 - **验收**：50+ 单位同屏时，`getBlockedCells` 和 `findPath` 耗时降低 > 50%（Chrome DevTools Performance 验证）
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 23.13: Hierarchical Pathfinding / DomainIndex — 分层寻路与区域索引
 - **目标**：将地图划分为 10×10 网格，构建抽象图。通过 flood-fill 为每个连通区域分配 domain ID。寻路前 O(1) 判断起点与终点是否在同一 domain，不可达时直接返回 null，避免 A* 遍历整张地图。
@@ -1095,7 +1095,7 @@
 | Phase 3 数据层 | 4 | 4 | |
 | Phase 4 单位系统 | 5 | 5 | |
 | Phase 5 建筑系统 | 4 | 4 | Task 20–23 全部完成 |
-| Phase 5.5 寻路碰撞重构 | 19 | 11 | 23.1–23.11 完成；23.12–23.19 为 OpenRA 深度对齐新增任务 |
+| Phase 5.5 寻路碰撞重构 | 19 | 12 | 23.1–23.12 完成；23.13–23.19 为 OpenRA 深度对齐新增任务 |
 | Phase 6 交互 | 3 | 0 | Task 24 已合并到 23.10；25–27 待开发 |
 | Phase 7 战斗经济 | 4 | 0 | |
 | Phase 8 循环发布 | 4 | 0 | |
