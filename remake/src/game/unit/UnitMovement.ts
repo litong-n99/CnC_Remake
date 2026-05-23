@@ -7,7 +7,7 @@ import { ActorMap } from '../world/ActorMap';
 import { GameObjectManager } from '../objects/GameObjectManager';
 import { GameObjectType } from '../objects/GameObject';
 import type { LocomotorInfo } from '../rules/Locomotor';
-import { makeTerrainCostCallback } from '../rules/Locomotor';
+import { makeTerrainCostCallback, getLocomotor } from '../rules/Locomotor';
 
 /**
  * 单位移动控制器 — 沿 A* 路径进行插值移动，支持 OpenRA 风格阻塞 fallback 链（Task 24.3）。
@@ -99,13 +99,19 @@ export class UnitMovement {
       this.getTerrainCost = makeTerrainCostCallback(this.locomotor, pathfinder.getTerrainType);
     }
 
+    // ── OpenRA evaluateNearestMovableCell：为每个单位找到最近可用目标格子 ──
+    // 防止多单位被命令到同一格子时全部挤在一起。先到达的单位占住目标格后，
+    // 后续单位会在目标周围半径 1-10 的环形区域搜索第一个可用格子。
+    const dest = this.findNearestMovableCell(controller, targetX, targetY, pathfinder);
+    if (!dest) return false;
+
     const blockedCells = UnitCollision.getBlockedCells(controller.unitId, BlockedByActor.All);
     const biasSeed = this.getBiasSeed(controller.unitId);
     const path = pathfinder.findPath(
       Math.round(controller.x),
       Math.round(controller.y),
-      targetX,
-      targetY,
+      dest.x,
+      dest.y,
       blockedCells,
       BlockedByActor.All,
       biasSeed, // 不同单位使用不同的邻居扩展顺序，避免全部挤在同一条路径上
@@ -128,8 +134,104 @@ export class UnitMovement {
 
     controller.stateMachine.transition(UnitState.Moving);
     controller.isDriving = true;
-    controller.moveTarget = { x: targetX, y: targetY };
+    controller.moveTarget = { x: dest.x, y: dest.y };
     return true;
+  }
+
+  /**
+   * 在目标周围搜索最近的可进入格子（OpenRA NearestMoveableCell）。
+   *
+   * - 若目标本身可用（地形可通行 + 未被不可移动对象阻塞），直接返回目标。
+   * - 否则在半径 1-10 的环形区域搜索，每个单位基于 unitId 有独立的搜索起点偏移，
+   *   让多个单位自然分散到不同方向。
+   *
+   * 注意：与 OpenRA 一致，此处使用 BlockedByActor.Immovable 级别，
+   * 忽略所有可移动单位（静止 + 移动中）。可移动单位间的冲突由
+   * handleBlocked 的 NotifyBlocker / Nudge / close-enough 机制处理。
+   */
+  private findNearestMovableCell(
+    controller: UnitController,
+    targetX: number,
+    targetY: number,
+    pathfinder: Pathfinder
+  ): { x: number; y: number } | null {
+    // 1. 目标格子本身可用？（Immovable 级别：只检查不可移动对象）
+    if (this.canEnterCell(controller, targetX, targetY, pathfinder)) {
+      return { x: targetX, y: targetY };
+    }
+
+    // 2. 环形区域搜索（半径 1-10）
+    // 用 unitId hash 做搜索起点偏移，让不同单位优先尝试不同方向
+    const hash = this.getBiasSeed(controller.unitId);
+    for (let r = 1; r <= 10; r++) {
+      const ringCells = this.getRingCells(targetX, targetY, r);
+      if (ringCells.length === 0) continue;
+      const offset = hash % ringCells.length;
+      for (let i = 0; i < ringCells.length; i++) {
+        const idx = (offset + i) % ringCells.length;
+        const cell = ringCells[idx];
+        if (this.canEnterCell(controller, cell.x, cell.y, pathfinder)) {
+          return cell;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /** 检查指定格子是否可进入（地形可通行 + 未被不可移动对象阻塞）。 */
+  private canEnterCell(controller: UnitController, x: number, y: number, pathfinder: Pathfinder): boolean {
+    if (!pathfinder.isCellPassable(x, y)) return false;
+    if (this.getTerrainCost && this.getTerrainCost(x, y) <= 0) return false;
+    // 使用 Immovable 级别：只被不可移动对象阻塞，忽略所有可移动单位
+    if (UnitCollision.isPositionBlocked(x, y, controller.unitId, BlockedByActor.Immovable)) return false;
+    return true;
+  }
+
+  /** 检查指定格子是否可停留（地形可通行 + 未被静止单位阻塞）。 */
+  private canStayInCell(controller: UnitController, x: number, y: number, pathfinder: Pathfinder): boolean {
+    if (!pathfinder.isCellPassable(x, y)) return false;
+    if (this.getTerrainCost && this.getTerrainCost(x, y) <= 0) return false;
+    // 使用 Stationary 级别：只被静止单位阻塞，忽略移动中的单位
+    // （移动中的单位可能正在离开，不需要因此排除该格子）
+    if (UnitCollision.isPositionBlocked(x, y, controller.unitId, BlockedByActor.Stationary)) return false;
+    return true;
+  }
+
+  /**
+   * 检查指定格子中的阻塞者是否包含至少一个**静止的**"不可共享格子"的单位（车辆）。
+   * - 如果阻塞者全部是步兵（sharesCell=true），返回 false —— 这些步兵可以通过 Nudge 散开。
+   * - 如果车辆阻塞者全部是移动中的，返回 false —— 给它们时间离开（CellIsEvacuating）。
+   * - 只有存在静止的车辆阻塞者时才返回 true。
+   */
+  private hasStationaryVehicleBlocker(cellX: number, cellY: number, excludeId: string): boolean {
+    const occupants = ActorMap.getInstance().getOccupants(cellX, cellY);
+    const manager = GameObjectManager.getInstance();
+    for (const id of occupants) {
+      if (id === excludeId) continue;
+      const obj = manager.get(id);
+      if (!obj || obj.type !== GameObjectType.Unit || !obj.isAlive()) return true; // 非单位视为车辆级阻塞
+      const unit = obj as import('../objects/Unit').Unit;
+      const locomotor = getLocomotor(unit.definition.locomotion);
+      if (!locomotor.sharesCell && !unit.logic.isMovingBetweenCells) {
+        return true; // 静止的车辆阻塞者
+      }
+    }
+    return false;
+  }
+
+  /** 获取指定半径的环形格子列表（切比雪夫距离 = r 的所有格子）。 */
+  private getRingCells(cx: number, cy: number, r: number): Array<{ x: number; y: number }> {
+    if (r <= 0) return [{ x: cx, y: cy }];
+    const cells: Array<{ x: number; y: number }> = [];
+    for (let dx = -r; dx <= r; dx++) {
+      for (let dy = -r; dy <= r; dy++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) === r) {
+          cells.push({ x: cx + dx, y: cy + dy });
+        }
+      }
+    }
+    return cells;
   }
 
   /** 每 Tick 更新 — 由 UnitController.tickMoving() 调用。 */
@@ -253,6 +355,33 @@ export class UnitMovement {
     }
 
     const nextCell = blockedCell ?? this.path[this.pathIndex];
+
+    // ── OpenRA "close enough" 到达容忍度 ──
+    // 如果被阻塞的是最终目标格子，且阻塞者包含至少一个**静止的**车辆，
+    // 且当前所在格子距离目标足够近（<= 2 格），且当前格子可以停留，
+    // 则直接停止。避免多个车辆被命令到同一格子时，后到达的单位在目标前
+    // 无限重试/抖动。
+    // 不触发的情况：
+    //   - 阻塞者全部是步兵（sharesCell=true）→ 让 Nudge 处理
+    //   - 阻塞者全部是移动中的车辆 → 给它们时间离开（CellIsEvacuating）
+    const isFinalDestination = this.pathIndex >= this.path.length - 1;
+    if (
+      isFinalDestination &&
+      this.pathfinder &&
+      this.hasStationaryVehicleBlocker(nextCell.x, nextCell.y, controller.unitId)
+    ) {
+      const chebDist = Math.max(
+        Math.abs(Math.round(controller.x) - dest.x),
+        Math.abs(Math.round(controller.y) - dest.y)
+      );
+      if (
+        chebDist <= 2 &&
+        this.canStayInCell(controller, Math.round(controller.x), Math.round(controller.y), this.pathfinder)
+      ) {
+        this.stop(controller);
+        return;
+      }
+    }
 
     // 1. NotifyBlocker — 通知阻塞者（Task 24.4 实现响应）
     this.notifyBlockers(controller, nextCell.x, nextCell.y);
