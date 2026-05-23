@@ -17,6 +17,7 @@ import { UnitCollision } from '../game/unit/UnitCollision';
 import { BlockedByActor } from '../game/unit/BlockedByActor';
 import { ActorMap } from '../game/world/ActorMap';
 import { LocomotorCache, CellFlag } from '../game/world/LocomotorCache';
+import { MoveCooldownHelper } from '../game/unit/MoveCooldownHelper';
 import { BuildingPlacer } from '../game/building/BuildingPlacer';
 import type { PathNode, Pathfinder } from '../game/terrain/Pathfinder';
 import { getLocomotor, makeTerrainCostCallback } from '../game/rules/Locomotor';
@@ -63,6 +64,8 @@ export class GameConsole {
       cacheStats: this.cacheStats.bind(this),
       benchmarkPaths: this.benchmarkPaths.bind(this),
       hierarchical: this.hierarchical.bind(this),
+      cooldown: this.cooldown.bind(this),
+      setCooldown: this.setCooldown.bind(this),
       help: this.help.bind(this),
     };
     // eslint-disable-next-line no-console
@@ -532,6 +535,49 @@ export class GameConsole {
     return stats;
   }
 
+  /** Query MoveCooldownHelper remaining cooldown for a unit (ms). */
+  private cooldown(unitId: string): number {
+    const manager = GameObjectManager.getInstance();
+    for (const obj of manager.getUnits()) {
+      const unit = obj as Unit;
+      if (unit.id === unitId) {
+        // Access private cooldownHelper via any cast (debug only)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const helper = (unit.logic.movement as any).cooldownHelper as MoveCooldownHelper | undefined;
+        if (helper) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const remaining = (helper as any).cooldownRemainingMs as number;
+          // eslint-disable-next-line no-console
+          console.info(`Cooldown ${unitId}: ${remaining.toFixed(0)}ms remaining`);
+          return remaining;
+        }
+      }
+    }
+    console.warn(`Unit not found: ${unitId}`);
+    return -1;
+  }
+
+  /** Test helper: manually set cooldown for a unit (ms). */
+  private setCooldown(unitId: string, ms: number): boolean {
+    const manager = GameObjectManager.getInstance();
+    for (const obj of manager.getUnits()) {
+      const unit = obj as Unit;
+      if (unit.id === unitId) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const helper = (unit.logic.movement as any).cooldownHelper as MoveCooldownHelper | undefined;
+        if (helper) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (helper as any).cooldownRemainingMs = ms;
+          // eslint-disable-next-line no-console
+          console.info(`Set cooldown ${unitId} = ${ms}ms`);
+          return true;
+        }
+      }
+    }
+    console.warn(`Unit not found: ${unitId}`);
+    return false;
+  }
+
   /** Inspect HierarchicalPathfinder domain at a cell. */
   private hierarchical(x: number, y: number): number {
     const domain = this.pathfinder?.hierarchical.getDomain(x, y) ?? -1;
@@ -673,6 +719,9 @@ export class GameConsole {
 ║                                                              ║
 ║ cnc.hierarchical(x, y)                                       ║
 ║   Query HierarchicalPathfinder domain ID at a cell.          ║
+║                                                              ║
+║ cnc.cooldown(unitId)                                         ║
+║   Query MoveCooldownHelper remaining cooldown (ms).          ║
 ║                                                              ║
 ║ cnc.collision(x, y, excludeId?)                              ║
 ║   Check if a cell is blocked by another unit.                ║

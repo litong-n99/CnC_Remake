@@ -8,6 +8,7 @@ import { GameObjectManager } from '../objects/GameObjectManager';
 import { GameObjectType } from '../objects/GameObject';
 import type { LocomotorInfo } from '../rules/Locomotor';
 import { makeTerrainCostCallback, getLocomotor } from '../rules/Locomotor';
+import { MoveCooldownHelper } from './MoveCooldownHelper';
 
 /**
  * 单位移动控制器 — 沿 A* 路径进行插值移动，支持 OpenRA 风格阻塞 fallback 链（Task 24.3）。
@@ -35,6 +36,9 @@ export class UnitMovement {
   private readonly locomotor: LocomotorInfo;
   private readonly speed: number;
   private getTerrainCost?: (x: number, y: number) => number;
+
+  // ── Task 23.15: Repath 冷却 ──
+  private readonly cooldownHelper = new MoveCooldownHelper();
 
   // OpenRA 没有 repath 次数上限，单位会持续尝试直到到达目标或收到新命令
   private static readonly SPEED_SCALE = 0.0006;
@@ -93,6 +97,7 @@ export class UnitMovement {
     this.waitRemainingMs = 0;
     this.repathAttempts = 0;
     controller.isBlocking = false;
+    this.cooldownHelper.reset();
 
     // 缓存 Locomotor 的地形代价回调（首次使用时创建）
     if (!this.getTerrainCost && pathfinder.getTerrainType) {
@@ -237,6 +242,9 @@ export class UnitMovement {
   /** 每 Tick 更新 — 由 UnitController.tickMoving() 调用。 */
   update(controller: UnitController, deltaTime: number): void {
     if (!this.isMoving) return;
+
+    // ── Task 23.15: 每帧 tick 冷却 ──
+    this.cooldownHelper.tick(deltaTime);
 
     // ── isWaiting 守卫：被阻塞后必须等 handleBlocked 解除等待才能继续移动 ──
     // 否则单位会在 fromCell 边缘 ↔ toCell 边界之间来回抖动。
@@ -408,6 +416,16 @@ export class UnitMovement {
     }
 
     // 4. Repath（四级回退：All → Stationary → Immovable → None）
+    // ── Task 23.15: 冷却检查 — 未冷却时继续等待而非立即重寻路 ──
+    if (!this.cooldownHelper.canRepath()) {
+      this.waitRemainingMs = Math.max(this.waitRemainingMs, 50);
+      return;
+    }
+
+    // 设置冷却：根据到目标的距离动态调整
+    const distanceToDest = Math.sqrt((controller.x - dest.x) ** 2 + (controller.y - dest.y) ** 2);
+    this.cooldownHelper.setCooldown(distanceToDest, 200, 50);
+
     this.hasWaited = false;
 
     // 临时移除自己的 ActorMap 占用（repath 起点不能被自己阻塞）
