@@ -64,6 +64,7 @@ const bootstrap = async (): Promise<void> => {
   const urlParams = new URLSearchParams(window.location.search);
   const enableTask239 = urlParams.get('task') === '23.9';
   const enableTask2312 = urlParams.get('task') === '23.12';
+  const enableTask2313 = urlParams.get('task') === '23.13';
 
   if (enableTask239) {
     // 1. 完整北墙和南墙（横向 Rock，x=0-63）
@@ -113,6 +114,23 @@ const bootstrap = async (): Promise<void> => {
         }
       }
     }
+  } else if (enableTask2313) {
+    // Task 23.13: 创建明确的 Water 分隔带用于 HPF 测试
+    // 垂直 Water 墙：x=30, y=0-63，将地图分为左右两个 domain
+    for (let y = 0; y < 64; y++) {
+      terrain.setCellLandType(30, y, LandType.Water);
+    }
+    // 确保两侧地面可通行（除 Water 墙外）
+    for (let y = 0; y < 64; y++) {
+      for (let x = 20; x <= 40; x++) {
+        if (x !== 30) {
+          const type = terrain.getCellLandType(x, y);
+          if (type === LandType.Water || type === LandType.Rock || type === LandType.Rough || type === LandType.River) {
+            terrain.setCellLandType(x, y, LandType.Clear);
+          }
+        }
+      }
+    }
   } else {
     // 默认模式：为旧 e2e 测试恢复兼容地形（dummy_map 的 Water 会破坏测试位置）
     // 清除测试安全区
@@ -158,6 +176,11 @@ const bootstrap = async (): Promise<void> => {
     getBuildingBlockedCells,
     (x, y) => terrain.getCellLandType(x, y)
   );
+
+  // Task 23.13: 地形修改后重建 HierarchicalPathfinder domain
+  if (enableTask2313) {
+    pathfinder.hierarchical.rebuild();
+  }
 
   // ── Houses ──
   const houseManager = HouseManager.getInstance();

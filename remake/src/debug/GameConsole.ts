@@ -60,6 +60,7 @@ export class GameConsole {
       locomotorCache: this.locomotorCache.bind(this),
       cacheStats: this.cacheStats.bind(this),
       benchmarkPaths: this.benchmarkPaths.bind(this),
+      hierarchical: this.hierarchical.bind(this),
       help: this.help.bind(this),
     };
     // eslint-disable-next-line no-console
@@ -439,6 +440,14 @@ export class GameConsole {
     return stats;
   }
 
+  /** Inspect HierarchicalPathfinder domain at a cell. */
+  private hierarchical(x: number, y: number): number {
+    const domain = this.pathfinder?.hierarchical.getDomain(x, y) ?? -1;
+    // eslint-disable-next-line no-console
+    console.info(`HierarchicalPathfinder (${x}, ${y}): domain=${domain}`);
+    return domain;
+  }
+
   /**
    * Benchmark pathfinding performance.
    * @param count — number of random path queries (default 100)
@@ -569,6 +578,9 @@ export class GameConsole {
 ║                                                              ║
 ║ cnc.benchmarkPaths(count=100)                                ║
 ║   Benchmark random pathfinding. Returns avg ms/query.        ║
+║                                                              ║
+║ cnc.hierarchical(x, y)                                       ║
+║   Query HierarchicalPathfinder domain ID at a cell.          ║
 ║                                                              ║
 ║ cnc.collision(x, y, excludeId?)                              ║
 ║   Check if a cell is blocked by another unit.                ║

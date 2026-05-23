@@ -1,5 +1,6 @@
 import { BlockedByActor } from '../unit/BlockedByActor';
 import type { LandType } from './TerrainGrid';
+import { HierarchicalPathfinder } from './HierarchicalPathfinder';
 
 /**
  * A* 寻路 — 基于格子地图的**八方向**路径搜索，支持动态阻塞（建筑 footprint）。
@@ -42,6 +43,9 @@ export class Pathfinder {
    */
   readonly getTerrainType?: (x: number, y: number) => LandType;
 
+  /** Hierarchical domain index — O(1) reachability pre-check. */
+  readonly hierarchical: HierarchicalPathfinder;
+
   /** 八方向邻居（含对角线），代价：直线=1，对角线=√2。 */
   private static readonly NEIGHBORS: readonly Neighbor[] = [
     { x: 1, y: 0, cost: 1 },
@@ -66,6 +70,7 @@ export class Pathfinder {
     this.isPassable = isPassable;
     this.getBlockedCells = getBlockedCells;
     this.getTerrainType = getTerrainType;
+    this.hierarchical = new HierarchicalPathfinder(width, height, isPassable);
   }
 
   /**
@@ -87,6 +92,11 @@ export class Pathfinder {
     getTerrainCost?: (x: number, y: number) => number
   ): PathNode[] | null {
     if (!this.isInside(endX, endY) || !this.isPassable(endX, endY)) return null;
+
+    // ── Task 23.13: Hierarchical quick reject ──
+    // O(1) domain check — if start/end are in different terrain domains,
+    // no path can exist regardless of actor blocking.
+    if (!this.hierarchical.areConnected(startX, startY, endX, endY)) return null;
 
     const dynamicBlocked = this.getBlockedCells?.(check) ?? new Set<string>();
     // 默认情况下终点被阻塞时直接失败；allowBlockedEnd=true 时允许终点被动态/单位占用，
