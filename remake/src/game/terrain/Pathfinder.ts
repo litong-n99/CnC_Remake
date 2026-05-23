@@ -153,6 +153,9 @@ export class Pathfinder {
           if (!this.isPassable(current.x, vy)) continue;
           if (dynamicBlocked.has(`${hx},${current.y}`) || extraBlocked?.has(`${hx},${current.y}`)) continue;
           if (dynamicBlocked.has(`${current.x},${vy}`) || extraBlocked?.has(`${current.x},${vy}`)) continue;
+          // 检查 Locomotor 地形代价：正交相邻格子对此单位是否可通行
+          if (getTerrainCost && getTerrainCost(hx, current.y) <= 0) continue;
+          if (getTerrainCost && getTerrainCost(current.x, vy) <= 0) continue;
         }
 
         const g = current.g + offset.cost / terrainCost;
@@ -192,16 +195,17 @@ export class Pathfinder {
   }
 
   /**
-   * 根据 biasSeed 调整邻居遍历顺序。
-   * seed 为偶数：保持默认（优先南/东）
-   * seed 为奇数：交换南北优先级（优先北/东）
-   * 这让不同单位在绕路时自然分流到不同侧。
+   * 根据 biasSeed 对邻居遍历顺序做 Fisher-Yates 洗牌。
+   * 不同 seed 产生完全不同的扩展顺序，让多个单位从相似起点出发时
+   * 自然分散到不同路径上，避免全部挤在同一条最优路线上。
    */
   private getNeighborsWithBias(seed: number): readonly Neighbor[] {
     const dirs = [...Pathfinder.NEIGHBORS];
-    if (seed % 2 === 1) {
-      // 交换 "下" 和 "上" 的遍历顺序（索引 2 和 3）
-      [dirs[2], dirs[3]] = [dirs[3], dirs[2]];
+    let s = seed === 0 ? 12345 : Math.abs(seed);
+    for (let i = dirs.length - 1; i > 0; i--) {
+      s = (s * 16807) % 2147483647;
+      const j = s % (i + 1);
+      [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
     }
     return dirs;
   }

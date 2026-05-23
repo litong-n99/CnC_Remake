@@ -59,19 +59,59 @@ const bootstrap = async (): Promise<void> => {
     terrain.generateTestPattern();
   }
 
-  // ── Task 23.7 验收场景：岩石峡谷 ──
-  // 在中间区域创建一道完整的 Rock 墙。
-  // 步兵（Foot）Rock=0.5 可直接穿过岩石，车辆（Track）Rock=0 必须绕路。
-  for (let x = 24; x <= 36; x++) {
-    terrain.setCellLandType(x, 22, LandType.Rock);
-    terrain.setCellLandType(x, 23, LandType.Rock);
-  }
+  // ── Task 23.9: 密集场景压力测试 — 2 格宽峡谷桥梁 ──
+  // 通过 URL 查询参数 ?task=23.9 启用，避免干扰其他 e2e 测试的地形
+  const urlParams = new URLSearchParams(window.location.search);
+  const enableTask239 = urlParams.get('task') === '23.9';
 
-  // 将所有 Water 改为 Clear，方便测试（避免车辆在水上）
-  for (let y = 0; y < 64; y++) {
+  if (enableTask239) {
+    // 1. 完整北墙和南墙（横向 Rock，x=0-63）
     for (let x = 0; x < 64; x++) {
-      if (terrain.getCellLandType(x, y) === LandType.Water) {
+      terrain.setCellLandType(x, 15, LandType.Rock);
+      terrain.setCellLandType(x, 35, LandType.Rock);
+    }
+
+    // 2. 桥梁侧壁（纵向 Rock，让桥梁收窄为 2 格宽 x=29-30）
+    for (let y = 15; y <= 35; y++) {
+      terrain.setCellLandType(28, y, LandType.Rock);
+      terrain.setCellLandType(31, y, LandType.Rock);
+    }
+
+    // 3. 显式清除桥梁通道（x=29-30, y=15-35）
+    for (let y = 15; y <= 35; y++) {
+      terrain.setCellLandType(29, y, LandType.Clear);
+      terrain.setCellLandType(30, y, LandType.Clear);
+    }
+
+    // 4. 出发区和目标区清除不可通行地形（dummy_map 残留 Rock/Rough/Water）
+    for (let y = 8; y <= 14; y++) {
+      for (let x = 25; x <= 34; x++) {
+        const type = terrain.getCellLandType(x, y);
+        if (type === LandType.Water || type === LandType.Rock || type === LandType.Rough || type === LandType.River) {
+          terrain.setCellLandType(x, y, LandType.Clear);
+        }
+      }
+    }
+    for (let y = 36; y <= 44; y++) {
+      for (let x = 25; x <= 34; x++) {
+        const type = terrain.getCellLandType(x, y);
+        if (type === LandType.Water || type === LandType.Rock || type === LandType.Rough || type === LandType.River) {
+          terrain.setCellLandType(x, y, LandType.Clear);
+        }
+      }
+    }
+  } else {
+    // 默认模式：为旧 e2e 测试恢复兼容地形（dummy_map 的 Water 会破坏测试位置）
+    // 清除测试安全区
+    for (let y = 18; y <= 26; y++) {
+      for (let x = 22; x <= 38; x++) {
         terrain.setCellLandType(x, y, LandType.Clear);
+      }
+    }
+    // 创建 Rock 墙供 task-23.7 测试（Locomotor 差异）
+    for (let y = 22; y <= 23; y++) {
+      for (let x = 24; x <= 36; x++) {
+        terrain.setCellLandType(x, y, LandType.Rock);
       }
     }
   }
@@ -121,38 +161,60 @@ const bootstrap = async (): Promise<void> => {
     capacity: 2000,
   });
 
-  // ── Task 23.8 验收：SubCell 步兵共享 + NotifyBlocker Nudge ──
-  // 5 名步兵共享 (30,20)，1 辆坦克从 (30,18) 驶入触发 Nudge
-  const task238Units: Unit[] = [];
-  for (let i = 0; i < 5; i++) {
-    task238Units.push(
+  // ── Task 23.9: 1 GDI + 5 Nod 交叉过桥测试 ──
+  const gdiTanks: Unit[] = [];
+  const nodTanks: Unit[] = [];
+
+  if (enableTask239) {
+    // GDI 1 辆从北侧桥梁入口出发，前往南岸
+    gdiTanks.push(
       GameObjectFactory.createUnit({
-        definition: UNIT_DEFINITIONS.RifleInfantry,
+        definition: UNIT_DEFINITIONS.MediumTank,
         house: gdi,
-        x: 30,
-        y: 20,
+        x: 29,
+        y: 10,
         scene,
       })
     );
-  }
-  const nudgeTank = GameObjectFactory.createUnit({
-    definition: UNIT_DEFINITIONS.MediumTank,
-    house: gdi,
-    x: 30,
-    y: 18,
-    scene,
-  });
-  task238Units.push(nudgeTank);
 
-  // 自动下达移动命令（延迟 1s 确保场景初始化完成）
-  setTimeout(() => {
-    nudgeTank.logic.moveTo(30, 20, pathfinder);
-    // eslint-disable-next-line no-console
-    console.info('Task 23.8: Tank ordered to (30,20) — infantry should Nudge away');
-  }, 1000);
+    // Nod 5 辆从南侧出发，前往北侧
+    for (let i = 0; i < 5; i++) {
+      const x = 29 + (i % 3);
+      const y = 40;
+      nodTanks.push(
+        GameObjectFactory.createUnit({
+          definition: UNIT_DEFINITIONS.MediumTank,
+          house: nod,
+          x: x > 30 ? 29 : x,
+          y,
+          scene,
+        })
+      );
+    }
+
+    // 延迟 2s 后同时下达交叉移动命令
+    setTimeout(() => {
+      const gdiTank = gdiTanks[0];
+      const okGdi = gdiTank.logic.moveTo(29, 40, pathfinder);
+      console.warn(
+        `[Task23.9] GDI moveTo(29,40) = ${okGdi}, path=${JSON.stringify(gdiTank.logic.movement['path']?.map((p: { x: number; y: number }) => [p.x, p.y]))}`
+      );
+
+      for (let i = 0; i < nodTanks.length; i++) {
+        const tank = nodTanks[i];
+        const tx = 28 + i;
+        const ty = 10;
+        const ok = tank.logic.moveTo(tx, ty, pathfinder);
+        console.warn(
+          `[Task23.9] Nod-${i} moveTo(${tx},${ty}) = ${ok}, path=${JSON.stringify(tank.logic.movement['path']?.map((p: { x: number; y: number }) => [p.x, p.y]))}`
+        );
+      }
+      console.warn('Task 23.9: 1 GDI + 5 Nod ordered to cross');
+    }, 2000);
+  }
 
   // Enable shadows on all spawned objects
-  const allSpawned = [...task238Units];
+  const allSpawned = [...gdiTanks, ...nodTanks];
   for (const obj of allSpawned) {
     if (obj.mesh) {
       lighting.addShadowCaster(obj.mesh);
@@ -303,6 +365,7 @@ const bootstrap = async (): Promise<void> => {
 
   // ── Game loop ──
   const engine = engineManager.getEngine();
+  let overlapCheckAccumulator = 0;
   scene.onBeforeRenderObservable.add(() => {
     const dt = engine.getDeltaTime();
 
@@ -313,6 +376,32 @@ const bootstrap = async (): Promise<void> => {
     }
     sidebar.refresh(dt);
     GameObjectManager.getInstance().update(dt);
+
+    // ── Overlap 检测（每秒一次）──
+    overlapCheckAccumulator += dt;
+    if (overlapCheckAccumulator >= 1000) {
+      overlapCheckAccumulator = 0;
+      const units = GameObjectManager.getInstance().getUnits();
+      for (let i = 0; i < units.length; i++) {
+        const a = units[i] as Unit;
+        if (!a.isAlive()) continue;
+        for (let j = i + 1; j < units.length; j++) {
+          const b = units[j] as Unit;
+          if (!b.isAlive()) continue;
+          const dx = a.logic.x - b.logic.x;
+          const dy = a.logic.y - b.logic.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 0.3) {
+            console.warn(
+              `[OVERLAP] ${a.id} @(${a.logic.x.toFixed(2)},${a.logic.y.toFixed(2)}) vs ` +
+                `${b.id} @(${b.logic.x.toFixed(2)},${b.logic.y.toFixed(2)}) dist=${dist.toFixed(3)} ` +
+                `A:from=(${a.logic.fromCellX},${a.logic.fromCellY}) to=(${a.logic.toCellX},${a.logic.toCellY}) ` +
+                `B:from=(${b.logic.fromCellX},${b.logic.fromCellY}) to=(${b.logic.toCellX},${b.logic.toCellY})`
+            );
+          }
+        }
+      }
+    }
   });
 
   // ── Render loop ──

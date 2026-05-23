@@ -78,9 +78,14 @@ export class ActorMap {
     return new Set(this.cells.keys());
   }
 
+  /** 清除所有占用记录（用于新游戏或重置）。 */
+  clear(): void {
+    this.cells.clear();
+  }
+
   /** 释放所有资源。 */
   dispose(): void {
-    this.cells.clear();
+    this.clear();
     ActorMap.instance = null;
   }
 }

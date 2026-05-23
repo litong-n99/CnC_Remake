@@ -81,7 +81,7 @@ test.describe('Task 23.8 — SubCell + NotifyBlocker', () => {
     await game.spawnUnit('RifleInfantry', 'gdi', 30, 20);
 
     // Pathfind from nearby to the other side of the infantry cell
-    const path = await game.pathfind(30, 18, 30, 22);
+    const path = await game.pathfind(30, 18, 30, 21);
 
     // Path should exist and go through (30,20) — infantry-only cell is not blocked
     expect(path).toBeTruthy();

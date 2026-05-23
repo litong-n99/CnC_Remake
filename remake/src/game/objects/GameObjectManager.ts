@@ -1,4 +1,5 @@
 import { GameObject, GameObjectType } from './GameObject';
+import { ActorMap } from '../world/ActorMap';
 
 /**
  * 全局游戏对象管理器 — 单例持有对局中所有 {@link GameObject} 实例。
@@ -82,6 +83,7 @@ export class GameObjectManager {
       obj.dispose();
     }
     this.objects.clear();
+    ActorMap.getInstance().clear();
   }
 
   /** 释放单例引用。 */

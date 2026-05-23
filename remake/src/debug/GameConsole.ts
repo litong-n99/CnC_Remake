@@ -18,6 +18,8 @@ import { BlockedByActor } from '../game/unit/BlockedByActor';
 import { ActorMap } from '../game/world/ActorMap';
 import { BuildingPlacer } from '../game/building/BuildingPlacer';
 import type { PathNode, Pathfinder } from '../game/terrain/Pathfinder';
+import { getLocomotor, makeTerrainCostCallback } from '../game/rules/Locomotor';
+import { Locomotion } from '../game/rules/UnitDefinitions';
 
 /**
  * Debug console — exposes `window.cnc` commands for runtime spawning,
@@ -319,20 +321,33 @@ export class GameConsole {
 
   /** Run A* pathfinding with current unit blockers.
    * @param check — 'All' | 'Stationary' | 'Immovable' | 'None' (default 'All')
+   * @param locomotion — 'Foot' | 'Track' | 'Wheel' | 'Winged' | 'Float' (default 'Track')
    * @returns Path nodes (incl. start & end) or null if no path.
    */
-  private pathfind(startX: number, startY: number, endX: number, endY: number, checkName = 'All'): PathNode[] | null {
+  private pathfind(
+    startX: number,
+    startY: number,
+    endX: number,
+    endY: number,
+    checkName = 'All',
+    locomotionName = 'Track'
+  ): PathNode[] | null {
     if (!this.pathfinder) {
       console.warn('Pathfinder not available in GameConsole');
       return null;
     }
     const check = this.parseBlockedByActor(checkName);
     const blockedCells = UnitCollision.getBlockedCells('', check);
-    const path = this.pathfinder.findPath(startX, startY, endX, endY, blockedCells, check);
+    const locomotion = (Locomotion as Record<string, unknown>)[locomotionName] as Locomotion | undefined;
+    const locomotor = locomotion !== undefined ? getLocomotor(locomotion) : getLocomotor(Locomotion.Track);
+    const getTerrainCost = this.pathfinder.getTerrainType
+      ? makeTerrainCostCallback(locomotor, this.pathfinder.getTerrainType)
+      : undefined;
+    const path = this.pathfinder.findPath(startX, startY, endX, endY, blockedCells, check, 0, false, getTerrainCost);
     // eslint-disable-next-line no-console
     console.info(
-      `Pathfind (${startX},${startY}) → (${endX},${endY}) [${checkName}]:`,
-      path ? `${path.length} nodes` : 'NO PATH'
+      `Pathfind (${startX},${startY}) → (${endX},${endY}) [${checkName}, ${locomotionName}]:`,
+      path ? path.map((n) => `(${n.x},${n.y})`).join(' -> ') : 'NO PATH'
     );
     return path;
   }

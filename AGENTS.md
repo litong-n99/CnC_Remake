@@ -251,7 +251,7 @@ feature/xx  ← 单个 Task 分支（如 feature/task-09-terrain-grid）
 | `cnc.list` | `()` | 列出所有单位/建筑 | `cnc.list()` |
 | `cnc.actorMap` | `(x?, y?)` | 查看 ActorMap 格子占用；省略参数时列出所有被占格子 | `cnc.actorMap(30, 30)` |
 | `cnc.collision` | `(x, y, excludeId?)` | 检查指定格子是否被其他单位阻塞 | `cnc.collision(30, 30, 'unit-id')` |
-| `cnc.pathfind` | `(sx, sy, ex, ey, check?)` | A* 寻路测试；`check` 可选 `All`/`Stationary`/`Immovable`/`None` | `cnc.pathfind(30, 30, 40, 30)` |
+| `cnc.pathfind` | `(sx, sy, ex, ey, check?, locomotion?)` | A* 寻路测试；`check` 可选 `All`/`Stationary`/`Immovable`/`None`；`locomotion` 可选 `Foot`/`Track`/`Wheel`/`Winged`/`Float`（默认 `Track`） | `cnc.pathfind(30, 30, 40, 30, 'All', 'Track')` |
 | `cnc.moveUnit` | `(unitId, targetX, targetY)` | 命令指定单位移动到目标格子 | `cnc.moveUnit('unit-abc', 40, 30)` |
 | `cnc.distance` | `(idA, idB)` | 计算两个单位之间的欧几里得距离 | `cnc.distance('unit-a', 'unit-b')` |
 | `cnc.debugState` | `()` | 返回所有单位的运行时状态（位置、双格占用、状态机等） | `cnc.debugState()` |
