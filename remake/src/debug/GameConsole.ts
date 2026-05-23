@@ -54,6 +54,8 @@ export class GameConsole {
       actorMap: this.actorMap.bind(this),
       collision: this.collision.bind(this),
       pathfind: this.pathfind.bind(this),
+      pathfindBi: this.pathfindBi.bind(this),
+      pathfindPredicate: this.pathfindPredicate.bind(this),
       moveUnit: this.moveUnit.bind(this),
       distance: this.distance.bind(this),
       debugState: this.debugState.bind(this),
@@ -359,6 +361,96 @@ export class GameConsole {
     return path;
   }
 
+  /** Bidirectional A* pathfinding.
+   * @returns Path nodes or null.
+   */
+  private pathfindBi(
+    startX: number,
+    startY: number,
+    endX: number,
+    endY: number,
+    checkName = 'All',
+    locomotionName = 'Track'
+  ): PathNode[] | null {
+    if (!this.pathfinder) {
+      console.warn('Pathfinder not available');
+      return null;
+    }
+    const check = this.parseBlockedByActor(checkName);
+    const blockedCells = UnitCollision.getBlockedCells('', check);
+    const locomotion = (Locomotion as Record<string, unknown>)[locomotionName] as Locomotion | undefined;
+    const locomotor = locomotion !== undefined ? getLocomotor(locomotion) : getLocomotor(Locomotion.Track);
+    const getTerrainCost = this.pathfinder.getTerrainType
+      ? makeTerrainCostCallback(locomotor, this.pathfinder.getTerrainType)
+      : undefined;
+    const path = this.pathfinder.findPathBidirectional(
+      startX,
+      startY,
+      endX,
+      endY,
+      blockedCells,
+      check,
+      0,
+      false,
+      getTerrainCost
+    );
+    // eslint-disable-next-line no-console
+    console.info(
+      `Bidirectional (${startX},${startY}) → (${endX},${endY}) [${checkName}, ${locomotionName}]:`,
+      path ? path.map((n) => `(${n.x},${n.y})`).join(' -> ') : 'NO PATH'
+    );
+    return path;
+  }
+
+  /** Predicate Search — find path to first cell satisfying a condition.
+   * @param condition — 'rightOfX30' | 'belowY30' | 'nearTarget' (targetX,targetY,radius)
+   * @returns Path nodes or null.
+   */
+  private pathfindPredicate(startX: number, startY: number, condition: string, maxDistance = 20): PathNode[] | null {
+    if (!this.pathfinder) {
+      console.warn('Pathfinder not available');
+      return null;
+    }
+    let predicate: (x: number, y: number) => boolean;
+    let desc: string;
+    if (condition === 'rightOfX30') {
+      predicate = (x) => x > 30;
+      desc = 'x > 30';
+    } else if (condition === 'belowY30') {
+      predicate = (_x, y) => y > 30;
+      desc = 'y > 30';
+    } else if (condition.startsWith('nearTarget')) {
+      const parts = condition.split(',');
+      const tx = Number(parts[1] ?? 30);
+      const ty = Number(parts[2] ?? 30);
+      const r = Number(parts[3] ?? 5);
+      predicate = (x, y) => {
+        const dx = x - tx;
+        const dy = y - ty;
+        return Math.sqrt(dx * dx + dy * dy) <= r;
+      };
+      desc = `distance to (${tx},${ty}) <= ${r}`;
+    } else {
+      console.warn(`Unknown predicate condition: ${condition}`);
+      return null;
+    }
+    const blockedCells = UnitCollision.getBlockedCells('', BlockedByActor.All);
+    const path = this.pathfinder.findPathToPredicate(
+      startX,
+      startY,
+      predicate,
+      maxDistance,
+      blockedCells,
+      BlockedByActor.All
+    );
+    // eslint-disable-next-line no-console
+    console.info(
+      `Predicate (${startX},${startY}) [${desc}, max=${maxDistance}]:`,
+      path ? path.map((n) => `(${n.x},${n.y})`).join(' -> ') : 'NO PATH'
+    );
+    return path;
+  }
+
   private parseBlockedByActor(name: string): BlockedByActor {
     switch (name) {
       case 'None':
@@ -589,6 +681,13 @@ export class GameConsole {
 ║ cnc.pathfind(startX, startY, endX, endY)                     ║
 ║   Run A* with current unit blockers. Returns path or null.   ║
 ║   Example: cnc.pathfind(30, 30, 40, 30)                      ║
+║                                                              ║
+║ cnc.pathfindBi(startX, startY, endX, endY)                   ║
+║   Run Bidirectional A*. Returns path or null.                ║
+║                                                              ║
+║ cnc.pathfindPredicate(startX, startY, condition, maxDist)    ║
+║   Predicate Search — find first cell matching condition.     ║
+║   Example: cnc.pathfindPredicate(25,25,'rightOfX30',20)      ║
 ║                                                              ║
 ║ cnc.moveUnit(unitId, targetX, targetY)                       ║
 ║   Order a specific unit to move to target cell.              ║

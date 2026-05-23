@@ -220,6 +220,290 @@ export class Pathfinder {
     return dirs;
   }
 
+  // ── Task 23.14: Bidirectional A* ──
+
+  /**
+   * 双向 A* 寻路。
+   * 从起点和终点同时扩展，在大地图上通常比单向 A* 减少 30%+ 搜索空间。
+   * 保持与 `findPath` 相同的参数和返回值语义。
+   */
+  findPathBidirectional(
+    startX: number,
+    startY: number,
+    endX: number,
+    endY: number,
+    extraBlocked?: ReadonlySet<string>,
+    check = BlockedByActor.All,
+    biasSeed = 0,
+    allowBlockedEnd = false,
+    getTerrainCost?: (x: number, y: number) => number
+  ): PathNode[] | null {
+    if (!this.isInside(endX, endY) || !this.isPassable(endX, endY)) return null;
+    if (!this.hierarchical.areConnected(startX, startY, endX, endY)) return null;
+
+    const dynamicBlocked = this.getBlockedCells?.(check) ?? new Set<string>();
+    if (!allowBlockedEnd && (dynamicBlocked.has(`${endX},${endY}`) || extraBlocked?.has(`${endX},${endY}`)))
+      return null;
+
+    // 正向（起点 → 终点）
+    const forwardOpen: AStarNode[] = [];
+    const forwardClosed = new Set<string>();
+    const forwardG = new Map<string, number>();
+    const forwardParent = new Map<string, AStarNode>();
+
+    // 反向（终点 → 起点）
+    const backwardOpen: AStarNode[] = [];
+    const backwardClosed = new Set<string>();
+    const backwardG = new Map<string, number>();
+    const backwardParent = new Map<string, AStarNode>();
+
+    const startNode: AStarNode = {
+      x: startX,
+      y: startY,
+      g: 0,
+      h: this.heuristic(startX, startY, endX, endY),
+      f: 0,
+      parent: null,
+    };
+    startNode.f = startNode.g + startNode.h;
+    forwardOpen.push(startNode);
+    forwardG.set(`${startX},${startY}`, 0);
+
+    const endNode: AStarNode = {
+      x: endX,
+      y: endY,
+      g: 0,
+      h: this.heuristic(endX, endY, startX, startY),
+      f: 0,
+      parent: null,
+    };
+    endNode.f = endNode.g + endNode.h;
+    backwardOpen.push(endNode);
+    backwardG.set(`${endX},${endY}`, 0);
+
+    let bestMeeting: { node: AStarNode; totalG: number } | null = null;
+    const neighbors = biasSeed !== 0 ? this.getNeighborsWithBias(biasSeed) : Pathfinder.NEIGHBORS;
+
+    while (forwardOpen.length > 0 && backwardOpen.length > 0) {
+      // 选择 f 更小的方向扩展
+      const forwardF = forwardOpen[0].f;
+      const backwardF = backwardOpen[0].f;
+      const useForward = forwardF <= backwardF;
+
+      const current = useForward ? this.popBest(forwardOpen) : this.popBest(backwardOpen);
+      const key = `${current.x},${current.y}`;
+
+      if (useForward) {
+        if (forwardClosed.has(key)) continue;
+        forwardClosed.add(key);
+        if (backwardClosed.has(key) || backwardG.has(key)) {
+          const bg = backwardG.get(key) ?? Infinity;
+          const total = (forwardG.get(key) ?? Infinity) + bg;
+          if (!bestMeeting || total < bestMeeting.totalG) {
+            bestMeeting = { node: current, totalG: total };
+          }
+        }
+      } else {
+        if (backwardClosed.has(key)) continue;
+        backwardClosed.add(key);
+        if (forwardClosed.has(key) || forwardG.has(key)) {
+          const fg = forwardG.get(key) ?? Infinity;
+          const total = fg + (backwardG.get(key) ?? Infinity);
+          if (!bestMeeting || total < bestMeeting.totalG) {
+            bestMeeting = { node: current, totalG: total };
+          }
+        }
+      }
+
+      // 如果两个方向的最小 f 都超过了当前 bestMeeting，可以终止
+      const minF = Math.min(
+        forwardOpen.length > 0 ? forwardOpen[0].f : Infinity,
+        backwardOpen.length > 0 ? backwardOpen[0].f : Infinity
+      );
+      if (bestMeeting && minF >= bestMeeting.totalG) {
+        break;
+      }
+
+      for (const offset of neighbors) {
+        const nx = current.x + offset.x;
+        const ny = current.y + offset.y;
+        const nKey = `${nx},${ny}`;
+
+        if (!this.isInside(nx, ny)) continue;
+        if (!this.isPassable(nx, ny)) continue;
+        const isEndCell = nx === endX && ny === endY;
+        if (!isEndCell && (dynamicBlocked.has(nKey) || extraBlocked?.has(nKey))) continue;
+        if (!allowBlockedEnd && isEndCell && (dynamicBlocked.has(nKey) || extraBlocked?.has(nKey))) continue;
+
+        const terrainCost = getTerrainCost?.(nx, ny) ?? 1;
+        if (terrainCost <= 0) continue;
+
+        if (Math.abs(offset.x) === 1 && Math.abs(offset.y) === 1) {
+          const hx = current.x + offset.x;
+          const vy = current.y + offset.y;
+          if (!this.isPassable(hx, current.y)) continue;
+          if (!this.isPassable(current.x, vy)) continue;
+          if (dynamicBlocked.has(`${hx},${current.y}`) || extraBlocked?.has(`${hx},${current.y}`)) continue;
+          if (dynamicBlocked.has(`${current.x},${vy}`) || extraBlocked?.has(`${current.x},${vy}`)) continue;
+          if (getTerrainCost && getTerrainCost(hx, current.y) <= 0) continue;
+          if (getTerrainCost && getTerrainCost(current.x, vy) <= 0) continue;
+        }
+
+        const g = current.g + offset.cost / terrainCost;
+        const gMap = useForward ? forwardG : backwardG;
+        const parentMap = useForward ? forwardParent : backwardParent;
+        const existingG = gMap.get(nKey);
+
+        if (existingG === undefined || g < existingG) {
+          gMap.set(nKey, g);
+          parentMap.set(nKey, current);
+          const h = useForward ? this.heuristic(nx, ny, endX, endY) : this.heuristic(nx, ny, startX, startY);
+          const node: AStarNode = { x: nx, y: ny, g, h, f: g + h, parent: null };
+          const open = useForward ? forwardOpen : backwardOpen;
+          // 按 f 值插入到正确位置（保持有序）
+          this.insertSorted(open, node);
+        }
+      }
+    }
+
+    if (!bestMeeting) return null;
+
+    // 重建路径：从相遇点分别回溯到起点和终点
+    const forwardPart = this.reconstructPathBidirectional(bestMeeting.node, forwardParent, startX, startY);
+    const backwardPart = this.reconstructPathBidirectional(bestMeeting.node, backwardParent, endX, endY);
+    // 去掉相遇点的重复
+    backwardPart.shift();
+    return [...forwardPart, ...backwardPart];
+  }
+
+  /**
+   * Predicate Search — 搜索到第一个满足条件的格子即停止。
+   * 用于 MoveWithinRange（找环形范围内的可达格子）等场景。
+   *
+   * @param predicate 返回 true 时停止搜索并返回路径
+   * @param getHeuristic 可选的启发函数，默认使用到起点的切比雪夫距离
+   */
+  findPathToPredicate(
+    startX: number,
+    startY: number,
+    predicate: (x: number, y: number) => boolean,
+    maxDistance = Infinity,
+    extraBlocked?: ReadonlySet<string>,
+    check = BlockedByActor.All,
+    biasSeed = 0,
+    getTerrainCost?: (x: number, y: number) => number
+  ): PathNode[] | null {
+    const dynamicBlocked = this.getBlockedCells?.(check) ?? new Set<string>();
+
+    const openSet: AStarNode[] = [];
+    const closedSet = new Set<string>();
+
+    const startNode: AStarNode = {
+      x: startX,
+      y: startY,
+      g: 0,
+      h: 0,
+      f: 0,
+      parent: null,
+    };
+    openSet.push(startNode);
+
+    const neighbors = biasSeed !== 0 ? this.getNeighborsWithBias(biasSeed) : Pathfinder.NEIGHBORS;
+
+    while (openSet.length > 0) {
+      let currentIdx = 0;
+      for (let i = 1; i < openSet.length; i++) {
+        if (openSet[i].f < openSet[currentIdx].f) currentIdx = i;
+      }
+      const current = openSet[currentIdx];
+
+      if (predicate(current.x, current.y)) {
+        return this.reconstructPath(current);
+      }
+
+      openSet.splice(currentIdx, 1);
+      closedSet.add(`${current.x},${current.y}`);
+
+      if (current.g >= maxDistance) continue;
+
+      for (const offset of neighbors) {
+        const nx = current.x + offset.x;
+        const ny = current.y + offset.y;
+        const key = `${nx},${ny}`;
+
+        if (closedSet.has(key)) continue;
+        if (!this.isInside(nx, ny)) continue;
+        if (!this.isPassable(nx, ny)) continue;
+        if (dynamicBlocked.has(key) || extraBlocked?.has(key)) continue;
+
+        const terrainCost = getTerrainCost?.(nx, ny) ?? 1;
+        if (terrainCost <= 0) continue;
+
+        if (Math.abs(offset.x) === 1 && Math.abs(offset.y) === 1) {
+          const hx = current.x + offset.x;
+          const vy = current.y + offset.y;
+          if (!this.isPassable(hx, current.y)) continue;
+          if (!this.isPassable(current.x, vy)) continue;
+          if (dynamicBlocked.has(`${hx},${current.y}`) || extraBlocked?.has(`${hx},${current.y}`)) continue;
+          if (dynamicBlocked.has(`${current.x},${vy}`) || extraBlocked?.has(`${current.x},${vy}`)) continue;
+          if (getTerrainCost && getTerrainCost(hx, current.y) <= 0) continue;
+          if (getTerrainCost && getTerrainCost(current.x, vy) <= 0) continue;
+        }
+
+        const g = current.g + offset.cost / terrainCost;
+        const existing = openSet.find((o) => o.x === nx && o.y === ny);
+
+        if (!existing) {
+          // Predicate search 中启发函数使用 0（Dijkstra 行为），
+          // 因为不知道目标在哪里，无法估计剩余代价。
+          openSet.push({ x: nx, y: ny, g, h: 0, f: g, parent: current });
+        } else if (g < existing.g) {
+          existing.g = g;
+          existing.f = g + existing.h;
+          existing.parent = current;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  // ── Helpers ──
+
+  /** 从有序 openSet 中取出 f 最小的节点（小顶堆简化版：数组已按 f 排序）。 */
+  private popBest(openSet: AStarNode[]): AStarNode {
+    return openSet.shift()!;
+  }
+
+  /** 按 f 值升序插入 openSet。 */
+  private insertSorted(openSet: AStarNode[], node: AStarNode): void {
+    let i = 0;
+    while (i < openSet.length && openSet[i].f < node.f) i++;
+    openSet.splice(i, 0, node);
+  }
+
+  /** 双向 A* 路径重建：从 meetingNode 回溯到指定起点。 */
+  private reconstructPathBidirectional(
+    meetingNode: AStarNode,
+    parentMap: Map<string, AStarNode>,
+    startX: number,
+    startY: number
+  ): PathNode[] {
+    const path: PathNode[] = [{ x: meetingNode.x, y: meetingNode.y }];
+    let key = `${meetingNode.x},${meetingNode.y}`;
+    const visited = new Set<string>([key]);
+
+    while (parentMap.has(key)) {
+      const parent = parentMap.get(key)!;
+      key = `${parent.x},${parent.y}`;
+      if (visited.has(key)) break; // 环检测
+      visited.add(key);
+      path.unshift({ x: parent.x, y: parent.y });
+      if (parent.x === startX && parent.y === startY) break;
+    }
+    return path;
+  }
+
   private reconstructPath(endNode: AStarNode): PathNode[] {
     const path: PathNode[] = [];
     let current: AStarNode | null = endNode;
