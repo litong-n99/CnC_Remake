@@ -76,6 +76,9 @@ export class GameConsole {
       setCrushProb: this.setCrushProb.bind(this),
       crush: this.crush.bind(this),
       pathGraph: this.pathGraph.bind(this),
+      cellLayer: this.cellLayer.bind(this),
+      mapGrid: this.mapGrid.bind(this),
+      terrain: this.terrain,
       help: this.help.bind(this),
     };
     // eslint-disable-next-line no-console
@@ -945,6 +948,30 @@ export class GameConsole {
    * Find the nearest passable ground cell to the current camera target.
    * Uses BFS spiral search; checks terrain type and building footprint.
    */
+  /** Inspect CellLayer at a cell or get layer statistics. */
+  private cellLayer(x?: number, y?: number): Record<string, unknown> {
+    const layer = this.terrain.getCellLayer();
+    if (x !== undefined && y !== undefined) {
+      const data = layer.get(x, y);
+      return { x, y, landType: data.landType };
+    }
+    return {
+      width: layer.getWidth(),
+      height: layer.getHeight(),
+    };
+  }
+
+  /** Inspect MapGrid configuration. */
+  private mapGrid(): Record<string, unknown> {
+    const grid = this.terrain.getMapGrid();
+    return {
+      type: grid.type,
+      tileSize: grid.tileSize,
+      cellSize: grid.cellSize,
+      subCellCount: grid.subCellOffsets.length,
+    };
+  }
+
   private findNearestFreeCell(): { x: number; y: number } | undefined {
     const target = this.rtsCamera.getTarget();
     const cx = Math.floor(target.x + 32);

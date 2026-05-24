@@ -1,6 +1,8 @@
 import { Scene, Mesh, Vector3, VertexBuffer, Color3, Color4 } from '@babylonjs/core';
 import { MeshBuilder } from '@babylonjs/core';
 import { TerrainMaterial } from '../../renderer/materials/TerrainMaterial';
+import { CellLayer, type CellEntryChangedHandler } from './CellLayer';
+import { MapGrid } from './MapGrid';
 
 /**
  * Terrain types translated from the original C&C `LandType` enum
@@ -31,36 +33,41 @@ export interface CellData {
  * Each cell owns 4 independent vertices (not shared with neighbours) so
  * colour boundaries are perfectly sharp.  A wireframe line-grid overlay
  * can optionally be shown for debugging.
+ *
+ * Task 9.1 upgrade: internal storage migrated from raw `CellData[][]` to
+ * `CellLayer<CellData>` with event-driven updates.
  */
 export class TerrainGrid {
-  private width: number;
-  private height: number;
-  private cells: CellData[][];
+  private cellLayer: CellLayer<CellData>;
+  private mapGrid: MapGrid;
   private terrainMesh: Mesh | null = null;
   private gridLines: Mesh | null = null;
   private terrainMaterial: TerrainMaterial;
 
   constructor(scene: Scene, width = 64, height = 64) {
-    this.width = width;
-    this.height = height;
-    this.cells = [];
+    this.cellLayer = new CellLayer<CellData>(width, height, { landType: LandType.Clear });
+    this.mapGrid = new MapGrid();
     this.terrainMaterial = new TerrainMaterial(scene);
 
-    this.initializeCells();
     this.createMesh(scene);
     this.createGridLines(scene);
   }
 
   // ── Cell data ──
 
-  private initializeCells(): void {
-    for (let y = 0; y < this.height; y++) {
-      const row: CellData[] = [];
-      for (let x = 0; x < this.width; x++) {
-        row.push({ landType: LandType.Clear });
-      }
-      this.cells.push(row);
-    }
+  /** Access the underlying CellLayer for advanced consumers (e.g. MapLoader, ResourceLayer). */
+  getCellLayer(): CellLayer<CellData> {
+    return this.cellLayer;
+  }
+
+  /** Access the MapGrid for coordinate conversions. */
+  getMapGrid(): MapGrid {
+    return this.mapGrid;
+  }
+
+  /** Subscribe to cell-level terrain changes. */
+  onCellEntryChanged(handler: CellEntryChangedHandler<CellData>): () => void {
+    return this.cellLayer.onCellEntryChanged(handler);
   }
 
   // ── Geometry construction ──
@@ -70,11 +77,14 @@ export class TerrainGrid {
     const indices: number[] = [];
     const colors: number[] = [];
 
-    for (let y = 0; y < this.height; y++) {
-      for (let x = 0; x < this.width; x++) {
-        const x0 = x - this.width / 2;
+    const width = this.cellLayer.getWidth();
+    const height = this.cellLayer.getHeight();
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const x0 = x - width / 2;
         const x1 = x0 + 1;
-        const z0 = y - this.height / 2;
+        const z0 = y - height / 2;
         const z1 = z0 + 1;
 
         const baseIndex = positions.length / 3;
@@ -98,7 +108,7 @@ export class TerrainGrid {
         // 2 triangles per cell
         indices.push(baseIndex, baseIndex + 1, baseIndex + 2, baseIndex, baseIndex + 2, baseIndex + 3);
 
-        const color = this.getColorForLandType(this.cells[y][x].landType);
+        const color = this.getColorForLandType(this.cellLayer.get(x, y).landType);
         for (let i = 0; i < 4; i++) {
           colors.push(color.r, color.g, color.b, 1);
         }
@@ -119,17 +129,20 @@ export class TerrainGrid {
     const lineColor = new Color4(0.3, 0.3, 0.3, 0.4);
     const colors: Color4[][] = [];
 
+    const width = this.cellLayer.getWidth();
+    const height = this.cellLayer.getHeight();
+
     // Vertical grid lines
-    for (let x = 0; x <= this.width; x++) {
-      const wx = x - this.width / 2;
-      lines.push([new Vector3(wx, 0.005, -this.height / 2), new Vector3(wx, 0.005, this.height / 2)]);
+    for (let x = 0; x <= width; x++) {
+      const wx = x - width / 2;
+      lines.push([new Vector3(wx, 0.005, -height / 2), new Vector3(wx, 0.005, height / 2)]);
       colors.push([lineColor, lineColor]);
     }
 
     // Horizontal grid lines
-    for (let y = 0; y <= this.height; y++) {
-      const wz = y - this.height / 2;
-      lines.push([new Vector3(-this.width / 2, 0.005, wz), new Vector3(this.width / 2, 0.005, wz)]);
+    for (let y = 0; y <= height; y++) {
+      const wz = y - height / 2;
+      lines.push([new Vector3(-width / 2, 0.005, wz), new Vector3(width / 2, 0.005, wz)]);
       colors.push([lineColor, lineColor]);
     }
 
@@ -163,26 +176,26 @@ export class TerrainGrid {
     }
   }
 
-  // ── Public API ──
+  // ── Public API (backward-compatible) ──
 
   /** Change the terrain type of a cell and update its vertex colour. */
   setCellLandType(x: number, y: number, landType: LandType): void {
-    if (x < 0 || x >= this.width || y < 0 || y >= this.height) return;
-    this.cells[y][x].landType = landType;
+    if (!this.cellLayer.contains(x, y)) return;
+    this.cellLayer.set(x, y, { landType });
     this.updateCellColor(x, y);
   }
 
   /** Read the terrain type of a cell. */
   getCellLandType(x: number, y: number): LandType {
-    return this.cells[y]?.[x]?.landType ?? LandType.Clear;
+    return this.cellLayer.get(x, y).landType;
   }
 
   getWidth(): number {
-    return this.width;
+    return this.cellLayer.getWidth();
   }
 
   getHeight(): number {
-    return this.height;
+    return this.cellLayer.getHeight();
   }
 
   /**
@@ -192,11 +205,13 @@ export class TerrainGrid {
    * - centre circle: Clear
    */
   generateTestPattern(): void {
-    const cx = Math.floor(this.width / 2);
-    const cy = Math.floor(this.height / 2);
+    const width = this.cellLayer.getWidth();
+    const height = this.cellLayer.getHeight();
+    const cx = Math.floor(width / 2);
+    const cy = Math.floor(height / 2);
 
-    for (let y = 0; y < this.height; y++) {
-      for (let x = 0; x < this.width; x++) {
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
         let type = LandType.Clear;
 
         if (x < cx && y < cy) {
@@ -228,8 +243,9 @@ export class TerrainGrid {
     const colors = this.terrainMesh.getVerticesData(VertexBuffer.ColorKind);
     if (!colors) return;
 
-    const color = this.getColorForLandType(this.cells[y][x].landType);
-    const cellIndex = (y * this.width + x) * 4 * 4; // 4 verts × 4 components
+    const width = this.cellLayer.getWidth();
+    const color = this.getColorForLandType(this.cellLayer.get(x, y).landType);
+    const cellIndex = (y * width + x) * 4 * 4; // 4 verts × 4 components
 
     for (let i = 0; i < 4; i++) {
       colors[cellIndex + i * 4] = color.r;
