@@ -97,6 +97,12 @@ export class GameConsole {
       setResource: this.setResource.bind(this),
       harvest: this.harvest.bind(this),
       tickResources: this.tickResources.bind(this),
+      enableTextureMode: this.enableTextureMode.bind(this),
+      terrainMaterial: this.terrainMaterial.bind(this),
+      cposToWPos: this.cposToWPos.bind(this),
+      wposToCPos: this.wposToCPos.bind(this),
+      mpos: this.mpos.bind(this),
+      subCell: this.subCell.bind(this),
       help: this.help.bind(this),
     };
     // eslint-disable-next-line no-console
@@ -946,6 +952,22 @@ export class GameConsole {
 ║   Return Euclidean distance between two units.               ║
 ║   Example: cnc.distance('unit-a', 'unit-b')                  ║
 ║                                                              ║
+║ cnc.cposToWPos(x, y)                                         ║
+║   Convert cell coordinate to world position (Task 9.5).      ║
+║   Example: cnc.cposToWPos(10, 10)                            ║
+║                                                              ║
+║ cnc.wposToCPos(wx, wy, wz=0)                                 ║
+║   Convert world position to cell coordinate (Task 9.5).      ║
+║   Example: cnc.wposToCPos(10240, 0, 10240)                   ║
+║                                                              ║
+║ cnc.mpos(x, y)                                               ║
+║   Convert cell to map (array) coordinate (Task 9.5).         ║
+║   Example: cnc.mpos(10, 10)                                  ║
+║                                                              ║
+║ cnc.subCell(x, y, index=0)                                   ║
+║   Get sub-cell centre in world coordinates (Task 9.5).       ║
+║   Example: cnc.subCell(10, 10, 1)                            ║
+║                                                              ║
 ║ cnc.help()                                                   ║
 ║   Show this help message.                                    ║
 ╚══════════════════════════════════════════════════════════════╝
@@ -988,6 +1010,41 @@ export class GameConsole {
       cellSize: grid.cellSize,
       subCellCount: grid.subCellOffsets.length,
     };
+  }
+
+  /** Convert cell coordinate to world position (Task 9.5). */
+  private cposToWPos(x: number, y: number): Record<string, unknown> {
+    const grid = this.terrain.getMapGrid();
+    const cpos = { x, y };
+    const wpos = grid.centerOfCellWPos(cpos);
+    const babylon = grid.wposToBabylon(wpos);
+    const mpos = grid.toMPos(cpos);
+    return { cpos, wpos, babylon, mpos };
+  }
+
+  /** Convert world position to cell coordinate (Task 9.5). */
+  private wposToCPos(wx: number, wy: number, wz = 0): Record<string, unknown> {
+    const grid = this.terrain.getMapGrid();
+    const wpos = { x: wx, y: wy, z: wz };
+    const cpos = grid.cellContainingWPos(wpos);
+    return { wpos, cpos };
+  }
+
+  /** Convert cell coordinate to MPos (Task 9.5). */
+  private mpos(x: number, y: number): Record<string, unknown> {
+    const grid = this.terrain.getMapGrid();
+    const cpos = { x, y };
+    const mpos = grid.toMPos(cpos);
+    return { cpos, mpos, type: grid.type };
+  }
+
+  /** Get sub-cell centre in world coordinates (Task 9.5). */
+  private subCell(x: number, y: number, index = 0): Record<string, unknown> {
+    const grid = this.terrain.getMapGrid();
+    const cpos = { x, y };
+    const wpos = grid.centerOfSubCellWPos(cpos, index);
+    const babylon = grid.wposToBabylon(wpos);
+    return { cpos, index, wpos, babylon };
   }
 
   /** Load a TileSet from URL and attach it to the TerrainGrid. */
@@ -1065,6 +1122,19 @@ export class GameConsole {
     for (let i = 0; i < ticks; i++) {
       this.resourceLayer.tick(this.terrain, getTerrainName);
     }
+  }
+
+  /** Switch terrain rendering to texture-splatting mode (Task 9.4). */
+  private enableTextureMode(): void {
+    this.terrain.enableTextureMode(this.scene);
+  }
+
+  /** Inspect terrain mesh material name. */
+  private terrainMaterial(): string {
+    const mesh = this.scene.getMeshByName('terrain');
+    if (!mesh) return 'no-mesh';
+    if (!mesh.material) return 'no-material';
+    return mesh.material.getClassName();
   }
 
   private findNearestFreeCell(): { x: number; y: number } | undefined {

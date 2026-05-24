@@ -1,6 +1,9 @@
 import { Scene, Mesh, Vector3, VertexBuffer, Color3, Color4 } from '@babylonjs/core';
 import { MeshBuilder } from '@babylonjs/core';
 import { TerrainMaterial } from '../../renderer/materials/TerrainMaterial';
+import { createProceduralTextures } from '../../renderer/terrain/ProceduralTextures';
+import { TerrainSplatMaterial } from '../../renderer/terrain/TerrainSplatMaterial';
+import { DynamicTexture, Texture } from '@babylonjs/core';
 import { CellLayer, type CellEntryChangedHandler } from './CellLayer';
 import { MapGrid } from './MapGrid';
 import type { TileSet, TerrainTile } from './TileSet';
@@ -48,6 +51,9 @@ export class TerrainGrid {
   private terrainMesh: Mesh | null = null;
   private gridLines: Mesh | null = null;
   private terrainMaterial: TerrainMaterial;
+  private splatMaterial: TerrainSplatMaterial | null = null;
+  private splatMap: DynamicTexture | null = null;
+  private textureMode = false;
 
   constructor(scene: Scene, width = 64, height = 64) {
     this.cellLayer = new CellLayer<CellData>(width, height, { landType: LandType.Clear });
@@ -110,6 +116,7 @@ export class TerrainGrid {
     const positions: number[] = [];
     const indices: number[] = [];
     const colors: number[] = [];
+    const uvs: number[] = [];
 
     const width = this.cellLayer.getWidth();
     const height = this.cellLayer.getHeight();
@@ -146,12 +153,20 @@ export class TerrainGrid {
         for (let i = 0; i < 4; i++) {
           colors.push(color.r, color.g, color.b, 1);
         }
+
+        // UVs for splat mapping — each cell maps to one pixel in the splat texture
+        const u0 = x / width;
+        const u1 = (x + 1) / width;
+        const v0 = y / height;
+        const v1 = (y + 1) / height;
+        uvs.push(u0, v0, u1, v0, u1, v1, u0, v1);
       }
     }
 
     this.terrainMesh = new Mesh('terrain', scene);
     this.terrainMesh.setVerticesData(VertexBuffer.PositionKind, positions, true);
     this.terrainMesh.setVerticesData(VertexBuffer.ColorKind, colors, true);
+    this.terrainMesh.setVerticesData(VertexBuffer.UVKind, uvs, true);
     this.terrainMesh.setIndices(indices);
     this.terrainMesh.useVertexColors = true;
     this.terrainMesh.material = this.terrainMaterial.getMaterial();
@@ -217,6 +232,7 @@ export class TerrainGrid {
     if (!this.cellLayer.contains(x, y)) return;
     this.cellLayer.set(x, y, { landType });
     this.updateCellColor(x, y);
+    this.updateSplatCell(x, y);
   }
 
   /** Read the terrain type of a cell. */
@@ -292,6 +308,90 @@ export class TerrainGrid {
 
   // ── Lifecycle ──
 
+  // ── Texture Splatting Mode (Task 9.4) ──
+
+  /**
+   * Switch from vertex-colour rendering to texture-splatting rendering.
+   * Generates procedural textures and builds a splat-map from current cell data.
+   */
+  enableTextureMode(scene: Scene): void {
+    if (this.textureMode) return;
+    this.textureMode = true;
+
+    const w = this.cellLayer.getWidth();
+    const h = this.cellLayer.getHeight();
+
+    // Create splat-map texture (one pixel per cell)
+    this.splatMap = new DynamicTexture('splatMap', { width: w, height: h }, scene, false);
+    this.splatMap.wrapU = Texture.CLAMP_ADDRESSMODE;
+    this.splatMap.wrapV = Texture.CLAMP_ADDRESSMODE;
+    this.splatMap.updateSamplingMode(Texture.NEAREST_NEAREST); // sharp pixel boundaries
+
+    // Build splat data from current cells
+    this.rebuildSplatMap();
+
+    // Create procedural layer textures
+    const tex = createProceduralTextures(scene);
+
+    // Create shader material
+    this.splatMaterial = new TerrainSplatMaterial(scene, tex.grass, tex.road, tex.water, tex.rock, this.splatMap, 4.0);
+
+    if (this.terrainMesh) {
+      this.terrainMesh.material = this.splatMaterial.getMaterial();
+      this.terrainMesh.useVertexColors = false;
+    }
+  }
+
+  private landTypeToSplat(landType: LandType): { r: number; g: number; b: number; a: number } {
+    switch (landType) {
+      case LandType.Clear:
+      case LandType.Tiberium:
+      case LandType.Beach:
+      case LandType.Rough:
+        return { r: 255, g: 0, b: 0, a: 0 }; // grass
+      case LandType.Road:
+        return { r: 0, g: 255, b: 0, a: 0 }; // road
+      case LandType.Water:
+      case LandType.River:
+        return { r: 0, g: 0, b: 255, a: 0 }; // water
+      case LandType.Rock:
+      case LandType.Wall:
+        return { r: 0, g: 0, b: 0, a: 255 }; // rock
+      default:
+        return { r: 255, g: 0, b: 0, a: 0 };
+    }
+  }
+
+  private rebuildSplatMap(): void {
+    if (!this.splatMap) return;
+    const ctx = this.splatMap.getContext();
+    const w = this.cellLayer.getWidth();
+    const h = this.cellLayer.getHeight();
+
+    ctx.clearRect(0, 0, w, h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const splat = this.landTypeToSplat(this.cellLayer.get(x, y).landType);
+        ctx.fillStyle = `rgba(${splat.r},${splat.g},${splat.b},${splat.a / 255})`;
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+    this.splatMap.update();
+  }
+
+  private updateSplatCell(x: number, y: number): void {
+    if (!this.splatMap || !this.textureMode) return;
+    const ctx = this.splatMap.getContext();
+    const splat = this.landTypeToSplat(this.cellLayer.get(x, y).landType);
+    ctx.fillStyle = `rgba(${splat.r},${splat.g},${splat.b},${splat.a / 255})`;
+    ctx.fillRect(x, y, 1, 1);
+    this.splatMap.update();
+  }
+
+  isTextureMode(): boolean {
+    return this.textureMode;
+  }
+
   /** Dispose terrain mesh, grid lines, and material. */
   dispose(): void {
     this.terrainMesh?.dispose();
@@ -299,5 +399,7 @@ export class TerrainGrid {
     this.gridLines?.dispose();
     this.gridLines = null;
     this.terrainMaterial.dispose();
+    this.splatMaterial?.dispose();
+    this.splatMap?.dispose();
   }
 }
