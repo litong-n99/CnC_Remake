@@ -29,6 +29,20 @@ export interface LocomotorInfo {
    * The A* edge cost is computed as `distance / terrainSpeed`.
    */
   readonly terrainSpeeds: Readonly<Record<LandType, number>>;
+
+  /**
+   * Maximum turn speed in degrees per second.
+   * Heavy tanks (Track) turn slowly and may need to stop to turn.
+   * Light vehicles (Wheel) turn quickly while moving.
+   */
+  readonly turnSpeed: number;
+
+  /**
+   * Whether the unit can turn while moving.
+   * false = must stop at cell boundary, rotate in place, then resume.
+   * true = rotates smoothly while interpolating between cells.
+   */
+  readonly turnsWhileMoving: boolean;
 }
 
 /**
@@ -46,6 +60,8 @@ export const LOCOMOTOR_DEFINITIONS: Record<Locomotion, LocomotorInfo> = {
     waitAverage: 200,
     waitSpread: 150,
     sharesCell: true,
+    turnSpeed: 360,
+    turnsWhileMoving: true,
     terrainSpeeds: {
       [LandType.Clear]: 1,
       [LandType.Road]: 1,
@@ -64,6 +80,8 @@ export const LOCOMOTOR_DEFINITIONS: Record<Locomotion, LocomotorInfo> = {
     waitAverage: 400,
     waitSpread: 300,
     sharesCell: false,
+    turnSpeed: 120,
+    turnsWhileMoving: false,
     terrainSpeeds: {
       [LandType.Clear]: 1,
       [LandType.Road]: 1,
@@ -82,6 +100,8 @@ export const LOCOMOTOR_DEFINITIONS: Record<Locomotion, LocomotorInfo> = {
     waitAverage: 300,
     waitSpread: 200,
     sharesCell: false,
+    turnSpeed: 180,
+    turnsWhileMoving: true,
     terrainSpeeds: {
       [LandType.Clear]: 1,
       [LandType.Road]: 1,
@@ -100,6 +120,8 @@ export const LOCOMOTOR_DEFINITIONS: Record<Locomotion, LocomotorInfo> = {
     waitAverage: 200,
     waitSpread: 100,
     sharesCell: false,
+    turnSpeed: 360,
+    turnsWhileMoving: true,
     terrainSpeeds: {
       [LandType.Clear]: 1,
       [LandType.Road]: 1,
@@ -118,6 +140,8 @@ export const LOCOMOTOR_DEFINITIONS: Record<Locomotion, LocomotorInfo> = {
     waitAverage: 300,
     waitSpread: 150,
     sharesCell: false,
+    turnSpeed: 90,
+    turnsWhileMoving: false,
     terrainSpeeds: {
       [LandType.Clear]: 0,
       [LandType.Road]: 0,

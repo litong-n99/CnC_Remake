@@ -49,9 +49,17 @@ export class UnitRotation {
   /**
    * 更新车身朝向 — 每 Tick 调用一次（通常在 Moving 状态中）。
    * 将 `bodyFacing` 平滑插值到 `targetBodyFacing`。
+   *
+   * @param turnSpeed 度/秒。若提供则使用该值，否则回退到 `definition.rotationSpeed`。
    */
-  static updateBodyFacing(controller: UnitController, deltaTime: number): void {
-    const maxDelta = controller.definition.rotationSpeed * deltaTime;
+  static updateBodyFacing(controller: UnitController, deltaTime: number, turnSpeed?: number): void {
+    let maxDelta: number;
+    if (turnSpeed !== undefined) {
+      // turnSpeed (°/s) → DirType per tick: 256 DirType = 360°
+      maxDelta = ((turnSpeed * deltaTime) / 1000) * (256 / 360);
+    } else {
+      maxDelta = controller.definition.rotationSpeed * deltaTime;
+    }
     const next = this.lerpFacing(controller.bodyFacing, controller.targetBodyFacing, maxDelta);
     controller.isRotating = Math.abs(next - controller.bodyFacing) > 0.01;
     controller.bodyFacing = next;

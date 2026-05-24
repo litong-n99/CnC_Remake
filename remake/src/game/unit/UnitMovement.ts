@@ -343,10 +343,29 @@ export class UnitMovement {
       }
     }
 
+    // ── Task 23.16: Stop-and-turn for units that cannot turn while moving ──
+    controller.targetBodyFacing = this.dirToFacing(dx, dy);
+
+    if (!this.locomotor.turnsWhileMoving) {
+      const diff = this.facingDiff(controller.bodyFacing, controller.targetBodyFacing);
+      if (diff > 64) {
+        controller.isTurningInPlace = true;
+      }
+    }
+
+    if (controller.isTurningInPlace) {
+      const diff = this.facingDiff(controller.bodyFacing, controller.targetBodyFacing);
+      if (diff <= 8) {
+        controller.isTurningInPlace = false;
+      } else {
+        // 仍在原地转向中，不移动位置
+        return;
+      }
+    }
+
     controller.x = nextX;
     controller.y = nextY;
     controller.isWaiting = false;
-    controller.targetBodyFacing = this.dirToFacing(dx, dy);
   }
 
   /**
@@ -755,6 +774,14 @@ export class UnitMovement {
    * 将移动方向向量转换为 C++ 风格的 DirType（0–255）。
    * 0 = 北, 64 = 东, 128 = 南, 192 = 西。
    */
+  /** 计算两个 DirType 朝向之间的最小差值（0–128）。 */
+  private facingDiff(a: number, b: number): number {
+    let diff = b - a;
+    if (diff > 128) diff -= 256;
+    if (diff < -128) diff += 256;
+    return Math.abs(diff);
+  }
+
   private dirToFacing(dx: number, dy: number): number {
     const angle = Math.atan2(dy, dx); // -π..π, 0 = 东
     let normalized = ((angle + Math.PI / 2) / (2 * Math.PI)) * 256;

@@ -5,7 +5,7 @@ import type { ArmorType } from '../rules/UnitDefinitions';
 import { UnitMovement } from './UnitMovement';
 import { UnitRotation } from './UnitRotation';
 import type { Pathfinder } from '../terrain/Pathfinder';
-import { getLocomotor } from '../rules/Locomotor';
+import { getLocomotor, type LocomotorInfo } from '../rules/Locomotor';
 import { UnitCollision } from './UnitCollision';
 import { BlockedByActor } from './BlockedByActor';
 
@@ -68,6 +68,7 @@ export class UnitController {
   isRotating = false;
   isDeploying = false;
   isHarvesting = false;
+  isTurningInPlace = false;
 
   // ── 采集负载（UnitClass）──
   goldLoad = 0;
@@ -96,6 +97,9 @@ export class UnitController {
   // ── 移动控制器 ──
   readonly movement: UnitMovement;
 
+  // ── Locomotor 配置缓存 ──
+  readonly locomotor: LocomotorInfo;
+
   /** 运行时唯一 ID（用于碰撞排除自身）。 */
   readonly unitId: string;
 
@@ -121,7 +125,8 @@ export class UnitController {
     this.firepowerBias = 1.0;
     this.speedBias = 1.0;
 
-    this.movement = new UnitMovement(getLocomotor(definition.locomotion), this.speed);
+    this.locomotor = getLocomotor(definition.locomotion);
+    this.movement = new UnitMovement(this.locomotor, this.speed);
 
     // 初始化双格状态（静止时 from=to）
     const cx = Math.round(x);
@@ -278,7 +283,8 @@ export class UnitController {
   private tickMoving(deltaTime: number): void {
     this.movement.update(this, deltaTime);
     // 移动过程中车身平滑转向目标方向
-    UnitRotation.updateBodyFacing(this, deltaTime);
+    // Task 23.16: 使用 locomotor.turnSpeed 限制旋转速度
+    UnitRotation.updateBodyFacing(this, deltaTime, this.locomotor.turnSpeed);
   }
 
   private tickAttacking(): void {

@@ -438,7 +438,7 @@
   - 快速拒绝：`sourceDomain !== targetDomain` 时直接返回 `NoPath`
   - 两层缓存：terrain-only（BlockedByActor.None）和 terrain+immovable（BlockedByActor.Immovable）
 - **验收**：128×128 地图中，起点与终点被水域/悬崖隔开时，寻路在 <1ms 内返回 null，A* openSet 为空
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 23.14: Bidirectional A* + Predicate Search — 双向寻路与条件目标搜索
 - **目标**：1) 实现双向 A*（从起点和终点同时扩展），在大地图上减少搜索空间。2) 实现 Predicate Search：给定条件函数（如"找到最近的可达敌方单位"），A* 搜索到第一个满足条件的格子即停止。
@@ -449,7 +449,7 @@
   - Predicate Search：`findPathToPredicate(startX, startY, predicate, maxDistance?)`，遇到满足 `predicate(x,y)` 的节点即返回路径
   - 保持现有 `findPath` API 不变，新增重载
 - **验收**：256×256 大地图上双向 A* 比单向快 30%+；Predicate Search 能在 10 步内找到"距离起点最近的敌方可见单位"
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 23.15: MoveCooldownHelper — 重寻路频率限制
 - **目标**：为 `Move` 和 `Follow` 活动引入冷却机制，防止追逐移动目标时频繁 repath。冷却时间按距离动态调整（越近冷却越短）。
@@ -460,7 +460,7 @@
   - 与 `handleBlocked` 的 repath 整合：repath 前检查冷却，未冷却时继续等待而非立即重寻路
   - 强制刷新：收到新移动命令时重置冷却
 - **验收**：单位跟随移动目标时，repath 频率从每帧 1 次降至每秒 2-5 次，移动轨迹平滑无抖动
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 23.16: Turn Speed / Pre-movement Turn — 转向机制
 - **目标**：为每个 Locomotor 定义 `TurnSpeed`（每 tick 最大转向角度）。支持 `TurnsWhileMoving` 模式：false 时单位必须在格子边界停下来完成转向后才能进入下一格；true 时边走边转，使用 `TickFacing` 逐步插值。非连续方向变化（如 U-turn）使用弧线轨迹。
@@ -472,7 +472,7 @@
   - 弧线轨迹：当方向变化 > 90° 且 `TurnsWhileMoving=false` 时，使用椭圆弧插值替代直线移动
   - 插值转向：`TurnsWhileMoving=true` 时，`UnitRotation.updateBodyFacing` 改为 `TickFacing` 逐步逼近
 - **验收**：重型坦克（TurnsWhileMoving=false）从北转向东时，会在格子边界停下、车身旋转 90° 后再前进；轻坦（TurnsWhileMoving=true）边移动边平滑转向，无滑步感
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 23.17: Crush Logic — 碾压逻辑
 - **目标**：为 Locomotor 添加 `Crushes` 类别（如 `"infantry"`）。车辆进入格子前 `WarnCrush` 通知可碾压单位（触发 `Nudge` 躲避）；进入后 `OnCrush` 直接击杀。`CellFlag` 缓存加速可碾压判定。

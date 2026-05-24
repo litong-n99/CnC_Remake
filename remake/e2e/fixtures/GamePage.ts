@@ -142,4 +142,68 @@ export class GamePage {
       cnc.list?.();
     });
   }
+
+  /** Set a unit's body facing (0–255 DirType). */
+  async setFacing(unitId: string, facing: number): Promise<void> {
+    await this.page.evaluate(
+      ({ id, f }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        cnc.setFacing?.(id, f);
+      },
+      { id: unitId, f: facing }
+    );
+  }
+
+  /** Get a unit's body facing (0–255 DirType). */
+  async getFacing(unitId: string): Promise<number | undefined> {
+    return await this.page.evaluate(
+      ({ id }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (cnc.getFacing?.(id) as number | undefined) ?? undefined;
+      },
+      { id: unitId }
+    );
+  }
+
+  /** Get debug state for all units. */
+  async debugState(): Promise<
+    Array<{
+      id: string;
+      x: number;
+      y: number;
+      fromCellX: number;
+      fromCellY: number;
+      toCellX: number;
+      toCellY: number;
+      isMoving: boolean;
+      isBlocking: boolean;
+      isTurningInPlace: boolean;
+      bodyFacing: number;
+      targetBodyFacing: number;
+      state: string;
+    }>
+  > {
+    return await this.page.evaluate(() => {
+      const cnc = (window as unknown as Record<string, (() => unknown) | undefined>).cnc;
+      return (
+        (cnc.debugState?.() as
+          | Array<{
+              id: string;
+              x: number;
+              y: number;
+              fromCellX: number;
+              fromCellY: number;
+              toCellX: number;
+              toCellY: number;
+              isMoving: boolean;
+              isBlocking: boolean;
+              isTurningInPlace: boolean;
+              bodyFacing: number;
+              targetBodyFacing: number;
+              state: string;
+            }>
+          | undefined) ?? []
+      );
+    });
+  }
 }

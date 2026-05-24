@@ -66,6 +66,10 @@ export class GameConsole {
       hierarchical: this.hierarchical.bind(this),
       cooldown: this.cooldown.bind(this),
       setCooldown: this.setCooldown.bind(this),
+      getCooldown: this.getCooldown.bind(this),
+      tickCooldown: this.tickCooldown.bind(this),
+      setFacing: this.setFacing.bind(this),
+      getFacing: this.getFacing.bind(this),
       help: this.help.bind(this),
     };
     // eslint-disable-next-line no-console
@@ -578,6 +582,79 @@ export class GameConsole {
     return false;
   }
 
+  /** Test helper: get cooldown remaining for a unit (ms). */
+  private getCooldown(unitId: string): number {
+    const manager = GameObjectManager.getInstance();
+    for (const obj of manager.getUnits()) {
+      const unit = obj as Unit;
+      if (unit.id === unitId) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const helper = (unit.logic.movement as any).cooldownHelper as
+          | import('../game/unit/MoveCooldownHelper').MoveCooldownHelper
+          | undefined;
+        if (helper) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const remaining = (helper as any).remainingMs as number;
+          // eslint-disable-next-line no-console
+          console.info(`Cooldown for ${unitId}: ${remaining}ms`);
+          return remaining;
+        }
+      }
+    }
+    console.warn(`Unit not found: ${unitId}`);
+    return -1;
+  }
+
+  /** Test helper: tick cooldown for a unit (ms). */
+  private tickCooldown(unitId: string, deltaTime: number): void {
+    const manager = GameObjectManager.getInstance();
+    for (const obj of manager.getUnits()) {
+      const unit = obj as Unit;
+      if (unit.id === unitId) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const helper = (unit.logic.movement as any).cooldownHelper as
+          | import('../game/unit/MoveCooldownHelper').MoveCooldownHelper
+          | undefined;
+        if (helper) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (helper as any).tick(deltaTime);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const remaining = (helper as any).remainingMs as number;
+          // eslint-disable-next-line no-console
+          console.info(`Cooldown ticked for ${unitId}: remaining = ${remaining}ms`);
+          return;
+        }
+      }
+    }
+    console.warn(`Unit not found: ${unitId}`);
+  }
+
+  /** Test helper: manually set body facing for a unit (0-255 DirType). */
+  private setFacing(unitId: string, facing: number): void {
+    const manager = GameObjectManager.getInstance();
+    const obj = manager.get(unitId);
+    if (!obj || obj.type !== GameObjectType.Unit) {
+      console.warn(`Unit not found: ${unitId}`);
+      return;
+    }
+    const unit = obj as Unit;
+    unit.logic.bodyFacing = ((facing % 256) + 256) % 256;
+    // eslint-disable-next-line no-console
+    console.info(`Set facing for ${unitId} to ${unit.logic.bodyFacing}`);
+  }
+
+  /** Test helper: get body facing for a unit. */
+  private getFacing(unitId: string): number | undefined {
+    const manager = GameObjectManager.getInstance();
+    const obj = manager.get(unitId);
+    if (!obj || obj.type !== GameObjectType.Unit) {
+      console.warn(`Unit not found: ${unitId}`);
+      return undefined;
+    }
+    const unit = obj as Unit;
+    return unit.logic.bodyFacing;
+  }
+
   /** Inspect HierarchicalPathfinder domain at a cell. */
   private hierarchical(x: number, y: number): number {
     const domain = this.pathfinder?.hierarchical.getDomain(x, y) ?? -1;
@@ -648,6 +725,9 @@ export class GameConsole {
         toCellY: unit.logic.toCellY,
         isMoving: unit.logic.isMovingBetweenCells,
         isBlocking: unit.logic.isBlocking,
+        isTurningInPlace: unit.logic.isTurningInPlace,
+        bodyFacing: unit.logic.bodyFacing,
+        targetBodyFacing: unit.logic.targetBodyFacing,
         state: unit.logic.stateMachine.state,
       });
     }
