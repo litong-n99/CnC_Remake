@@ -486,7 +486,7 @@
   - `CellFlag.HasCrushableActor`：Locomotor Cache 中标记该格有可被碾压单位
 - **依赖**：Task 23.12（Locomotor Cache 提供 `HasCrushableActor` 标志）
 - **验收**：坦克驶入步兵格子时，步兵有 75% 概率被警告并 Nudge 躲开；若未躲开则被碾压击杀，步兵状态变为 `Dying`
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 23.18: MoveWithinRange + Follow — 范围移动与跟随活动
 - **目标**：实现 `MoveWithinRange`：在目标 min/max 环形范围内寻找可达格子停止（用于远程单位攻击就位）。实现 `Follow`：持续跟随目标，使用 MoveCooldownHelper 防 spam-repath。
@@ -498,7 +498,7 @@
   - `UnitController` 扩展：支持 `moveWithinRange(target, minRange, maxRange)` 和 `follow(target, range)` API
 - **依赖**：Task 23.15（MoveCooldownHelper）
 - **验收**：火箭兵被命令攻击移动时，在距目标 5 格处停下并进入攻击状态；跟随友方 MCV 时保持 3 格距离平滑跟随，MCV 停下后火箭兵也停下
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 23.19: PathGraph 抽象与 ICustomMovementLayer 预留 — 寻路图与多层移动架构
 - **目标**：1) 抽象 `IPathGraph` 接口，支持不同移动层的邻居生成和代价计算。2) 预留 `ICustomMovementLayer` 接口（Entry/Exit 代价、层索引），为隧道、地下、跳跃喷气、高架桥、空军/海军层做准备。3) 当前仅实现 GroundLayer，其他层为骨架。
@@ -509,9 +509,9 @@
   - `GroundPathGraph`：当前 `Pathfinder` 的核心邻居生成逻辑迁移至此
   - `ICustomMovementLayer`：接口定义 `index`, `enabledForLocomotor`, `entryCost`, `exitCost`, `centerOfCell`
   - `Pathfinder` 重构：从直接管理邻居生成改为持有 `IPathGraph` 实例，支持多层切换
+- **状态**：[x] `done`
   - 预留层类型：`Tunnel=1`, `Subterranean=2`, `Jumpjet=3`, `ElevatedBridge=4`
 - **验收**：代码结构支持未来添加 `SubterraneanLayer`、`JumpjetLayer`、`TerrainTunnelLayer` 而不修改 `Pathfinder` 核心 A* 逻辑；现有所有 e2e 测试通过
-- **状态**：[ ] `done`
 
 ---
 
