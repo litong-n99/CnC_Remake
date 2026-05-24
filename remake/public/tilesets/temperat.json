@@ -1,0 +1,87 @@
+{
+  "name": "TEMPERAT",
+  "tileSize": { "width": 24, "height": 24 },
+  "palette": "temperat.pal",
+  "terrainTypes": [
+    { "type": "Clear", "targetTypes": ["Ground"], "color": "#3A7326" },
+    { "type": "Water", "targetTypes": ["Water"], "color": "#265C8C" },
+    { "type": "Rock", "targetTypes": ["Rock"], "color": "#665644" },
+    { "type": "Road", "targetTypes": ["Ground"], "color": "#736B5E" },
+    { "type": "Tiberium", "targetTypes": ["Ground"], "color": "#1ABF3F" },
+    { "type": "Beach", "targetTypes": ["Ground"], "color": "#CCB880" },
+    { "type": "Rough", "targetTypes": ["Ground"], "color": "#594E38" },
+    { "type": "River", "targetTypes": ["Water"], "color": "#337373" },
+    { "type": "Wall", "targetTypes": ["Wall"], "color": "#8C8C80" }
+  ],
+  "templates": [
+    {
+      "id": 1,
+      "name": "Clear01",
+      "size": { "width": 1, "height": 1 },
+      "pickAny": true,
+      "tiles": [
+        { "terrainType": 0, "height": 0, "minColor": "#3A7326", "maxColor": "#4A8340" }
+      ],
+      "images": ["clear01.png"],
+      "frames": [0]
+    },
+    {
+      "id": 2,
+      "name": "Water01",
+      "size": { "width": 1, "height": 1 },
+      "pickAny": true,
+      "tiles": [
+        { "terrainType": 1, "height": 0, "minColor": "#265C8C", "maxColor": "#2E6B9E" }
+      ],
+      "images": ["water01.png"],
+      "frames": [0]
+    },
+    {
+      "id": 3,
+      "name": "Rock01",
+      "size": { "width": 1, "height": 1 },
+      "pickAny": false,
+      "tiles": [
+        { "terrainType": 2, "height": 1, "minColor": "#665644", "maxColor": "#766854" }
+      ],
+      "images": ["rock01.png"],
+      "frames": [0]
+    },
+    {
+      "id": 4,
+      "name": "Road01",
+      "size": { "width": 1, "height": 1 },
+      "pickAny": true,
+      "tiles": [
+        { "terrainType": 3, "height": 0, "minColor": "#736B5E", "maxColor": "#837B6E" }
+      ],
+      "images": ["road01.png"],
+      "frames": [0]
+    },
+    {
+      "id": 5,
+      "name": "Tiberium01",
+      "size": { "width": 1, "height": 1 },
+      "pickAny": true,
+      "tiles": [
+        { "terrainType": 4, "height": 0, "minColor": "#1ABF3F", "maxColor": "#24D44E" }
+      ],
+      "images": ["tib01.png"],
+      "frames": [0]
+    },
+    {
+      "id": 100,
+      "name": "CliffNE",
+      "size": { "width": 2, "height": 2 },
+      "pickAny": false,
+      "tiles": [
+        { "terrainType": 2, "height": 2, "minColor": "#665644", "maxColor": "#766854" },
+        { "terrainType": 0, "height": 0, "minColor": "#3A7326", "maxColor": "#4A8340" },
+        { "terrainType": 2, "height": 2, "minColor": "#665644", "maxColor": "#766854" },
+        { "terrainType": 2, "height": 1, "minColor": "#665644", "maxColor": "#766854" }
+      ],
+      "images": ["cliff_ne.png"],
+      "frames": [0, 1, 2, 3]
+    }
+  ]
+}

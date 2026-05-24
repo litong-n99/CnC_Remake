@@ -13,6 +13,7 @@ import { Building } from '../game/objects/Building';
 import type { House } from '../game/house/House';
 import { RTSCamera } from '../core/RTSCamera';
 import { TerrainGrid, LandType } from '../game/terrain/TerrainGrid';
+import { loadTileSetFromUrl } from '../game/terrain/TileSet';
 import { UnitCollision } from '../game/unit/UnitCollision';
 import { BlockedByActor } from '../game/unit/BlockedByActor';
 import { ActorMap } from '../game/world/ActorMap';
@@ -79,6 +80,10 @@ export class GameConsole {
       cellLayer: this.cellLayer.bind(this),
       mapGrid: this.mapGrid.bind(this),
       terrain: this.terrain,
+      loadTileSet: this.loadTileSet.bind(this),
+      tileSet: this.tileSet.bind(this),
+      setTerrainTile: this.setTerrainTile.bind(this),
+      getTerrainTile: this.getTerrainTile.bind(this),
       help: this.help.bind(this),
     };
     // eslint-disable-next-line no-console
@@ -969,6 +974,52 @@ export class GameConsole {
       tileSize: grid.tileSize,
       cellSize: grid.cellSize,
       subCellCount: grid.subCellOffsets.length,
+    };
+  }
+
+  /** Load a TileSet from URL and attach it to the TerrainGrid. */
+  private async loadTileSet(url: string): Promise<Record<string, unknown>> {
+    try {
+      const tileSet = await loadTileSetFromUrl(url);
+      await this.terrain.loadTileSet(tileSet);
+      return {
+        name: tileSet.name,
+        templateCount: tileSet.templates.size,
+        terrainTypeCount: tileSet.terrainTypes.length,
+      };
+    } catch (err) {
+      console.warn('Failed to load tileset:', err);
+      return { error: String(err) };
+    }
+  }
+
+  /** Inspect current TileSet (if loaded). */
+  private tileSet(): Record<string, unknown> | null {
+    const ts = this.terrain.getTileSet();
+    if (!ts) return null;
+    return {
+      name: ts.name,
+      templateCount: ts.templates.size,
+      terrainTypeCount: ts.terrainTypes.length,
+      terrainTypes: ts.terrainTypes.map((t) => t.type),
+    };
+  }
+
+  /** Place a TerrainTile (template id + index) at a cell. */
+  private setTerrainTile(x: number, y: number, type: number, index = 0): void {
+    this.terrain.setTerrainTile(x, y, { type, index });
+  }
+
+  /** Read the TerrainTile at a cell. */
+  private getTerrainTile(x: number, y: number): Record<string, unknown> | null {
+    const tile = this.terrain.getTerrainTile(x, y);
+    if (!tile) return null;
+    const cache = this.terrain.getTileCache();
+    return {
+      type: tile.type,
+      index: tile.index,
+      terrainTypeName: cache?.getTerrainTypeName(tile) ?? 'unknown',
+      landTypeFallback: cache?.getLandTypeFallback(tile) ?? -1,
     };
   }
 

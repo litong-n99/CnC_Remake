@@ -3,6 +3,8 @@ import { MeshBuilder } from '@babylonjs/core';
 import { TerrainMaterial } from '../../renderer/materials/TerrainMaterial';
 import { CellLayer, type CellEntryChangedHandler } from './CellLayer';
 import { MapGrid } from './MapGrid';
+import type { TileSet, TerrainTile } from './TileSet';
+import { DefaultTileCache } from './DefaultTileCache';
 
 /**
  * Terrain types translated from the original C&C `LandType` enum
@@ -20,9 +22,11 @@ export enum LandType {
   River = 8,
 }
 
-/** Per-cell data.  Currently only stores terrain type; future fields (overlay, height, etc.) go here. */
+/** Per-cell data.  landType is kept for backward compatibility;
+ * terrainTile references the TileSet template system (Task 9.2). */
 export interface CellData {
   landType: LandType;
+  terrainTile?: import('./TileSet').TerrainTile;
 }
 
 /**
@@ -40,6 +44,7 @@ export interface CellData {
 export class TerrainGrid {
   private cellLayer: CellLayer<CellData>;
   private mapGrid: MapGrid;
+  private tileCache: DefaultTileCache | null = null;
   private terrainMesh: Mesh | null = null;
   private gridLines: Mesh | null = null;
   private terrainMaterial: TerrainMaterial;
@@ -51,6 +56,35 @@ export class TerrainGrid {
 
     this.createMesh(scene);
     this.createGridLines(scene);
+  }
+
+  // ── TileSet integration ──
+
+  /** Load a TileSet and rebuild the tile cache.  Does NOT change existing cell data. */
+  async loadTileSet(tileSet: TileSet): Promise<void> {
+    this.tileCache = new DefaultTileCache(tileSet);
+  }
+
+  getTileSet(): TileSet | null {
+    return this.tileCache?.getTileSet() ?? null;
+  }
+
+  getTileCache(): DefaultTileCache | null {
+    return this.tileCache;
+  }
+
+  /** Set a cell to a specific template tile.  Triggers CellEntryChanged. */
+  setTerrainTile(x: number, y: number, tile: TerrainTile): void {
+    if (!this.cellLayer.contains(x, y)) return;
+    const old = this.cellLayer.get(x, y);
+    const landType = this.tileCache?.getLandTypeFallback(tile) ?? old.landType;
+    this.cellLayer.set(x, y, { landType, terrainTile: tile });
+    this.updateCellColor(x, y);
+  }
+
+  /** Read the TerrainTile for a cell (undefined if not set). */
+  getTerrainTile(x: number, y: number): TerrainTile | undefined {
+    return this.cellLayer.get(x, y).terrainTile;
   }
 
   // ── Cell data ──
