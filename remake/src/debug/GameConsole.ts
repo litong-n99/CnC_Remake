@@ -14,6 +14,7 @@ import type { House } from '../game/house/House';
 import { RTSCamera } from '../core/RTSCamera';
 import { TerrainGrid, LandType } from '../game/terrain/TerrainGrid';
 import { loadTileSetFromUrl } from '../game/terrain/TileSet';
+import { ResourceLayer } from '../game/economy/ResourceLayer';
 import { UnitCollision } from '../game/unit/UnitCollision';
 import { BlockedByActor } from '../game/unit/BlockedByActor';
 import { ActorMap } from '../game/world/ActorMap';
@@ -35,6 +36,8 @@ import { Locomotion } from '../game/rules/UnitDefinitions';
 export class GameConsole {
   private pendingBuilding: { readonly definition: BuildingDefinition; readonly house: House } | null = null;
 
+  private resourceLayer: ResourceLayer | null = null;
+
   constructor(
     private readonly scene: Scene,
     private readonly lighting: Lighting,
@@ -42,7 +45,13 @@ export class GameConsole {
     private readonly terrain: TerrainGrid,
     private readonly placer: BuildingPlacer,
     private readonly pathfinder?: Pathfinder
-  ) {}
+  ) {
+    // Create default resource layer (Tiberium)
+    this.resourceLayer = new ResourceLayer(terrain.getWidth(), terrain.getHeight(), [
+      { name: 'Tiberium', terrainType: 'clear', maxDensity: 255, growthRate: 0.05, spreadRate: 0.02, value: 25 },
+      { name: 'Ore', terrainType: 'clear', maxDensity: 200, growthRate: 0.03, spreadRate: 0.01, value: 50 },
+    ]);
+  }
 
   /** Register all commands on `window.cnc`. */
   install(): void {
@@ -84,6 +93,10 @@ export class GameConsole {
       tileSet: this.tileSet.bind(this),
       setTerrainTile: this.setTerrainTile.bind(this),
       getTerrainTile: this.getTerrainTile.bind(this),
+      resource: this.resource.bind(this),
+      setResource: this.setResource.bind(this),
+      harvest: this.harvest.bind(this),
+      tickResources: this.tickResources.bind(this),
       help: this.help.bind(this),
     };
     // eslint-disable-next-line no-console
@@ -1021,6 +1034,37 @@ export class GameConsole {
       terrainTypeName: cache?.getTerrainTypeName(tile) ?? 'unknown',
       landTypeFallback: cache?.getLandTypeFallback(tile) ?? -1,
     };
+  }
+
+  /** Inspect resource at a cell. */
+  private resource(x: number, y: number): Record<string, unknown> | null {
+    if (!this.resourceLayer) return null;
+    const cell = this.resourceLayer.get(x, y);
+    return { x, y, type: cell.type, density: cell.density, harvestable: cell.density > 0 };
+  }
+
+  /** Place a resource seed at a cell. */
+  private setResource(x: number, y: number, type = 1, density = 50): void {
+    if (!this.resourceLayer) return;
+    this.resourceLayer.set(x, y, type, density);
+  }
+
+  /** Harvest (reduce density) at a cell.  Returns amount removed. */
+  private harvest(x: number, y: number, amount = 10): number {
+    if (!this.resourceLayer) return 0;
+    return this.resourceLayer.harvest(x, y, amount);
+  }
+
+  /** Manually advance resource simulation by N ticks. */
+  private tickResources(ticks = 1): void {
+    if (!this.resourceLayer) return;
+    const getTerrainName = (cx: number, cy: number): string | undefined => {
+      const lt = this.terrain.getCellLandType(cx, cy);
+      return LandType[lt]?.toLowerCase();
+    };
+    for (let i = 0; i < ticks; i++) {
+      this.resourceLayer.tick(this.terrain, getTerrainName);
+    }
   }
 
   private findNearestFreeCell(): { x: number; y: number } | undefined {
