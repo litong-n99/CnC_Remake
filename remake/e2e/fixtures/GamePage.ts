@@ -111,6 +111,34 @@ export class GamePage {
     );
   }
 
+  /** Task 23.18: Move a unit within a min/max range of a target cell. */
+  async moveWithinRange(
+    unitId: string,
+    targetX: number,
+    targetY: number,
+    minRange: number,
+    maxRange: number
+  ): Promise<boolean> {
+    return await this.page.evaluate(
+      ({ id, tx, ty, minR, maxR }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (cnc.moveWithinRange?.(id, tx, ty, minR, maxR) as boolean) ?? false;
+      },
+      { id: unitId, tx: targetX, ty: targetY, minR: minRange, maxR: maxRange }
+    );
+  }
+
+  /** Task 23.18: Order a unit to follow another unit. */
+  async follow(unitId: string, targetId: string, range: number): Promise<boolean> {
+    return await this.page.evaluate(
+      ({ id, tid, r }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (cnc.follow?.(id, tid, r) as boolean) ?? false;
+      },
+      { id: unitId, tid: targetId, r: range }
+    );
+  }
+
   /** Get Euclidean distance between two units. */
   async unitDistance(idA: string, idB: string): Promise<number> {
     return await this.page.evaluate(

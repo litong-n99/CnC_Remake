@@ -59,6 +59,8 @@ export class GameConsole {
       pathfindBi: this.pathfindBi.bind(this),
       pathfindPredicate: this.pathfindPredicate.bind(this),
       moveUnit: this.moveUnit.bind(this),
+      moveWithinRange: this.moveWithinRange.bind(this),
+      follow: this.follow.bind(this),
       distance: this.distance.bind(this),
       debugState: this.debugState.bind(this),
       locomotorCache: this.locomotorCache.bind(this),
@@ -336,6 +338,56 @@ export class GameConsole {
     }
     console.warn(`Unit not found: ${unitId}`);
     return false;
+  }
+
+  private moveWithinRange(
+    unitId: string,
+    targetX: number,
+    targetY: number,
+    minRange: number,
+    maxRange: number
+  ): boolean {
+    if (!this.pathfinder) {
+      console.warn('Pathfinder not available in GameConsole');
+      return false;
+    }
+    const manager = GameObjectManager.getInstance();
+    for (const obj of manager.getAll()) {
+      if (obj.id === unitId && obj.type === GameObjectType.Unit) {
+        const unit = obj as Unit;
+        const success = unit.logic.moveWithinRange(targetX, targetY, minRange, maxRange, this.pathfinder);
+        console.info(
+          `MoveWithinRange ${unit.definition.name} (${unitId}) → (${targetX},${targetY}) [${minRange}-${maxRange}]:`,
+          success ? 'STARTED' : 'FAILED'
+        );
+        return success;
+      }
+    }
+    console.warn(`Unit not found: ${unitId}`);
+    return false;
+  }
+
+  private follow(unitId: string, targetId: string, range: number): boolean {
+    if (!this.pathfinder) {
+      console.warn('Pathfinder not available in GameConsole');
+      return false;
+    }
+    const manager = GameObjectManager.getInstance();
+    let found = false;
+    for (const obj of manager.getAll()) {
+      if (obj.id === unitId && obj.type === GameObjectType.Unit) {
+        const unit = obj as Unit;
+        unit.logic.follow(targetId, range, this.pathfinder);
+        console.info(`Follow ${unit.definition.name} (${unitId}) → ${targetId} @ ${range}`);
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      console.warn(`Unit not found: ${unitId}`);
+      return false;
+    }
+    return true;
   }
 
   /** Run A* pathfinding with current unit blockers.

@@ -8,6 +8,7 @@ import type { Pathfinder } from '../terrain/Pathfinder';
 import { getLocomotor, type LocomotorInfo } from '../rules/Locomotor';
 import { UnitCollision } from './UnitCollision';
 import { BlockedByActor } from './BlockedByActor';
+import { GameObjectManager } from '../objects/GameObjectManager';
 
 /**
  * 格子坐标目标 — 用于 moveTarget / attackTarget。
@@ -99,6 +100,11 @@ export class UnitController {
 
   // ── Locomotor 配置缓存 ──
   readonly locomotor: LocomotorInfo;
+
+  // ── Task 23.18: Follow 状态 ──
+  private followTargetId?: string;
+  private followRange = 0;
+  private followPathfinder?: Pathfinder;
 
   /** 运行时唯一 ID（用于碰撞排除自身）。 */
   readonly unitId: string;
@@ -233,6 +239,63 @@ export class UnitController {
   }
 
   /**
+   * Task 23.18: 移动到目标的 min/max 环形范围内。
+   * 使用 Predicate Search 找到第一个满足距离条件的可达格子。
+   * @returns 是否成功找到路径并开始移动（已在范围内时返回 true）。
+   */
+  moveWithinRange(
+    targetX: number,
+    targetY: number,
+    minRange: number,
+    maxRange: number,
+    pathfinder: Pathfinder
+  ): boolean {
+    const dx = this.x - targetX;
+    const dy = this.y - targetY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist >= minRange && dist <= maxRange) return true;
+
+    const path = pathfinder.findPathToPredicate(
+      Math.round(this.x),
+      Math.round(this.y),
+      (x, y) => {
+        const ddx = x - targetX;
+        const ddy = y - targetY;
+        const d = Math.sqrt(ddx * ddx + ddy * ddy);
+        return d >= minRange && d <= maxRange;
+      },
+      maxRange + 20,
+      undefined,
+      BlockedByActor.All,
+      0,
+      this.movement['getTerrainCost'] as ((x: number, y: number) => number) | undefined
+    );
+
+    if (path && path.length > 1) {
+      const dest = path[path.length - 1];
+      return this.movement.moveTo(this, dest.x, dest.y, pathfinder);
+    }
+    return false;
+  }
+
+  /**
+   * Task 23.18: 开始持续跟随目标单位。
+   * 在 tickIdle/tickMoving 中自动检测目标位置并重新定位。
+   */
+  follow(targetId: string, range: number, pathfinder: Pathfinder): void {
+    this.followTargetId = targetId;
+    this.followRange = range;
+    this.followPathfinder = pathfinder;
+  }
+
+  /** 停止跟随。 */
+  stopFollow(): void {
+    this.followTargetId = undefined;
+    this.followRange = 0;
+    this.followPathfinder = undefined;
+  }
+
+  /**
    * 每 Tick 更新 — 对应 C++ UnitClass::AI() 简化骨架。
    * Source: REDALERT/UNIT.CPP, Line 421
    */
@@ -277,6 +340,21 @@ export class UnitController {
     // Nudge 移动完成后回到 Idle，重置 isNudging 标志
     if (this.isNudging) {
       this.isNudging = false;
+    }
+
+    // Task 23.18: Follow — 目标移动后重新定位
+    if (this.followTargetId && this.followPathfinder) {
+      const target = GameObjectManager.getInstance().get(this.followTargetId);
+      if (target && target.isAlive()) {
+        const dx = this.x - target.x;
+        const dy = this.y - target.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > this.followRange) {
+          this.moveWithinRange(target.x, target.y, 0, this.followRange, this.followPathfinder);
+        }
+      } else {
+        this.stopFollow();
+      }
     }
   }
 
