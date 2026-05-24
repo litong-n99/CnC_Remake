@@ -126,26 +126,130 @@
 - **验收**：生成 64x64 格子地图，切换不同地形颜色可见。
 - **状态**：[x] `done`
 
-> **📋 地形系统后续演进路线（从 Task 9 延伸）**
+### Task 9.1: CellLayer<T> 泛型地形层 + 事件驱动 — 数据层架构升级 🔴 P0
+- **目标**：将当前原始的 `CellData[][]` 二维数组重构为 OpenRA 风格的 `CellLayer<T>` 泛型层：连续一维数组存储、支持 `CPos` 索引包装、`CellEntryChanged` 事件驱动、多 layer 隔离。所有地形/高度/资源的变更通过事件通知监听者（渲染器、寻路器、Shroud）增量更新。
+- **文件**：`src/game/terrain/CellLayer.ts`, `src/game/terrain/MapGrid.ts`, `src/game/terrain/TerrainGrid.ts`
+- **OpenRA 对标**：`OpenRA.Game/Map/CellLayer.cs` + `CellLayerBase.cs` + `ProjectedCellLayer.cs`
+- **关键变更**：
+  - `CellLayer<T>` 泛型类：底层 `T[] entries`（大小 = width × height），`Index(CPos)` 转换为一维下标；支持 `this[cpos]` 读写器
+  - `CellEntryChanged: (CPos) => void` 事件：任何格子的数据变更自动触发，监听者（`TerrainRenderer`、`HierarchicalPathfinder`、`ShroudRenderer`）按需增量更新
+  - `ProjectedCellLayer<T>`：专用于投影坐标 `PPos` 索引的数组（无事件），为 Shroud 系统预留
+  - `MapGrid`：定义网格几何规则（`Rectangular` vs `RectangularIsometric`）、`TileSize`、`SubCellOffsets`、`TilesByDistance` 预计算
+  - 现有 `TerrainGrid.cells` 迁移为 `CellLayer<CellData>`，保持 `getCellLandType` / `setCellLandType` API 向后兼容
+- **依赖**：Task 13（MapLoader 需适配新数据结构）
+- **验收**：`terrainGrid.cells[10][20].landType = Water` 触发 `CellEntryChanged` 事件，`TerrainRenderer` 和 `HierarchicalPathfinder` 自动收到通知并更新对应格子；128×128 地图内存占用与原始二维数组相当或更优
+- **状态**：[ ] `done`
+
+### Task 9.2: TileSet / Template 地形模板系统 — C&C 地图核心 🔴 P0
+- **目标**：实现 OpenRA 风格的 `TileSet`（剧场定义）+ `TerrainTemplate`（多格组合模板）系统。每个地形格子不再存储单一 `LandType`，而是存储 `TerrainTile(templateId, index)`，引用外部 `tileset.yaml` 中定义的模板。支持 `PickAny` 随机变体、局部高度偏移、斜坡类型。
+- **文件**：`src/game/terrain/TileSet.ts`, `src/game/terrain/TerrainTemplate.ts`, `src/game/terrain/TerrainTile.ts`, `public/tilesets/temperat.yaml`
+- **OpenRA 对标**：`DefaultTerrain.cs` + `DefaultTerrainTemplateInfo.cs` + `TerrainInfo.cs` + `DefaultTileCache.cs`
+- **关键变更**：
+  - `TileSet`：从 YAML 加载，含 `General`（TileSize, Palette, SheetSize）、`Terrain`（`TerrainTypeInfo[]`，按字母排序后分配 byte 索引）、`Templates`（`TerrainTemplateInfo[]`）
+  - `TerrainTemplateInfo`：`Id`(ushort), `Images`(Sprite 路径数组), `Frames`(使用哪些 frame), `Size`(模板占据的格子数，如 2×2 悬崖), `PickAny`(bool，随机选取索引), `DepthImages`(深度图路径)
+  - `TerrainTile`：`{ type: ushort, index: byte }`，`type` 指向 `TerrainTemplateInfo.Id`，`index` 是模板内的局部索引
+  - `TerrainTileInfo`：每模板内 tile 的元数据——`TerrainType`(byte 索引), `Height`(局部高度偏移), `RampType`(斜坡), `MinColor/MaxColor`(小地图颜色范围), `Riser`(8 方向期望高度 discontinuity)
+  - `CellData` 升级：`landType` 字段废弃（保留兼容），新增 `terrainTile: TerrainTile`
+  - `DefaultTileCache`：解析 `Images` → Sprite Frame → 通过 `SheetBuilder` 打包到 Texture Atlas；`TileSprite(tile)` 根据 type 找模板、index 取 sprite、随机选 variant
+- **依赖**：Task 9.1（CellLayer 提供事件驱动的基础数据层）
+- **验收**：加载 `temperat.yaml` 后，64×64 地图每个格子引用正确的模板和子索引；`PickAny=true` 的草地模板每次加载随机选取变体；悬崖模板（2×2 或更大）在地图上正确拼合
+- **状态**：[ ] `done`
+
+### Task 9.3: 资源层 (ResourceLayer) — Tiberium/Ore 密度与生长 🟡 P1
+- **目标**：实现独立的资源层，管理地图上可采集资源（Tiberium 晶体、Ore 矿石）的分布与密度。支持密度 0-255、生长扩散、枯竭再生。为采矿经济系统（Task 30）提供数据基础。
+- **文件**：`src/game/economy/ResourceLayer.ts`, `src/game/terrain/CellLayer.ts`
+- **OpenRA 对标**：`OpenRA.Mods.Common/Traits/World/ResourceLayer.cs` + `IResourceLayer.cs`
+- **关键变更**：
+  - `ResourceLayer`：管理 `CellLayer<ResourceCell>`，每个格子记录 `type`(资源类型索引) 和 `density`(0-255)
+  - `ResourceTypeInfo`：从 YAML 加载，定义 `Type`(名称), `TerrainType`(覆盖的地形类型), `MaxDensity`(上限), `GrowthRate`(每 tick 生长概率), `SpreadRate`(向相邻空格子扩散概率), `Value`(每密度单位的价值)
+  - 生长逻辑：每 tick 遍历所有资源格，按 `GrowthRate` 增加密度（不超过 `MaxDensity`）；按 `SpreadRate` 向相邻 Clear 格子扩散新资源
+  - `CellEntryChanged` 事件：密度变更时通知 `ResourceRenderer` 更新显示帧
+  - 与 `HarvesterAI`（Task 30）对接：`ResourceLayer.getHarvestableCells()` 返回地图上所有含可采集资源的格子
+- **依赖**：Task 9.1（CellLayer 事件驱动）
+- **验收**：地图上 10 个种子资源点经过 100 tick 后自然扩散成一片资源区；矿车调用 `ResourceLayer.harvest(cell)` 后该格密度下降，视觉上从高密度 sprite 切换到低密度 sprite
+- **状态**：[ ] `done`
+
+### Task 9.4: TerrainSpriteLayer + Texture Splatting Shader — 真实地形渲染 🟡 P1
+- **目标**：从纯色顶点色地形升级为真实纹理渲染。实现 OpenRA 风格的 `TerrainSpriteLayer`（GPU 顶点数组管理 + 脏行增量更新），并在此基础上实现 Babylon.js 自定义 Shader 的 **Texture Splatting**（草地/道路/水域/悬崖多纹理混合）。
+- **文件**：`src/renderer/terrain/TerrainSpriteLayer.ts`, `src/renderer/materials/TerrainSplatMaterial.ts`, `src/renderer/shaders/terrain.splat.fx`
+- **OpenRA 对标**：`TerrainSpriteLayer.cs` + `TerrainRenderer.cs` + `WorldRenderer.Draw` 中的地形绘制顺序
+- **关键变更**：
+  - `TerrainSpriteLayer`：管理每行一个 GPU 顶点缓冲；仅上传可见行的脏数据；支持 Palette 索引和光照染色
+  - `TerrainSplatMaterial`：自定义 Babylon.js ShaderMaterial，支持 4-8 层纹理（草地、道路、水域、岩石、沙滩、粗糙地、泰伯利亚、雪）
+  - Texture Splatting：每个 Cell 输出一个 splat 权重（如 `splatR=草地, splatG=道路, splatB=水域, splatA=岩石`），Shader 在片元阶段按权重混合多层纹理
+  - 与 `TileSet` 对接：通过 `DefaultTileCache` 获取每个 `TerrainTile` 对应的 Sprite/Texture，写入 `TerrainSpriteLayer` 的顶点数据
+  - 水面动画：Water 类型格子使用动态 UV 偏移或法线贴图模拟波纹
+  - 地形过渡：相邻不同地形类型之间通过 splat 权重渐变实现自然混合（替代当前的硬边界）
+- **依赖**：Task 9.1（CellLayer 事件触发渲染更新），Task 9.2（TileSet 提供纹理来源）
+- **验收**：64×64 地图显示真实纹理（草地、道路、水域），相邻地形间有过渡混合；Water 格子有动态波纹动画；相机 zoom 到 100 时远处地形 LOD 降低
+- **状态**：[ ] `done`
+
+### Task 9.5: 多坐标系统重构 (CPos/MPos/PPos/WPos) — 等轴测与高度投影 🟡 P1
+- **目标**：将当前简单的 `Cell(x,y) ↔ Vector3` 重构为 OpenRA 风格的多层坐标系统：`CPos`(逻辑+层) → `MPos`(数组坐标) → `PPos`(投影坐标) → `WPos`(3D世界)。支持等轴测网格和高度投影，为精确命中测试和斜坡移动提供基础。
+- **文件**：`src/game/terrain/Coordinates.ts`, `src/game/terrain/MapGrid.ts`, `src/game/terrain/Viewport.ts`
+- **OpenRA 对标**：`CPos.cs` + `MPos.cs` + `PPos.cs` + `WPos.cs` + `WVec.cs` + `WDist.cs` + `CVec.cs` + `Viewport.cs`
+- **关键变更**：
+  - `CPos { x, y, layer? }`：Cell 逻辑坐标，32bit 紧凑打包（未来可支持 256 层）
+  - `MPos { u, v }`：数组坐标；矩形网格 `u=x, v=y`；等轴测网格 `u=(x-y)/2, v=x+y`
+  - `PPos { u, v }`：投影坐标，用于渲染和 Shroud；等轴测下 `MPos→PPos` 直接映射；带高度时一个 `MPos` 可能投影到多个 `PPos`（悬崖覆盖）
+  - `WPos { x, y, z }`：世界坐标；1 cell = 1024 WDist（Rect）或 1448 对角线（Iso）；Z 由 `Height` + `Ramp` 插值决定
+  - `WVec / WDist / CVec`：世界向量、世界距离、Cell 向量；支持 `Length`、`Rotate`、`Yaw` 等运算
+  - `Viewport`：屏幕坐标 → 世界坐标 → Cell 坐标的转换链；`ViewToWorld` 使用候选 cell → 四边形 `PolygonContains` 精确 hit test（替代当前简单的 `Math.round`）
+  - `MapGrid`：定义 `Type`（`Rectangular` / `RectangularIsometric`）、`TileSize`、`SubCellOffsets`、`Ramps`
+- **依赖**：Task 9.1（CellLayer 支持 CPos 索引），Task 23.29（高度系统提供 Z 坐标来源）
+- **验收**：等轴测模式下，Cell (10,20) 的世界坐标与屏幕坐标双向转换误差 < 0.5 像素；`Viewport.ViewToWorld(mouseX, mouseY)` 在斜坡边缘精确命中正确的 Cell；高度差 ≥2 的悬崖不可通行
+- **状态**：[ ] `done`
+
+### Task 9.6: 地图格式兼容 (OpenRA map.yaml + map.bin) — 生态兼容 🟢 P2
+- **目标**：支持加载 OpenRA 原生地图格式（文件夹：`map.yaml` + `map.bin` + `map.png`），使项目可直接使用 OpenRA 地图生态和真实 C&C 地图数据。
+- **文件**：`src/game/terrain/OpenRA MapLoader.ts`, `src/game/terrain/MapFormat.ts`
+- **OpenRA 对标**：`Map.cs` 中 `LoadBinaryData` / `SaveBinaryData` + `map.yaml` 解析
+- **关键变更**：
+  - `map.yaml` 解析：读取 `MapFormat`, `RequiresMod`, `Title`, `Author`, `Tileset`, `MapSize`, `Bounds`, `Players`, `Actors`, `Rules`
+  - `map.bin` 二进制解析：
+    - Header：`byte Format`, `ushort Width/Height`, `uint TilesOffset`, `uint HeightsOffset`, `uint ResourcesOffset`
+    - Tiles 段：`ushort tile.Type` + `byte tile.Index`（`index == 255` 时 `PickAny` 回退到 `(i%4 + j%4*4)`）
+    - Heights 段：`byte height`（clamp 到 `MaximumTerrainHeight`）
+    - Resources 段：`byte type` + `byte density`
+  - `MapFormat.ts`：定义 `MapFormat` 接口，兼容 OpenRA 的元数据结构
+  - 回退机制：若 `map.bin` 不存在，降级到当前 JSON 格式；若 `Tileset` 引用的 YAML 不存在，使用内置 Dummy TileSet
+- **依赖**：Task 9.1（CellLayer 存储解析后的数据），Task 9.2（TileSet 系统解析 `tileset.yaml`）
+- **验收**：加载一个真实的 OpenRA 地图文件夹后，`TerrainGrid` 正确渲染地形纹理、高度、资源分布；`Actors` 定义中的初始单位正确生成在场景中
+- **状态**：[ ] `done`
+
+### Task 9.7: Shroud 边缘贴图渲染系统 — 迷雾视觉精细化 🟢 P2
+- **目标**：在 Task 31（Fog of War）的基础逻辑之上，实现 OpenRA 风格的 Shroud 边缘贴图渲染：使用 bitfield 描述 8 邻居可见性状态，索引到 sprite 序列的对应帧，实现平滑的迷雾边缘过渡。
+- **文件**：`src/renderer/effects/ShroudRenderer.ts`, `src/renderer/materials/ShroudMaterial.ts`
+- **OpenRA 对标**：`ShroudRenderer.cs` + `Shroud.cs` 中 `GetEdges` / `GetNeighborsVisibility`
+- **关键变更**：
+  - `ShroudRenderer`：管理两个 `TerrainSpriteLayer`——`shroudLayer`（未探索区域 = 黑色）和 `fogLayer`（已探索但当前不可见 = 灰蒙）
+  - 边缘检测：`Edges` enum 定义 4 角 + 4 边（扩展模式）的可见性组合；`GetNeighborsVisibility` 查询 8 邻居的 `CellVisibility`；`GetEdges` 生成边缘 bitfield
+  - Sprite 索引：`shroudSprites` / `fogSprites` 从序列加载，支持多 variant；`Index` 数组定义 bitfield → sprite frame 的映射
+  - 增量更新：`UpdateShroudCell(PPos)` 标记自身 dirty 并脏化 8 邻居（边缘相互影响）；渲染时仅更新 dirty quad
+  - 与 `ProjectedCellLayer` 对接：Shroud 数据使用 `PPos` 索引（考虑高度投影后的屏幕覆盖）
+- **依赖**：Task 31（Fog of War 基础逻辑），Task 9.1（CellLayer 事件驱动），Task 9.5（PPos 投影坐标）
+- **验收**：单位移动后，新视野区域的 Shroud 边缘呈现自然的锯齿状/弧形过渡（非生硬矩形）；离开视野的单位所在格子变为 Fog（半透明覆盖），边缘同样有平滑过渡
+- **状态**：[ ] `done`
+
+### Task 9.8: 编辑器地形刷系统 (Tile Brush + FloodFill + Undo) ⚪ P3
+- **目标**：实现 OpenRA 风格的地图编辑器地形刷：模板绘制（左键点刷/拖拽绘制）、`PickAny` 随机变体、Shift+FloodFill（相同地形类型区域填充）、Undo/Redo 操作栈。
+- **文件**：`src/editor/brushes/EditorTileBrush.ts`, `src/editor/brushes/EditorResourceBrush.ts`, `src/editor/actions/EditorAction.ts`, `src/editor/MapEditor.ts`
+- **OpenRA 对标**：`EditorTileBrush.cs` + `EditorResourceBrush.cs` + `FloodFillEditorAction.cs` + `EditorDefaultBrush.cs`
+- **关键变更**：
+  - `EditorTileBrush`：持有 `TerrainTemplateInfo`，鼠标位置通过 `Viewport.ViewToWorld` 转为 `CPos`；`PaintCell` 将模板内所有非空 tile 写入对应格子
+  - `PickAny`：随机选取模板内索引，实现自然的地表随机变体
+  - `FloodFillEditorAction`：Shift+点击触发 BFS 填充，填充相同 `TerrainTile.Type` 的区域，按模板尺寸步进
+  - `EditorResourceBrush`：左键点击增加资源密度，Shift+拖动批量添加；`AddResourcesEditorAction` 记录修改的 `CellResource` 列表
+  - `Undo/Redo` 栈：`EditorAction` 基类定义 `Do()` / `Undo()`；`EditorTileAction` 记录 `(CPos, oldTerrainTile, oldHeight, newTerrainTile, newHeight)`；`EditorResourceAction` 记录 `(CPos, oldResourceCell, newResourceCell)`
+  - `MapEditor`：管理刷子状态、工具切换（地形刷/资源刷/Actor 刷）、Undo/Redo 栈、导出 `map.yaml` + `map.bin`
+- **依赖**：Task 9.2（TileSet 提供模板数据），Task 9.3（ResourceLayer 提供资源数据），Task 9.5（Viewport 提供精确坐标转换）
+- **验收**：编辑器中选中 2×2 悬崖模板，在画布上拖拽绘制；Shift+点击草地触发 FloodFill 填充整片区域；Ctrl+Z 撤销最后一次绘制；导出后 `map.bin` 可被 `OpenRAMapLoader` 正确加载
+- **状态**：[ ] `done`
+
+> **📋 地形系统演进路线汇总**
 >
-> Task 9 完成了地形网格的基础骨架（`TerrainGrid` + `CellData` + 顶点色渲染）。以下任务按**主题**分组，逐步将地形系统从"彩色格子"升级为完整的 OpenRA 级地形引擎。
->
-> | 主题 | 任务 | 状态 | 说明 |
-> |------|------|------|------|
-> | **基础渲染** | Task 10 — 地形材质与纹理系统 | [x] `done` | 纯色顶点色 → `StandardMaterial` 占位 |
-> | **地图加载** | Task 13 — 地图加载器与序列化 | [x] `done` | JSON `number[][]` 格式 |
-> | **高度系统** | Task 23.29 — Cell Height / Ramp / 悬崖与斜坡 | [ ] `done` | 从 Phase 5.5 续引入 |
-> | **战争迷雾** | Task 31 — Fog of War | [ ] `done` | 基础逻辑 + Shroud 边缘贴图（Task 23.38）|
-> | **数据层升级** | Task 23.32 — CellLayer<T> 泛型层 + 事件驱动 | [ ] `done` | 替代原始 `CellData[][]` |
-> | **模板系统** | Task 23.33 — TileSet / Template 系统 | [ ] `done` | C&C 地图核心：模板拼贴 + PickAny |
-> | **资源层** | Task 23.34 — ResourceLayer（Tiberium/Ore）| [ ] `done` | 密度 0-255 + 生长/扩散 |
-> | **真实纹理** | Task 23.35 — TerrainSpriteLayer + Texture Splatting | [ ] `done` | 多纹理混合 Shader + 水面动画 |
-> | **坐标系统** | Task 23.36 — CPos/MPos/PPos/WPos 多层转换 | [ ] `done` | 等轴测支持 + 精确命中测试 |
-> | **地图兼容** | Task 23.37 — OpenRA map.yaml + map.bin 兼容 | [ ] `done` | 直接加载 OpenRA 地图生态 |
-> | **迷雾渲染** | Task 23.38 — Shroud 边缘贴图系统 | [ ] `done` | bitfield → sprite 帧索引 |
-> | **编辑器** | Task 89-90 — 地图编辑器（Tile Brush + Actor 放置）| [ ] `done` | Phase 16；Task 23.39 补充地形刷细节 |
->
-> **建议执行顺序**：Task 23.32（数据层重构）→ 23.33（模板系统）→ 23.34（资源层）→ 23.35（真实纹理）→ 23.29（高度）→ 23.36（坐标）→ 23.37（格式兼容）→ 23.38（迷雾渲染）→ 23.39（编辑器地形刷）。
+> Task 9 完成基础骨架（`TerrainGrid` + `CellData` + 顶点色）。Task 9.1–9.8 按**建议执行顺序**递进：
+> **9.1（CellLayer）→ 9.2（TileSet）→ 9.3（ResourceLayer）→ 9.4（Texture Splatting）→ 23.29（Height）→ 9.5（Coordinates）→ 9.6（Map Format）→ 9.7（Shroud）→ 9.8（Editor Brush）**
 
 ### Task 10: 地形材质与纹理系统
 - **目标**：支持多材质混合（草地、道路、水域、悬崖）。
@@ -432,7 +536,7 @@
 
 ## Phase 5.5 续：寻路碰撞系统深度对齐（OpenRA 核心能力缺口）
 
-> 以下任务基于 OpenRA 源码 Cross Check 结果，将当前项目尚未实现的寻路/移动/地形核心能力补齐。按**优先级**排序：性能层（23.12–23.15）→ 机动性层（23.16–23.17）→ 活动变体层（23.18–23.19）→ **OpenRA 寻路核心能力缺口回填（23.20–23.31）** → **OpenRA 地形系统核心能力缺口回填（23.32–23.39）**。
+> 以下任务基于 OpenRA 源码 Cross Check 结果，将当前项目尚未实现的寻路/移动核心能力补齐。按**优先级**排序：性能层（23.12–23.15）→ 机动性层（23.16–23.17）→ 活动变体层（23.18–23.19）→ **OpenRA 核心能力缺口回填（23.20–23.31）**。
 > 参考：`harness/05_OPENRA_ANALYSIS.md` §移动系统深度分析、§地形系统深度分析。
 >
 > **缺口回填优先级**：🔴 P0（性能/数据核心，100+单位或地图数据瓶颈）→ 🟡 P1（架构/表现，50+单位体验或地形真实感）→ 🟢 P2（细节优化/渲染升级）→ ⚪ P3（扩展性/调参/编辑器）。
@@ -700,126 +804,6 @@
   - `weight = 1.25`：OpenRA 默认值，节点数减少 30-50%，路径长度增加通常 <5%
   - 可在 `GameRules.ts` 中全局配置，或在 `Pathfinder` 构造时按场景设置（如 `MoveWithinRange` 可用较低 weight，`MoveTo` 精确目标保持 1.0）
 - **验收**：`heuristicWeight=1.25` 时，128×128 地图长距离寻路节点数减少 30-50%，路径长度与纯 A* 差异 <5%；`heuristicWeight=1.0` 时路径严格最短
-- **状态**：[ ] `done`
-
-### Task 23.32: CellLayer<T> 泛型地形层 + 事件驱动 — 数据层架构升级 🔴 P0
-- **目标**：将当前原始的 `CellData[][]` 二维数组重构为 OpenRA 风格的 `CellLayer<T>` 泛型层：连续一维数组存储、支持 `CPos` 索引包装、`CellEntryChanged` 事件驱动、多 layer 隔离。所有地形/高度/资源的变更通过事件通知监听者（渲染器、寻路器、Shroud）增量更新。
-- **文件**：`src/game/terrain/CellLayer.ts`, `src/game/terrain/MapGrid.ts`, `src/game/terrain/TerrainGrid.ts`
-- **OpenRA 对标**：`OpenRA.Game/Map/CellLayer.cs` + `CellLayerBase.cs` + `ProjectedCellLayer.cs`
-- **关键变更**：
-  - `CellLayer<T>` 泛型类：底层 `T[] entries`（大小 = width × height），`Index(CPos)` 转换为一维下标；支持 `this[cpos]` 读写器
-  - `CellEntryChanged: (CPos) => void` 事件：任何格子的数据变更自动触发，监听者（`TerrainRenderer`、`HierarchicalPathfinder`、`ShroudRenderer`）按需增量更新
-  - `ProjectedCellLayer<T>`：专用于投影坐标 `PPos` 索引的数组（无事件），为 Shroud 系统预留
-  - `MapGrid`：定义网格几何规则（`Rectangular` vs `RectangularIsometric`）、`TileSize`、`SubCellOffsets`、`TilesByDistance` 预计算
-  - 现有 `TerrainGrid.cells` 迁移为 `CellLayer<CellData>`，保持 `getCellLandType` / `setCellLandType` API 向后兼容
-- **依赖**：Task 13（MapLoader 需适配新数据结构）
-- **验收**：`terrainGrid.cells[10][20].landType = Water` 触发 `CellEntryChanged` 事件，`TerrainRenderer` 和 `HierarchicalPathfinder` 自动收到通知并更新对应格子；128×128 地图内存占用与原始二维数组相当或更优
-- **状态**：[ ] `done`
-
-### Task 23.33: TileSet / Template 地形模板系统 — C&C 地图核心 🔴 P0
-- **目标**：实现 OpenRA 风格的 `TileSet`（剧场定义）+ `TerrainTemplate`（多格组合模板）系统。每个地形格子不再存储单一 `LandType`，而是存储 `TerrainTile(templateId, index)`，引用外部 `tileset.yaml` 中定义的模板。支持 `PickAny` 随机变体、局部高度偏移、斜坡类型。
-- **文件**：`src/game/terrain/TileSet.ts`, `src/game/terrain/TerrainTemplate.ts`, `src/game/terrain/TerrainTile.ts`, `public/tilesets/temperat.yaml`
-- **OpenRA 对标**：`DefaultTerrain.cs` + `DefaultTerrainTemplateInfo.cs` + `TerrainInfo.cs` + `DefaultTileCache.cs`
-- **关键变更**：
-  - `TileSet`：从 YAML 加载，含 `General`（TileSize, Palette, SheetSize）、`Terrain`（`TerrainTypeInfo[]`，按字母排序后分配 byte 索引）、`Templates`（`TerrainTemplateInfo[]`）
-  - `TerrainTemplateInfo`：`Id`(ushort), `Images`(Sprite 路径数组), `Frames`(使用哪些 frame), `Size`(模板占据的格子数，如 2×2 悬崖), `PickAny`(bool，随机选取索引), `DepthImages`(深度图路径)
-  - `TerrainTile`：`{ type: ushort, index: byte }`，`type` 指向 `TerrainTemplateInfo.Id`，`index` 是模板内的局部索引
-  - `TerrainTileInfo`：每模板内 tile 的元数据——`TerrainType`(byte 索引), `Height`(局部高度偏移), `RampType`(斜坡), `MinColor/MaxColor`(小地图颜色范围), `Riser`(8 方向期望高度 discontinuity)
-  - `CellData` 升级：`landType` 字段废弃（保留兼容），新增 `terrainTile: TerrainTile`
-  - `DefaultTileCache`：解析 `Images` → Sprite Frame → 通过 `SheetBuilder` 打包到 Texture Atlas；`TileSprite(tile)` 根据 type 找模板、index 取 sprite、随机选 variant
-- **依赖**：Task 23.32（CellLayer 提供事件驱动的基础数据层）
-- **验收**：加载 `temperat.yaml` 后，64×64 地图每个格子引用正确的模板和子索引；`PickAny=true` 的草地模板每次加载随机选取变体；悬崖模板（2×2 或更大）在地图上正确拼合
-- **状态**：[ ] `done`
-
-### Task 23.34: 资源层 (ResourceLayer) — Tiberium/Ore 密度与生长 🟡 P1
-- **目标**：实现独立的资源层，管理地图上可采集资源（Tiberium 晶体、Ore 矿石）的分布与密度。支持密度 0-255、生长扩散、枯竭再生。为采矿经济系统（Task 30）提供数据基础。
-- **文件**：`src/game/economy/ResourceLayer.ts`, `src/game/terrain/CellLayer.ts`
-- **OpenRA 对标**：`OpenRA.Mods.Common/Traits/World/ResourceLayer.cs` + `IResourceLayer.cs`
-- **关键变更**：
-  - `ResourceLayer`：管理 `CellLayer<ResourceCell>`，每个格子记录 `type`(资源类型索引) 和 `density`(0-255)
-  - `ResourceTypeInfo`：从 YAML 加载，定义 `Type`(名称), `TerrainType`(覆盖的地形类型), `MaxDensity`(上限), `GrowthRate`(每 tick 生长概率), `SpreadRate`(向相邻空格子扩散概率), `Value`(每密度单位的价值)
-  - 生长逻辑：每 tick 遍历所有资源格，按 `GrowthRate` 增加密度（不超过 `MaxDensity`）；按 `SpreadRate` 向相邻 Clear 格子扩散新资源
-  - `CellEntryChanged` 事件：密度变更时通知 `ResourceRenderer` 更新显示帧
-  - 与 `HarvesterAI`（Task 30）对接：`ResourceLayer.getHarvestableCells()` 返回地图上所有含可采集资源的格子
-- **依赖**：Task 23.32（CellLayer 事件驱动）
-- **验收**：地图上 10 个种子资源点经过 100 tick 后自然扩散成一片资源区；矿车调用 `ResourceLayer.harvest(cell)` 后该格密度下降，视觉上从高密度 sprite 切换到低密度 sprite
-- **状态**：[ ] `done`
-
-### Task 23.35: TerrainSpriteLayer + Texture Splatting Shader — 真实地形渲染 🟡 P1
-- **目标**：从纯色顶点色地形升级为真实纹理渲染。实现 OpenRA 风格的 `TerrainSpriteLayer`（GPU 顶点数组管理 + 脏行增量更新），并在此基础上实现 Babylon.js 自定义 Shader 的 **Texture Splatting**（草地/道路/水域/悬崖多纹理混合）。
-- **文件**：`src/renderer/terrain/TerrainSpriteLayer.ts`, `src/renderer/materials/TerrainSplatMaterial.ts`, `src/renderer/shaders/terrain.splat.fx`
-- **OpenRA 对标**：`TerrainSpriteLayer.cs` + `TerrainRenderer.cs` + `WorldRenderer.Draw` 中的地形绘制顺序
-- **关键变更**：
-  - `TerrainSpriteLayer`：管理每行一个 GPU 顶点缓冲；仅上传可见行的脏数据；支持 Palette 索引和光照染色
-  - `TerrainSplatMaterial`：自定义 Babylon.js ShaderMaterial，支持 4-8 层纹理（草地、道路、水域、岩石、沙滩、粗糙地、泰伯利亚、雪）
-  - Texture Splatting：每个 Cell 输出一个 splat 权重（如 `splatR=草地, splatG=道路, splatB=水域, splatA=岩石`），Shader 在片元阶段按权重混合多层纹理
-  - 与 `TileSet` 对接：通过 `DefaultTileCache` 获取每个 `TerrainTile` 对应的 Sprite/Texture，写入 `TerrainSpriteLayer` 的顶点数据
-  - 水面动画：Water 类型格子使用动态 UV 偏移或法线贴图模拟波纹
-  - 地形过渡：相邻不同地形类型之间通过 splat 权重渐变实现自然混合（替代当前的硬边界）
-- **依赖**：Task 23.32（CellLayer 事件触发渲染更新），Task 23.33（TileSet 提供纹理来源）
-- **验收**：64×64 地图显示真实纹理（草地、道路、水域），相邻地形间有过渡混合；Water 格子有动态波纹动画；相机 zoom 到 100 时远处地形 LOD 降低
-- **状态**：[ ] `done`
-
-### Task 23.36: 多坐标系统重构 (CPos/MPos/PPos/WPos) — 等轴测与高度投影 🟡 P1
-- **目标**：将当前简单的 `Cell(x,y) ↔ Vector3` 重构为 OpenRA 风格的多层坐标系统：`CPos`(逻辑+层) → `MPos`(数组坐标) → `PPos`(投影坐标) → `WPos`(3D世界)。支持等轴测网格和高度投影，为精确命中测试和斜坡移动提供基础。
-- **文件**：`src/game/terrain/Coordinates.ts`, `src/game/terrain/MapGrid.ts`, `src/game/terrain/Viewport.ts`
-- **OpenRA 对标**：`CPos.cs` + `MPos.cs` + `PPos.cs` + `WPos.cs` + `WVec.cs` + `WDist.cs` + `CVec.cs` + `Viewport.cs`
-- **关键变更**：
-  - `CPos { x, y, layer? }`：Cell 逻辑坐标，32bit 紧凑打包（未来可支持 256 层）
-  - `MPos { u, v }`：数组坐标；矩形网格 `u=x, v=y`；等轴测网格 `u=(x-y)/2, v=x+y`
-  - `PPos { u, v }`：投影坐标，用于渲染和 Shroud；等轴测下 `MPos→PPos` 直接映射；带高度时一个 `MPos` 可能投影到多个 `PPos`（悬崖覆盖）
-  - `WPos { x, y, z }`：世界坐标；1 cell = 1024 WDist（Rect）或 1448 对角线（Iso）；Z 由 `Height` + `Ramp` 插值决定
-  - `WVec / WDist / CVec`：世界向量、世界距离、Cell 向量；支持 `Length`、`Rotate`、`Yaw` 等运算
-  - `Viewport`：屏幕坐标 → 世界坐标 → Cell 坐标的转换链；`ViewToWorld` 使用候选 cell → 四边形 `PolygonContains` 精确 hit test（替代当前简单的 `Math.round`）
-  - `MapGrid`：定义 `Type`（`Rectangular` / `RectangularIsometric`）、`TileSize`、`SubCellOffsets`、`Ramps`
-- **依赖**：Task 23.32（CellLayer 支持 CPos 索引），Task 23.29（高度系统提供 Z 坐标来源）
-- **验收**：等轴测模式下，Cell (10,20) 的世界坐标与屏幕坐标双向转换误差 < 0.5 像素；`Viewport.ViewToWorld(mouseX, mouseY)` 在斜坡边缘精确命中正确的 Cell；高度差 ≥2 的悬崖不可通行
-- **状态**：[ ] `done`
-
-### Task 23.37: 地图格式兼容 (OpenRA map.yaml + map.bin) — 生态兼容 🟢 P2
-- **目标**：支持加载 OpenRA 原生地图格式（文件夹：`map.yaml` + `map.bin` + `map.png`），使项目可直接使用 OpenRA 地图生态和真实 C&C 地图数据。
-- **文件**：`src/game/terrain/OpenRA MapLoader.ts`, `src/game/terrain/MapFormat.ts`
-- **OpenRA 对标**：`Map.cs` 中 `LoadBinaryData` / `SaveBinaryData` + `map.yaml` 解析
-- **关键变更**：
-  - `map.yaml` 解析：读取 `MapFormat`, `RequiresMod`, `Title`, `Author`, `Tileset`, `MapSize`, `Bounds`, `Players`, `Actors`, `Rules`
-  - `map.bin` 二进制解析：
-    - Header：`byte Format`, `ushort Width/Height`, `uint TilesOffset`, `uint HeightsOffset`, `uint ResourcesOffset`
-    - Tiles 段：`ushort tile.Type` + `byte tile.Index`（`index == 255` 时 `PickAny` 回退到 `(i%4 + j%4*4)`）
-    - Heights 段：`byte height`（clamp 到 `MaximumTerrainHeight`）
-    - Resources 段：`byte type` + `byte density`
-  - `MapFormat.ts`：定义 `MapFormat` 接口，兼容 OpenRA 的元数据结构
-  - 回退机制：若 `map.bin` 不存在，降级到当前 JSON 格式；若 `Tileset` 引用的 YAML 不存在，使用内置 Dummy TileSet
-- **依赖**：Task 23.32（CellLayer 存储解析后的数据），Task 23.33（TileSet 系统解析 `tileset.yaml`）
-- **验收**：加载一个真实的 OpenRA 地图文件夹后，`TerrainGrid` 正确渲染地形纹理、高度、资源分布；`Actors` 定义中的初始单位正确生成在场景中
-- **状态**：[ ] `done`
-
-### Task 23.38: Shroud 边缘贴图渲染系统 — 迷雾视觉精细化 🟢 P2
-- **目标**：在 Task 31（Fog of War）的基础逻辑之上，实现 OpenRA 风格的 Shroud 边缘贴图渲染：使用 bitfield 描述 8 邻居可见性状态，索引到 sprite 序列的对应帧，实现平滑的迷雾边缘过渡。
-- **文件**：`src/renderer/effects/ShroudRenderer.ts`, `src/renderer/materials/ShroudMaterial.ts`
-- **OpenRA 对标**：`ShroudRenderer.cs` + `Shroud.cs` 中 `GetEdges` / `GetNeighborsVisibility`
-- **关键变更**：
-  - `ShroudRenderer`：管理两个 `TerrainSpriteLayer`——`shroudLayer`（未探索区域 = 黑色）和 `fogLayer`（已探索但当前不可见 = 灰蒙）
-  - 边缘检测：`Edges` enum 定义 4 角 + 4 边（扩展模式）的可见性组合；`GetNeighborsVisibility` 查询 8 邻居的 `CellVisibility`；`GetEdges` 生成边缘 bitfield
-  - Sprite 索引：`shroudSprites` / `fogSprites` 从序列加载，支持多 variant；`Index` 数组定义 bitfield → sprite frame 的映射
-  - 增量更新：`UpdateShroudCell(PPos)` 标记自身 dirty 并脏化 8 邻居（边缘相互影响）；渲染时仅更新 dirty quad
-  - 与 `ProjectedCellLayer` 对接：Shroud 数据使用 `PPos` 索引（考虑高度投影后的屏幕覆盖）
-- **依赖**：Task 31（Fog of War 基础逻辑），Task 23.32（CellLayer 事件驱动），Task 23.36（PPos 投影坐标）
-- **验收**：单位移动后，新视野区域的 Shroud 边缘呈现自然的锯齿状/弧形过渡（非生硬矩形）；离开视野的单位所在格子变为 Fog（半透明覆盖），边缘同样有平滑过渡
-- **状态**：[ ] `done`
-
-### Task 23.39: 编辑器地形刷系统 (Tile Brush + FloodFill + Undo) ⚪ P3
-- **目标**：实现 OpenRA 风格的地图编辑器地形刷：模板绘制（左键点刷/拖拽绘制）、`PickAny` 随机变体、Shift+FloodFill（相同地形类型区域填充）、Undo/Redo 操作栈。
-- **文件**：`src/editor/brushes/EditorTileBrush.ts`, `src/editor/brushes/EditorResourceBrush.ts`, `src/editor/actions/EditorAction.ts`, `src/editor/MapEditor.ts`
-- **OpenRA 对标**：`EditorTileBrush.cs` + `EditorResourceBrush.cs` + `FloodFillEditorAction.cs` + `EditorDefaultBrush.cs`
-- **关键变更**：
-  - `EditorTileBrush`：持有 `TerrainTemplateInfo`，鼠标位置通过 `Viewport.ViewToWorld` 转为 `CPos`；`PaintCell` 将模板内所有非空 tile 写入对应格子
-  - `PickAny`：随机选取模板内索引，实现自然的地表随机变体
-  - `FloodFillEditorAction`：Shift+点击触发 BFS 填充，填充相同 `TerrainTile.Type` 的区域，按模板尺寸步进
-  - `EditorResourceBrush`：左键点击增加资源密度，Shift+拖动批量添加；`AddResourcesEditorAction` 记录修改的 `CellResource` 列表
-  - `Undo/Redo` 栈：`EditorAction` 基类定义 `Do()` / `Undo()`；`EditorTileAction` 记录 `(CPos, oldTerrainTile, oldHeight, newTerrainTile, newHeight)`；`EditorResourceAction` 记录 `(CPos, oldResourceCell, newResourceCell)`
-  - `MapEditor`：管理刷子状态、工具切换（地形刷/资源刷/Actor 刷）、Undo/Redo 栈、导出 `map.yaml` + `map.bin`
-- **依赖**：Task 23.33（TileSet 提供模板数据），Task 23.34（ResourceLayer 提供资源数据），Task 23.36（Viewport 提供精确坐标转换）
-- **验收**：编辑器中选中 2×2 悬崖模板，在画布上拖拽绘制；Shift+点击草地触发 FloodFill 填充整片区域；Ctrl+Z 撤销最后一次绘制；导出后 `map.bin` 可被 `OpenRAMapLoader` 正确加载
 - **状态**：[ ] `done`
 
 ---
@@ -1406,7 +1390,7 @@
 | Phase 3 数据层 | 4 | 4 | |
 | Phase 4 单位系统 | 5 | 5 | |
 | Phase 5 建筑系统 | 4 | 4 | Task 20–23 全部完成 |
-| Phase 5.5 寻路碰撞+地形深度对齐 | 39 | 19 | 23.1–23.19 完成；23.20–23.31 寻路缺口回填；23.32–23.39 地形缺口回填 |
+| Phase 5.5 寻路碰撞深度对齐 | 31 | 19 | 23.1–23.19 完成；23.20–23.31 为 OpenRA 核心能力缺口回填（P0–P3）|
 | Phase 6 交互 | 3 | 0 | Task 24 已合并到 23.10；25–27 待开发 |
 | Phase 7 战斗经济 | 4 | 0 | |
 | Phase 8 循环发布 | 4 | 0 | |
@@ -1419,7 +1403,7 @@
 | Phase 15 AI高级 | 7 | 0 | Bot、超级武器、空军、桥梁 |
 | Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
 | Phase 17 发布平台 | 3 | 0 | 桌面打包、移动端、Steam |
-| **总计** | **138** | **47** | |
+| **总计** | **130** | **47** | |
 
 ---
 
