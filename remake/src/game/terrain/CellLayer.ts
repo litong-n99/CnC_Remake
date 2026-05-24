@@ -8,22 +8,8 @@
  * Source: OpenRA.Game/Map/CellLayer.cs + CellLayerBase.cs
  */
 
-/** Logical cell coordinate (optionally carries a layer index). */
-export interface CPos {
-  readonly x: number;
-  readonly y: number;
-  readonly layer?: number;
-}
-
-/** Create a CPos quickly. */
-export function cpos(x: number, y: number, layer = 0): CPos {
-  return { x, y, layer };
-}
-
-/** Equality check for CPos (ignores layer if not provided on both sides). */
-export function cposEquals(a: CPos, b: CPos): boolean {
-  return a.x === b.x && a.y === b.y && (a.layer ?? 0) === (b.layer ?? 0);
-}
+import type { CPos } from './Coordinates';
+export { type CPos, cpos, cposEquals } from './Coordinates';
 
 /**
  * Signature for listeners that react to a single cell changing its value.
