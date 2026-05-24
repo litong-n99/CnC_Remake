@@ -92,12 +92,13 @@ test.describe('Task 23.7 — Locomotor TerrainSpeeds', () => {
     const cellTank = await game.actorMap(25, 21);
     const idTank = (cellTank as { occupants: readonly string[] }).occupants[0];
 
-    // Both move to same destination
-    await game.moveUnit(idInf, 35, 24);
-    await game.moveUnit(idTank, 35, 24);
+    // Move to different destinations to avoid end-point contention
+    // Infantry goes north through Rock (Foot Rock=0.5), tank goes south around Rock
+    await game.moveUnit(idInf, 35, 18);
+    await game.moveUnit(idTank, 35, 26);
 
     // Wait for both to arrive
-    await Promise.all([game.waitForUnitAt(idInf, 35, 24, 30000), game.waitForUnitAt(idTank, 35, 24, 30000)]);
+    await Promise.all([game.waitForUnitAt(idInf, 35, 18, 30000), game.waitForUnitAt(idTank, 35, 26, 30000)]);
 
     // Both should reach destination
     const posInf = await game.page.evaluate((unitId) => {

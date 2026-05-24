@@ -9,6 +9,7 @@ import { GameObjectType } from '../objects/GameObject';
 import type { LocomotorInfo } from '../rules/Locomotor';
 import { makeTerrainCostCallback, getLocomotor } from '../rules/Locomotor';
 import { MoveCooldownHelper } from './MoveCooldownHelper';
+import { Crushable } from './Crushable';
 
 /**
  * 单位移动控制器 — 沿 A* 路径进行插值移动，支持 OpenRA 风格阻塞 fallback 链（Task 24.3）。
@@ -39,6 +40,9 @@ export class UnitMovement {
 
   // ── Task 23.15: Repath 冷却 ──
   private readonly cooldownHelper = new MoveCooldownHelper();
+
+  // ── Task 23.17: Crush 警告状态 ──
+  private warnedCrushCell: { x: number; y: number } | null = null;
 
   // OpenRA 没有 repath 次数上限，单位会持续尝试直到到达目标或收到新命令
   private static readonly SPEED_SCALE = 0.0006;
@@ -98,6 +102,7 @@ export class UnitMovement {
     this.repathAttempts = 0;
     controller.isBlocking = false;
     this.cooldownHelper.reset();
+    this.warnedCrushCell = null;
 
     // 缓存 Locomotor 的地形代价回调（首次使用时创建）
     if (!this.getTerrainCost && pathfinder.getTerrainType) {
@@ -280,6 +285,17 @@ export class UnitMovement {
 
     if (dist < 0.05) {
       // 到达当前路径点，准备进入下一格
+
+      // ── Task 23.17: WarnCrush — 即使大步长跳过了 dist<0.5 的阈值，
+      //   到达前也必须给 crushable 单位一次躲避机会 ──
+      if (!this.warnedCrushCell || this.warnedCrushCell.x !== target.x || this.warnedCrushCell.y !== target.y) {
+        this.warnedCrushCell = { x: target.x, y: target.y };
+        Crushable.warnCrush(target.x, target.y, controller.unitId);
+      }
+
+      // ── Task 23.17: OnCrush — 到达格子后击杀未被躲开的 crushable 单位 ──
+      Crushable.onCrush(Math.round(target.x), Math.round(target.y), controller.unitId);
+
       controller.x = target.x;
       controller.y = target.y;
 
@@ -360,6 +376,14 @@ export class UnitMovement {
       } else {
         // 仍在原地转向中，不移动位置
         return;
+      }
+    }
+
+    // ── Task 23.17: WarnCrush — 接近目标格时通知 crushable 单位躲避 ──
+    if (dist < 0.5) {
+      if (!this.warnedCrushCell || this.warnedCrushCell.x !== target.x || this.warnedCrushCell.y !== target.y) {
+        this.warnedCrushCell = { x: target.x, y: target.y };
+        Crushable.warnCrush(target.x, target.y, controller.unitId);
       }
     }
 

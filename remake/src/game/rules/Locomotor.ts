@@ -43,6 +43,12 @@ export interface LocomotorInfo {
    * true = rotates smoothly while interpolating between cells.
    */
   readonly turnsWhileMoving: boolean;
+
+  /**
+   * Actor categories this locomotor can crush (e.g. `["infantry"]`).
+   * Empty array = cannot crush anything.
+   */
+  readonly crushes: readonly string[];
 }
 
 /**
@@ -62,6 +68,7 @@ export const LOCOMOTOR_DEFINITIONS: Record<Locomotion, LocomotorInfo> = {
     sharesCell: true,
     turnSpeed: 360,
     turnsWhileMoving: true,
+    crushes: [],
     terrainSpeeds: {
       [LandType.Clear]: 1,
       [LandType.Road]: 1,
@@ -82,6 +89,7 @@ export const LOCOMOTOR_DEFINITIONS: Record<Locomotion, LocomotorInfo> = {
     sharesCell: false,
     turnSpeed: 120,
     turnsWhileMoving: false,
+    crushes: ['infantry'],
     terrainSpeeds: {
       [LandType.Clear]: 1,
       [LandType.Road]: 1,
@@ -102,6 +110,7 @@ export const LOCOMOTOR_DEFINITIONS: Record<Locomotion, LocomotorInfo> = {
     sharesCell: false,
     turnSpeed: 180,
     turnsWhileMoving: true,
+    crushes: ['infantry'],
     terrainSpeeds: {
       [LandType.Clear]: 1,
       [LandType.Road]: 1,
@@ -122,6 +131,7 @@ export const LOCOMOTOR_DEFINITIONS: Record<Locomotion, LocomotorInfo> = {
     sharesCell: false,
     turnSpeed: 360,
     turnsWhileMoving: true,
+    crushes: [],
     terrainSpeeds: {
       [LandType.Clear]: 1,
       [LandType.Road]: 1,
@@ -142,6 +152,7 @@ export const LOCOMOTOR_DEFINITIONS: Record<Locomotion, LocomotorInfo> = {
     sharesCell: false,
     turnSpeed: 90,
     turnsWhileMoving: false,
+    crushes: [],
     terrainSpeeds: {
       [LandType.Clear]: 0,
       [LandType.Road]: 0,

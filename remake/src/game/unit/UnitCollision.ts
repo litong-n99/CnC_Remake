@@ -66,6 +66,11 @@ export class UnitCollision {
     const manager = GameObjectManager.getInstance();
 
     if (check === BlockedByActor.All) {
+      // Task 23.17: 如果调用者能碾压所有 occupant，不阻塞
+      if (this.canCrushAll(excludeId, occupants)) {
+        return false;
+      }
+
       let hasOccupant = false;
       let allSharesCell = true;
       for (const id of occupants) {
@@ -204,6 +209,32 @@ export class UnitCollision {
     }
 
     return false;
+  }
+
+  /**
+   * 判断调用者是否能碾压所有 occupant（Task 23.17）。
+   * 只有当调用者 locomotor.crushes 非空，且所有 occupant 都是可被碾压的步兵时返回 true。
+   */
+  private static canCrushAll(excludeId: string, occupants: readonly string[]): boolean {
+    const callerObj = GameObjectManager.getInstance().get(excludeId);
+    if (!callerObj || callerObj.type !== GameObjectType.Unit) return false;
+    const callerUnit = callerObj as import('../objects/Unit').Unit;
+    const callerLoc = getLocomotor(callerUnit.definition.locomotion);
+    if (callerLoc.crushes.length === 0) return false;
+
+    const manager = GameObjectManager.getInstance();
+    for (const id of occupants) {
+      if (id === excludeId) continue;
+      const obj = manager.get(id);
+      if (!obj || obj.type !== GameObjectType.Unit || !obj.isAlive()) return false;
+      const unit = obj as import('../objects/Unit').Unit;
+      const targetLoc = getLocomotor(unit.definition.locomotion);
+      if (!targetLoc.sharesCell) return false;
+      const crushClass = unit.definition.crushClass;
+      if (!crushClass || crushClass.length === 0) return false;
+      if (!callerLoc.crushes.includes(crushClass)) return false;
+    }
+    return true;
   }
 
   /** 查询指定单位是否是步兵（sharesCell=true）。 */

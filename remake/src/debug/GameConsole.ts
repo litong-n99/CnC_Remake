@@ -20,6 +20,7 @@ import { LocomotorCache, CellFlag } from '../game/world/LocomotorCache';
 import { MoveCooldownHelper } from '../game/unit/MoveCooldownHelper';
 import { BuildingPlacer } from '../game/building/BuildingPlacer';
 import type { PathNode, Pathfinder } from '../game/terrain/Pathfinder';
+import { Crushable } from '../game/unit/Crushable';
 import { getLocomotor, makeTerrainCostCallback } from '../game/rules/Locomotor';
 import { Locomotion } from '../game/rules/UnitDefinitions';
 
@@ -70,6 +71,8 @@ export class GameConsole {
       tickCooldown: this.tickCooldown.bind(this),
       setFacing: this.setFacing.bind(this),
       getFacing: this.getFacing.bind(this),
+      setCrushProb: this.setCrushProb.bind(this),
+      crush: this.crush.bind(this),
       help: this.help.bind(this),
     };
     // eslint-disable-next-line no-console
@@ -655,6 +658,29 @@ export class GameConsole {
     return unit.logic.bodyFacing;
   }
 
+  /** Set WarnCrush probability (0–1), for testing. */
+  private setCrushProb(p: number): void {
+    Crushable.setWarnProbability(p);
+    // eslint-disable-next-line no-console
+    console.info(`Crush warn probability set to ${p}`);
+  }
+
+  /** Manually trigger OnCrush at a cell (test helper). */
+  private crush(
+    cellX: number,
+    cellY: number,
+    crusherId: string
+  ): { count: number; occupants: string[]; crusher: string | undefined } {
+    const occupants = ActorMap.getInstance().getOccupants(cellX, cellY);
+    const crusher = GameObjectManager.getInstance().get(crusherId);
+    const count = Crushable.onCrush(cellX, cellY, crusherId);
+    // eslint-disable-next-line no-console
+    console.info(
+      `Crush at (${cellX},${cellY}): ${count} units crushed, occupants=${occupants.join(',')}, crusher=${crusher?.id}`
+    );
+    return { count, occupants: occupants.slice(), crusher: crusher?.id };
+  }
+
   /** Inspect HierarchicalPathfinder domain at a cell. */
   private hierarchical(x: number, y: number): number {
     const domain = this.pathfinder?.hierarchical.getDomain(x, y) ?? -1;
@@ -729,6 +755,7 @@ export class GameConsole {
         bodyFacing: unit.logic.bodyFacing,
         targetBodyFacing: unit.logic.targetBodyFacing,
         state: unit.logic.stateMachine.state,
+        currentHealth: unit.logic.currentHealth,
       });
     }
     return result;

@@ -65,6 +65,8 @@ export interface UnitDefinition {
   readonly isScanner: boolean;
   /** Body rotation speed in DirType per millisecond (0–255 scale). */
   readonly rotationSpeed: number;
+  /** Crush class for crushable units (e.g. 'infantry'). Empty = not crushable. */
+  readonly crushClass?: string;
 }
 
 /** Classic Red Alert unit roster. */
@@ -279,6 +281,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     isCrusher: false,
     isScanner: false,
     rotationSpeed: 0.25,
+    crushClass: 'infantry',
   },
   Grenadier: {
     id: 'INFANTRY_E2',
@@ -298,6 +301,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     isCrusher: false,
     isScanner: false,
     rotationSpeed: 0.25,
+    crushClass: 'infantry',
   },
   RocketSoldier: {
     id: 'INFANTRY_E3',
@@ -317,6 +321,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     isCrusher: false,
     isScanner: false,
     rotationSpeed: 0.25,
+    crushClass: 'infantry',
   },
   Flamethrower: {
     id: 'INFANTRY_E4',
@@ -336,6 +341,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     isCrusher: false,
     isScanner: false,
     rotationSpeed: 0.25,
+    crushClass: 'infantry',
   },
   Engineer: {
     id: 'INFANTRY_RENOVATOR',
@@ -374,6 +380,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     isCrusher: false,
     isScanner: false,
     rotationSpeed: 0.3,
+    crushClass: 'infantry',
   },
   Spy: {
     id: 'INFANTRY_SPY',
@@ -393,6 +400,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     isCrusher: false,
     isScanner: false,
     rotationSpeed: 0.25,
+    crushClass: 'infantry',
   },
   Medic: {
     id: 'INFANTRY_MEDIC',
@@ -412,6 +420,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     isCrusher: false,
     isScanner: false,
     rotationSpeed: 0.25,
+    crushClass: 'infantry',
   },
   AttackDog: {
     id: 'INFANTRY_DOG',
