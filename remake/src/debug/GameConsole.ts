@@ -75,6 +75,7 @@ export class GameConsole {
       getFacing: this.getFacing.bind(this),
       setCrushProb: this.setCrushProb.bind(this),
       crush: this.crush.bind(this),
+      pathGraph: this.pathGraph.bind(this),
       help: this.help.bind(this),
     };
     // eslint-disable-next-line no-console
@@ -731,6 +732,25 @@ export class GameConsole {
       `Crush at (${cellX},${cellY}): ${count} units crushed, occupants=${occupants.join(',')}, crusher=${crusher?.id}`
     );
     return { count, occupants: occupants.slice(), crusher: crusher?.id };
+  }
+
+  /** Task 23.19: Inspect GroundPathGraph connections at a cell. */
+  private pathGraph(
+    x: number,
+    y: number
+  ): {
+    connections: Array<{ x: number; y: number; cost: number }>;
+    heuristicToOrigin: number;
+  } {
+    if (!this.pathfinder) {
+      return { connections: [], heuristicToOrigin: -1 };
+    }
+    const graph = this.pathfinder.groundGraph;
+    const conns = graph.getConnections({ x, y });
+    return {
+      connections: conns.map((c) => ({ x: c.node.x, y: c.node.y, cost: Math.round(c.cost * 1000) / 1000 })),
+      heuristicToOrigin: Math.round(graph.getHeuristic({ x, y }, { x: 0, y: 0 }) * 1000) / 1000,
+    };
   }
 
   /** Inspect HierarchicalPathfinder domain at a cell. */
