@@ -126,6 +126,27 @@
 - **验收**：生成 64x64 格子地图，切换不同地形颜色可见。
 - **状态**：[x] `done`
 
+> **📋 地形系统后续演进路线（从 Task 9 延伸）**
+>
+> Task 9 完成了地形网格的基础骨架（`TerrainGrid` + `CellData` + 顶点色渲染）。以下任务按**主题**分组，逐步将地形系统从"彩色格子"升级为完整的 OpenRA 级地形引擎。
+>
+> | 主题 | 任务 | 状态 | 说明 |
+> |------|------|------|------|
+> | **基础渲染** | Task 10 — 地形材质与纹理系统 | [x] `done` | 纯色顶点色 → `StandardMaterial` 占位 |
+> | **地图加载** | Task 13 — 地图加载器与序列化 | [x] `done` | JSON `number[][]` 格式 |
+> | **高度系统** | Task 23.29 — Cell Height / Ramp / 悬崖与斜坡 | [ ] `done` | 从 Phase 5.5 续引入 |
+> | **战争迷雾** | Task 31 — Fog of War | [ ] `done` | 基础逻辑 + Shroud 边缘贴图（Task 23.38）|
+> | **数据层升级** | Task 23.32 — CellLayer<T> 泛型层 + 事件驱动 | [ ] `done` | 替代原始 `CellData[][]` |
+> | **模板系统** | Task 23.33 — TileSet / Template 系统 | [ ] `done` | C&C 地图核心：模板拼贴 + PickAny |
+> | **资源层** | Task 23.34 — ResourceLayer（Tiberium/Ore）| [ ] `done` | 密度 0-255 + 生长/扩散 |
+> | **真实纹理** | Task 23.35 — TerrainSpriteLayer + Texture Splatting | [ ] `done` | 多纹理混合 Shader + 水面动画 |
+> | **坐标系统** | Task 23.36 — CPos/MPos/PPos/WPos 多层转换 | [ ] `done` | 等轴测支持 + 精确命中测试 |
+> | **地图兼容** | Task 23.37 — OpenRA map.yaml + map.bin 兼容 | [ ] `done` | 直接加载 OpenRA 地图生态 |
+> | **迷雾渲染** | Task 23.38 — Shroud 边缘贴图系统 | [ ] `done` | bitfield → sprite 帧索引 |
+> | **编辑器** | Task 89-90 — 地图编辑器（Tile Brush + Actor 放置）| [ ] `done` | Phase 16；Task 23.39 补充地形刷细节 |
+>
+> **建议执行顺序**：Task 23.32（数据层重构）→ 23.33（模板系统）→ 23.34（资源层）→ 23.35（真实纹理）→ 23.29（高度）→ 23.36（坐标）→ 23.37（格式兼容）→ 23.38（迷雾渲染）→ 23.39（编辑器地形刷）。
+
 ### Task 10: 地形材质与纹理系统
 - **目标**：支持多材质混合（草地、道路、水域、悬崖）。
 - **参考 C++**：`TERRAIN.CPP` 中的地形类型枚举。
