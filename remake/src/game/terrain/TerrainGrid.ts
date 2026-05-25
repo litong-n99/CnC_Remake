@@ -397,6 +397,88 @@ export class TerrainGrid {
     }
   }
 
+  private readonly transitionRadius = 2;
+
+  /** Types that should never blend (cliffs, walls). */
+  private isHardEdgeType(lt: LandType): boolean {
+    return lt === LandType.Rock || lt === LandType.Wall;
+  }
+
+  /** True if any 4-neighbor has a different, non-hard landType. */
+  private isBoundaryCell(x: number, y: number): boolean {
+    const lt = this.cellLayer.get(x, y).landType;
+    if (this.isHardEdgeType(lt)) return false;
+    const dirs = [
+      [0, 1],
+      [0, -1],
+      [1, 0],
+      [-1, 0],
+    ];
+    for (const [dx, dy] of dirs) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (!this.cellLayer.contains(nx, ny)) continue;
+      const nlt = this.cellLayer.get(nx, ny).landType;
+      if (nlt !== lt && !this.isHardEdgeType(nlt)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Compute blended splat for a boundary cell.
+   * Own landType is weighted at 70%; each differing 4-neighbor contributes 7.5%.
+   * This produces a narrow 1-cell transition band (~82–90% dominant terrain).
+   */
+  private blurSplatAt(x: number, y: number, _radius: number): ReturnType<typeof this.landTypeToSplat> {
+    const own = this.landTypeToSplat(this.cellLayer.get(x, y).landType);
+
+    let r1 = own.r1 * 0.7,
+      g1 = own.g1 * 0.7,
+      b1 = own.b1 * 0.7,
+      a1 = own.a1 * 0.7;
+    let r2 = own.r2 * 0.7,
+      g2 = own.g2 * 0.7,
+      b2 = own.b2 * 0.7,
+      a2 = own.a2 * 0.7;
+    let totalWeight = 0.7;
+
+    const dirs = [
+      [0, 1],
+      [0, -1],
+      [1, 0],
+      [-1, 0],
+    ];
+    for (const [dx, dy] of dirs) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (!this.cellLayer.contains(nx, ny)) continue;
+      const nlt = this.cellLayer.get(nx, ny).landType;
+      if (nlt === this.cellLayer.get(x, y).landType) continue;
+      if (this.isHardEdgeType(nlt)) continue;
+      const neighbor = this.landTypeToSplat(nlt);
+      r1 += neighbor.r1 * 0.075;
+      g1 += neighbor.g1 * 0.075;
+      b1 += neighbor.b1 * 0.075;
+      a1 += neighbor.a1 * 0.075;
+      r2 += neighbor.r2 * 0.075;
+      g2 += neighbor.g2 * 0.075;
+      b2 += neighbor.b2 * 0.075;
+      a2 += neighbor.a2 * 0.075;
+      totalWeight += 0.075;
+    }
+
+    return {
+      r1: Math.round(r1 / totalWeight),
+      g1: Math.round(g1 / totalWeight),
+      b1: Math.round(b1 / totalWeight),
+      a1: Math.round(a1 / totalWeight),
+      r2: Math.round(r2 / totalWeight),
+      g2: Math.round(g2 / totalWeight),
+      b2: Math.round(b2 / totalWeight),
+      a2: Math.round(a2 / totalWeight),
+    };
+  }
+
   private rebuildSplatMap(): void {
     if (!this.splatMap || !this.splatMap2) return;
     const ctx1 = this.splatMap.getContext();
@@ -406,9 +488,13 @@ export class TerrainGrid {
 
     ctx1.clearRect(0, 0, w, h);
     ctx2.clearRect(0, 0, w, h);
+
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
-        const splat = this.landTypeToSplat(this.cellLayer.get(x, y).landType);
+        const splat = this.isBoundaryCell(x, y)
+          ? this.blurSplatAt(x, y, this.transitionRadius)
+          : this.landTypeToSplat(this.cellLayer.get(x, y).landType);
+
         ctx1.fillStyle = `rgba(${splat.r1},${splat.g1},${splat.b1},${splat.a1 / 255})`;
         ctx1.fillRect(x, y, 1, 1);
         ctx2.fillStyle = `rgba(${splat.r2},${splat.g2},${splat.b2},${splat.a2 / 255})`;
@@ -421,21 +507,49 @@ export class TerrainGrid {
 
   private updateSplatCell(x: number, y: number): void {
     if (!this.splatMap || !this.splatMap2 || !this.textureMode) return;
-    const splat = this.landTypeToSplat(this.cellLayer.get(x, y).landType);
 
+    const r = this.transitionRadius;
     const ctx1 = this.splatMap.getContext();
-    ctx1.fillStyle = `rgba(${splat.r1},${splat.g1},${splat.b1},${splat.a1 / 255})`;
-    ctx1.fillRect(x, y, 1, 1);
-    this.splatMap.update();
-
     const ctx2 = this.splatMap2.getContext();
-    ctx2.fillStyle = `rgba(${splat.r2},${splat.g2},${splat.b2},${splat.a2 / 255})`;
-    ctx2.fillRect(x, y, 1, 1);
+
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (!this.cellLayer.contains(nx, ny)) continue;
+
+        const splat = this.isBoundaryCell(nx, ny)
+          ? this.blurSplatAt(nx, ny, r)
+          : this.landTypeToSplat(this.cellLayer.get(nx, ny).landType);
+
+        ctx1.fillStyle = `rgba(${splat.r1},${splat.g1},${splat.b1},${splat.a1 / 255})`;
+        ctx1.fillRect(nx, ny, 1, 1);
+        ctx2.fillStyle = `rgba(${splat.r2},${splat.g2},${splat.b2},${splat.a2 / 255})`;
+        ctx2.fillRect(nx, ny, 1, 1);
+      }
+    }
+
+    this.splatMap.update();
     this.splatMap2.update();
   }
 
   isTextureMode(): boolean {
     return this.textureMode;
+  }
+
+  /** Debug helper — returns computed splat weights for a cell (Task 10.2 e2e). */
+  debugGetSplatWeights(
+    x: number,
+    y: number
+  ): { splat1: [number, number, number, number]; splat2: [number, number, number, number] } | undefined {
+    if (!this.textureMode) return undefined;
+    const splat = this.isBoundaryCell(x, y)
+      ? this.blurSplatAt(x, y, this.transitionRadius)
+      : this.landTypeToSplat(this.cellLayer.get(x, y).landType);
+    return {
+      splat1: [splat.r1, splat.g1, splat.b1, splat.a1],
+      splat2: [splat.r2, splat.g2, splat.b2, splat.a2],
+    };
   }
 
   /** Per-frame update — drives water animation time uniform. */
