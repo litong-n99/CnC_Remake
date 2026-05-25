@@ -101,6 +101,7 @@ export class GameConsole {
       terrainMaterial: this.terrainMaterial.bind(this),
       waterTime: this.waterTime.bind(this),
       splatPixel: this.splatPixel.bind(this),
+      pendingSplatUpdates: this.pendingSplatUpdates.bind(this),
       cposToWPos: this.cposToWPos.bind(this),
       wposToCPos: this.wposToCPos.bind(this),
       mpos: this.mpos.bind(this),
@@ -1159,6 +1160,12 @@ export class GameConsole {
     const weights = terrain.debugGetSplatWeights(x, y);
     if (!weights) return undefined;
     return { x, y, splat1: weights.splat1, splat2: weights.splat2 };
+  }
+
+  /** Return number of pending batched splat updates (Task 10.3). */
+  private pendingSplatUpdates(): number {
+    const terrain = this.terrain as unknown as { pendingSplatUpdates: () => number };
+    return terrain.pendingSplatUpdates();
   }
 
   private findNearestFreeCell(): { x: number; y: number } | undefined {

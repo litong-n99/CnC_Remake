@@ -56,6 +56,8 @@ export class TerrainGrid {
   private splatMap2: DynamicTexture | null = null;
   private textureMode = false;
   private waterTime = 0;
+  private dirtySplatCells = new Set<string>();
+  private splatFlushPending = false;
 
   constructor(scene: Scene, width = 64, height = 64) {
     this.cellLayer = new CellLayer<CellData>(width, height, { landType: LandType.Clear });
@@ -234,7 +236,7 @@ export class TerrainGrid {
     if (!this.cellLayer.contains(x, y)) return;
     this.cellLayer.set(x, y, { landType });
     this.updateCellColor(x, y);
-    this.updateSplatCell(x, y);
+    this.markSplatDirty(x, y);
   }
 
   /** Read the terrain type of a cell. */
@@ -505,36 +507,60 @@ export class TerrainGrid {
     this.splatMap2.update();
   }
 
-  private updateSplatCell(x: number, y: number): void {
-    if (!this.splatMap || !this.splatMap2 || !this.textureMode) return;
-
+  /** Mark a cell (and its transition neighborhood) as dirty for batched splat update. */
+  private markSplatDirty(x: number, y: number): void {
+    if (!this.textureMode) return;
     const r = this.transitionRadius;
-    const ctx1 = this.splatMap.getContext();
-    const ctx2 = this.splatMap2.getContext();
-
     for (let dy = -r; dy <= r; dy++) {
       for (let dx = -r; dx <= r; dx++) {
         const nx = x + dx;
         const ny = y + dy;
-        if (!this.cellLayer.contains(nx, ny)) continue;
-
-        const splat = this.isBoundaryCell(nx, ny)
-          ? this.blurSplatAt(nx, ny, r)
-          : this.landTypeToSplat(this.cellLayer.get(nx, ny).landType);
-
-        ctx1.fillStyle = `rgba(${splat.r1},${splat.g1},${splat.b1},${splat.a1 / 255})`;
-        ctx1.fillRect(nx, ny, 1, 1);
-        ctx2.fillStyle = `rgba(${splat.r2},${splat.g2},${splat.b2},${splat.a2 / 255})`;
-        ctx2.fillRect(nx, ny, 1, 1);
+        if (this.cellLayer.contains(nx, ny)) {
+          this.dirtySplatCells.add(`${nx},${ny}`);
+        }
       }
+    }
+    this.splatFlushPending = true;
+  }
+
+  /** Flush all pending splat updates to the GPU in a single upload. */
+  private flushSplatUpdates(): void {
+    if (!this.splatMap || !this.splatMap2 || this.dirtySplatCells.size === 0) {
+      this.splatFlushPending = false;
+      return;
+    }
+
+    const ctx1 = this.splatMap.getContext();
+    const ctx2 = this.splatMap2.getContext();
+    const r = this.transitionRadius;
+
+    for (const key of this.dirtySplatCells) {
+      const [x, y] = key.split(',').map(Number);
+      if (!this.cellLayer.contains(x, y)) continue;
+
+      const splat = this.isBoundaryCell(x, y)
+        ? this.blurSplatAt(x, y, r)
+        : this.landTypeToSplat(this.cellLayer.get(x, y).landType);
+
+      ctx1.fillStyle = `rgba(${splat.r1},${splat.g1},${splat.b1},${splat.a1 / 255})`;
+      ctx1.fillRect(x, y, 1, 1);
+      ctx2.fillStyle = `rgba(${splat.r2},${splat.g2},${splat.b2},${splat.a2 / 255})`;
+      ctx2.fillRect(x, y, 1, 1);
     }
 
     this.splatMap.update();
     this.splatMap2.update();
+    this.dirtySplatCells.clear();
+    this.splatFlushPending = false;
   }
 
   isTextureMode(): boolean {
     return this.textureMode;
+  }
+
+  /** Debug helper — returns number of pending batched splat updates (Task 10.3). */
+  pendingSplatUpdates(): number {
+    return this.dirtySplatCells.size;
   }
 
   /** Debug helper — returns computed splat weights for a cell (Task 10.2 e2e). */
@@ -552,11 +578,14 @@ export class TerrainGrid {
     };
   }
 
-  /** Per-frame update — drives water animation time uniform. */
-  update(dt: number): void {
+  /** Per-frame update — drives water animation time uniform + batched splat flush. */
+  update(_dt: number): void {
     if (this.splatMaterial) {
-      this.waterTime += dt * 0.001;
+      this.waterTime += _dt * 0.001;
       this.splatMaterial.updateTime(this.waterTime);
+    }
+    if (this.splatFlushPending) {
+      this.flushSplatUpdates();
     }
   }
 
