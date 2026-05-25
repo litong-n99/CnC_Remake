@@ -146,6 +146,7 @@ export class GameConsole {
       editorUndo: this.editorUndo.bind(this),
       editorRedo: this.editorRedo.bind(this),
       editorExport: this.editorExport.bind(this),
+      attack: this.attack.bind(this),
       help: this.help.bind(this),
     };
     // eslint-disable-next-line no-console
@@ -1617,5 +1618,33 @@ export class GameConsole {
       }
     }
     return undefined;
+  }
+
+  // ── Task 28: Weapon / Projectile ──
+
+  /**
+   * 命令指定单位向目标开火。
+   * @param attackerId — 攻击者单位 ID
+   * @param targetX    — 目标格子 X
+   * @param targetY    — 目标格子 Y
+   */
+  private attack(attackerId: string, targetX: number, targetY: number): { success: boolean; message: string } {
+    const manager = GameObjectManager.getInstance();
+    const obj = manager.get(attackerId);
+    if (!obj || !obj.isAlive()) {
+      return { success: false, message: `Unit "${attackerId}" not found or dead` };
+    }
+    if (obj.type !== GameObjectType.Unit) {
+      return { success: false, message: `"${attackerId}" is not a unit` };
+    }
+
+    const unit = obj as Unit;
+    const fired = unit.logic.fireAt(this.scene, targetX, targetY);
+    return {
+      success: fired,
+      message: fired
+        ? `${unit.definition.name} fired at (${targetX}, ${targetY})`
+        : `${unit.definition.name} cannot fire (out of range or reloading)`,
+    };
   }
 }

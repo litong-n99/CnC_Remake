@@ -1916,7 +1916,7 @@
 - [x] **Task 25**：选择系统（单选、框选、编队）
 - [x] **Task 26**：命令分发器（Move / Attack / Guard / Stop）
 - [x] **Task 27**：HUD / UI 覆盖层（资源、小地图、单位信息）
-- [ ] **Task 28**：武器与弹道系统（翻译 WEAPON.CPP / BULLET.CPP）
+- [x] **Task 28**：武器与弹道系统（翻译 WEAPON.CPP / BULLET.CPP）
 - [ ] **Task 29**：伤害计算与装甲系统
 - [ ] **Task 30**：采矿与经济系统
 - [ ] **Task 31**：战争迷雾（Fog of War）

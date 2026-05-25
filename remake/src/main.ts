@@ -24,6 +24,8 @@ import { HUD } from './renderer/ui/HUD';
 import { GameConsole } from './debug/GameConsole';
 import { OrderDispatcher } from './game/order/OrderDispatcher';
 import { MoveHandler, StopHandler, AttackHandler, GuardHandler } from './game/order/handlers';
+import { BulletManager } from './game/weapon/Bullet';
+import { WEAPON_DEFINITIONS } from './game/weapon/Weapon';
 import { GameLoop } from './game/GameLoop';
 import { loadYamlRulesWithFallback } from './game/rules/YamlLoader';
 
@@ -476,6 +478,7 @@ const bootstrap = async (): Promise<void> => {
     queue.tick(dt);
     GameObjectManager.getInstance().update(dt);
     terrain.update(dt);
+    BulletManager.getInstance().updateAll();
 
     // ── Overlap 检测（每秒一次）──
     overlapCheckAccumulator += dt;
@@ -542,9 +545,11 @@ const bootstrap = async (): Promise<void> => {
     return inputManager.worldToScreen(new Vector3(worldX, worldY, worldZ));
   };
   w._gameLoop = gameLoop;
+  w._bulletManager = BulletManager.getInstance();
   w.UNIT_DEFINITIONS = UNIT_DEFINITIONS;
   w.BUILDING_DEFINITIONS = BUILDING_DEFINITIONS;
   w.GameRules = GameRules;
+  w.WEAPON_DEFINITIONS = WEAPON_DEFINITIONS;
 
   // ── Verification ──
   const goManager = GameObjectManager.getInstance();

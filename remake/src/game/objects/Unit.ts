@@ -60,6 +60,9 @@ export class Unit extends GameObject {
     this.x = this.logic.x;
     this.y = this.logic.y;
 
+    // Task 28: 同步逻辑层生命值到 GameObject
+    this.health = this.logic.currentHealth;
+
     // ── ActorMap 多格占用同步（OpenRA 双格占用）──
     const currentCells = this.logic.getOccupiedCells();
 

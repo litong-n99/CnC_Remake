@@ -9,6 +9,11 @@ import { getLocomotor, type LocomotorInfo } from '../rules/Locomotor';
 import { UnitCollision } from './UnitCollision';
 import { BlockedByActor } from './BlockedByActor';
 import { GameObjectManager } from '../objects/GameObjectManager';
+import { GameObjectType } from '../objects/GameObject';
+import type { WeaponDef } from '../weapon/Weapon';
+import { WEAPON_DEFINITIONS } from '../weapon/Weapon';
+import { BulletManager } from '../weapon/Bullet';
+import type { Scene } from '@babylonjs/core';
 
 /**
  * 格子坐标目标 — 用于 moveTarget / attackTarget。
@@ -78,6 +83,9 @@ export class UnitController {
 
   // ── 重装倒计时（UnitClass）──
   reloadTimer = 0;
+
+  // ── Task 28: 武器系统 ──
+  primaryWeapon?: WeaponDef;
 
   // ── 坐标（与 GameObject.x/y 双向同步）──
   x = 0;
@@ -367,6 +375,71 @@ export class UnitController {
 
   private tickAttacking(): void {
     // TODO: Phase 4+ — Firing_AI() 目标选择、开火判定
+  }
+
+  /** 向目标开火 — Task 28。 */
+  fireAt(scene: Scene, targetX: number, targetY: number): boolean {
+    const weapon = this.primaryWeapon ?? this.inferWeapon();
+    if (!weapon) return false;
+
+    if (this.reloadTimer > 0) {
+      this.reloadTimer--;
+      return false;
+    }
+
+    const dx = targetX - this.x;
+    const dy = targetY - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > weapon.range) {
+      return false;
+    }
+
+    this.reloadTimer = weapon.reloadTime;
+    this.isFiring = true;
+
+    BulletManager.getInstance().spawn(scene, weapon, this.x, this.y, targetX, targetY, (_hx, _hy, damage) => {
+      // 命中伤害（简化：直接对目标格子上的所有敌方单位造成伤害）
+      this.applyDamageToTargetCell(targetX, targetY, damage);
+    });
+
+    return true;
+  }
+
+  private inferWeapon(): WeaponDef | undefined {
+    // 根据单位定义推断武器（硬编码映射，后续从 YAML 加载）
+    if (this.definition.locomotion === 0) {
+      // Foot = 步兵
+      return WEAPON_DEFINITIONS.Rifle;
+    }
+    if (
+      this.definition.id === 'UNIT_LTANK' ||
+      this.definition.id === 'UNIT_MTANK2' ||
+      this.definition.id === 'UNIT_MTANK'
+    ) {
+      return WEAPON_DEFINITIONS.Cannon105mm;
+    }
+    if (this.definition.id === 'UNIT_V2RL') {
+      return WEAPON_DEFINITIONS.Rocket;
+    }
+    return undefined;
+  }
+
+  private applyDamageToTargetCell(targetX: number, targetY: number, damage: number): void {
+    const manager = GameObjectManager.getInstance();
+    for (const obj of manager.getAll()) {
+      if (!obj.isAlive()) continue;
+      const dx = obj.x - targetX;
+      const dy = obj.y - targetY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 1.5 && obj.id !== this.unitId) {
+        // Task 28: 通过 takeDamage 应用伤害（同步 logic + GameObject health）
+        if (obj.type === GameObjectType.Unit) {
+          (obj as import('../objects/Unit').Unit).logic.takeDamage(damage);
+        } else {
+          obj.health = Math.max(0, obj.health - damage);
+        }
+      }
+    }
   }
 
   private tickDying(): void {
