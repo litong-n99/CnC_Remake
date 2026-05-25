@@ -38,6 +38,15 @@ export class GameConsole {
 
   private resourceLayer: ResourceLayer | null = null;
 
+  private indexedTestState: {
+    mesh: import('@babylonjs/core').Mesh;
+    material: import('../renderer/terrain/TerrainIndexedMaterial').TerrainIndexedMaterial;
+    indexedTex: import('@babylonjs/core').RawTexture;
+    paletteTex: import('@babylonjs/core').RawTexture;
+    rtt: import('@babylonjs/core').RenderTargetTexture;
+    rttCam: import('@babylonjs/core').ArcRotateCamera;
+  } | null = null;
+
   constructor(
     private readonly scene: Scene,
     private readonly lighting: Lighting,
@@ -108,6 +117,9 @@ export class GameConsole {
       wposToCPos: this.wposToCPos.bind(this),
       mpos: this.mpos.bind(this),
       subCell: this.subCell.bind(this),
+      createIndexedTest: this.createIndexedTest.bind(this),
+      readIndexedPixels: this.readIndexedPixels.bind(this),
+      clearIndexedTest: this.clearIndexedTest.bind(this),
       help: this.help.bind(this),
     };
     // eslint-disable-next-line no-console
@@ -1188,6 +1200,98 @@ export class GameConsole {
     }
     const ok = await cache.buildAtlas(this.scene);
     return { built: ok, slotCount: cache.hasAtlas() ? 'yes' : 'no' };
+  }
+
+  // ── Palette-indexed rendering test (Task 10.6) ──
+
+  /**
+   * Create a test quad that uses palette-indexed rendering.
+   * The indexed texture is 2×2: [0(trans), 1(red); 2(green), 3(blue)].
+   * The palette maps index → RGBA.
+   * An orthographic RTT camera renders the quad to a 4×4 off-screen target
+   * so `readIndexedPixels` can read back exact colours.
+   */
+  private async createIndexedTest(): Promise<Record<string, unknown>> {
+    this.clearIndexedTest();
+
+    const { RawTexture, Texture, MeshBuilder, ArcRotateCamera, Vector3, RenderTargetTexture } =
+      await import('@babylonjs/core');
+    const { TerrainIndexedMaterial } = await import('../renderer/terrain/TerrainIndexedMaterial');
+
+    // 2×2 indexed texture (LUMINANCE): top-left=0, top-right=1, bottom-left=2, bottom-right=3
+    const idxData = new Uint8Array([0, 1, 2, 3]);
+    const indexedTex = RawTexture.CreateLuminanceTexture(
+      idxData,
+      2,
+      2,
+      this.scene,
+      false,
+      false,
+      Texture.NEAREST_SAMPLINGMODE
+    );
+
+    // 256-entry palette (only first 4 entries matter for the test)
+    const palData = new Uint8Array(256 * 4);
+    palData.set([0, 0, 0, 0], 0); // index 0 = transparent
+    palData.set([255, 0, 0, 255], 4); // index 1 = red
+    palData.set([0, 255, 0, 255], 8); // index 2 = green
+    palData.set([0, 0, 255, 255], 12); // index 3 = blue
+
+    const paletteTex = RawTexture.CreateRGBATexture(
+      palData,
+      256,
+      1,
+      this.scene,
+      false,
+      false,
+      Texture.NEAREST_SAMPLINGMODE
+    );
+
+    // Create indexed material
+    const mat = new TerrainIndexedMaterial(this.scene, indexedTex, paletteTex, 0);
+
+    // Create quad facing the camera
+    const quad = MeshBuilder.CreatePlane('indexedTestQuad', { size: 2 }, this.scene);
+    quad.material = mat.getMaterial();
+
+    // Orthographic RTT camera looking straight at the quad from +Z
+    const rttCam = new ArcRotateCamera('indexedRTTCam', Math.PI / 2, Math.PI / 2, 2, Vector3.Zero(), this.scene);
+    rttCam.mode = ArcRotateCamera.ORTHOGRAPHIC_CAMERA;
+    rttCam.orthoTop = 1;
+    rttCam.orthoBottom = -1;
+    rttCam.orthoLeft = -1;
+    rttCam.orthoRight = 1;
+
+    // 4×4 off-screen render target
+    const rtt = new RenderTargetTexture('indexedRTT', 4, this.scene, false);
+    rtt.activeCamera = rttCam;
+    rtt.renderList = [quad];
+
+    this.indexedTestState = { mesh: quad, material: mat, indexedTex, paletteTex, rtt, rttCam };
+
+    return { success: true, meshName: quad.name };
+  }
+
+  /** Read back the 4×4 RTT pixels as a flat RGBA array (Task 10.6 e2e). */
+  private async readIndexedPixels(): Promise<number[] | null> {
+    if (!this.indexedTestState) return null;
+
+    const { rtt } = this.indexedTestState;
+    rtt.render(false, false);
+    const pixels = await rtt.readPixels();
+    return Array.from(pixels as Uint8Array);
+  }
+
+  /** Dispose the indexed test resources. */
+  private clearIndexedTest(): void {
+    if (!this.indexedTestState) return;
+    this.indexedTestState.mesh.dispose();
+    this.indexedTestState.material.dispose();
+    this.indexedTestState.indexedTex.dispose();
+    this.indexedTestState.paletteTex.dispose();
+    this.indexedTestState.rtt.dispose();
+    this.indexedTestState.rttCam.dispose();
+    this.indexedTestState = null;
   }
 
   private findNearestFreeCell(): { x: number; y: number } | undefined {
