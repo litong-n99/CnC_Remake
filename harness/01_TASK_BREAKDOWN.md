@@ -11,6 +11,8 @@
 > - `harness/04_CPP_TO_TS_MAPPING.md` — C++ → TS 代码翻译规范
 > - `harness/05_OPENRA_ANALYSIS.md` — OpenRA 架构分析
 > - `harness/05_RA2WEB_ANALYSIS.md` — RA2-Web（React + Three.js 红警2网页版）架构与组件分析，含数据解析器、渲染系统、音频系统、Trait/ECS 设计、触发器系统、任务系统、虚拟文件系统的详细映射
+>
+> **本地参考项目**：`ra2-web/` 目录已移出 git 跟踪（`.gitignore`），仅保留本地副本作为架构参考。如需更新其分析内容，修改 `harness/05_RA2WEB_ANALYSIS.md` 即可。
 
 ### Task 0: 获取原始 C++ 源码并放置到 origin/
 - **目标**：将 EA 开源的 `CnC_Remastered_Collection` 源码下载并解压到 `origin/` 目录，保持原始目录结构不变。

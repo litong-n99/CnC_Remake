@@ -49,6 +49,8 @@ CnC_Remake/                          ← GitHub 仓库根目录
 │   ├── TIBERIANDAWN/
 │   ├── CnCTDRAMapEditor/
 │   └── ...（EA 开源仓库原始结构）
+├── ra2-web/                           ← RA2-Web 参考源码（本地保留，不纳入 git）
+│   └── ...（React + Three.js 红警2网页版，仅作架构参考）
 └── remake/                            ← 新生成的 Babylon.js + TS 项目
     ├── src/
     ├── public/
