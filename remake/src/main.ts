@@ -22,7 +22,7 @@ import { BuildingPlacer } from './game/building/BuildingPlacer';
 import { Sidebar } from './renderer/ui/Sidebar';
 import { GameConsole } from './debug/GameConsole';
 import { OrderDispatcher } from './game/order/OrderDispatcher';
-import { MoveHandler, StopHandler } from './game/order/handlers';
+import { MoveHandler, StopHandler, AttackHandler, GuardHandler } from './game/order/handlers';
 import { GameLoop } from './game/GameLoop';
 import { loadYamlRulesWithFallback } from './game/rules/YamlLoader';
 
@@ -449,10 +449,12 @@ const bootstrap = async (): Promise<void> => {
   const orderDispatcher = OrderDispatcher.getInstance();
   orderDispatcher.register(new MoveHandler(pathfinder));
   orderDispatcher.register(new StopHandler());
+  orderDispatcher.register(new AttackHandler());
+  orderDispatcher.register(new GuardHandler(pathfinder));
 
   // ── Task 24: InputManager（鼠标输入层）──
   const selectionManager = SelectionManager.getInstance();
-  const inputManager = new InputManager(rtsCamera, scene, selectionManager, pathfinder, placer, gameConsole);
+  const inputManager = new InputManager(rtsCamera, scene, selectionManager, placer, gameConsole);
 
   // worldToScreen 通过 inputManager.worldToScreen 暴露给 e2e 测试
 

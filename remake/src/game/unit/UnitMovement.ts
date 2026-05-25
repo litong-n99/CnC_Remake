@@ -808,6 +808,8 @@ export class UnitMovement {
 
   private stop(controller: UnitController): void {
     this.isMoving = false;
+    this.path = [];
+    this.pathIndex = 0;
     this.pathfinder = null;
     this.hasWaited = false;
     this.waitRemainingMs = 0;

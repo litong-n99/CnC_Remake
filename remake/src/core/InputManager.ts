@@ -5,10 +5,10 @@ import { SelectionBox } from './SelectionBox';
 import { GameObjectManager } from '../game/objects/GameObjectManager';
 import { GameObjectType } from '../game/objects/GameObject';
 import type { Unit } from '../game/objects/Unit';
-import type { Pathfinder } from '../game/terrain/Pathfinder';
 import type { BuildingPlacer } from '../game/building/BuildingPlacer';
-import { UnitState } from '../game/unit/UnitState';
 import type { GameConsole } from '../debug/GameConsole';
+import { OrderDispatcher } from '../game/order/OrderDispatcher';
+import { groundOrder, actorOrder } from '../game/order/GameOrder';
 
 /**
  * InputManager — 鼠标输入层（翻译 MOUSE.CPP 概念）
@@ -27,7 +27,6 @@ export class InputManager {
   private rtsCamera: RTSCamera;
   private scene: Scene;
   private selectionManager: SelectionManager;
-  private pathfinder: Pathfinder;
   private placer: BuildingPlacer;
   private gameConsole: GameConsole | null;
   private selectionBox: SelectionBox;
@@ -39,14 +38,12 @@ export class InputManager {
     rtsCamera: RTSCamera,
     scene: Scene,
     selectionManager: SelectionManager,
-    pathfinder: Pathfinder,
     placer: BuildingPlacer,
     gameConsole?: GameConsole
   ) {
     this.rtsCamera = rtsCamera;
     this.scene = scene;
     this.selectionManager = selectionManager;
-    this.pathfinder = pathfinder;
     this.placer = placer;
     this.gameConsole = gameConsole ?? null;
     this.selectionBox = new SelectionBox(scene);
@@ -254,28 +251,43 @@ export class InputManager {
       return;
     }
 
-    // 检查是否右键点击了某个单位（攻击目标）
+    // 检查是否右键点击了某个单位
     const targetUnit = this.pickUnitAt(screenX, screenY);
     const isEnemyTarget = targetUnit && targetUnit.house !== selected[0].house;
+    const isFriendlyTarget = targetUnit && targetUnit.house === selected[0].house && targetUnit !== selected[0];
+
+    const dispatcher = OrderDispatcher.getInstance();
 
     for (const unit of selected) {
       if (isEnemyTarget && targetUnit) {
         // 攻击命令
-        unit.logic.attackTarget = { x: targetUnit.x, y: targetUnit.y };
-        if (unit.definition.hasTurret) {
-          unit.logic.stateMachine.transition(UnitState.TurretTracking);
+        const order = actorOrder('Attack', unit.id, targetUnit.id);
+        const result = dispatcher.dispatch(order);
+        if (result.success) {
+          // eslint-disable-next-line no-console
+          console.info(result.message);
+        } else {
+          console.warn(result.message);
         }
-        // eslint-disable-next-line no-console
-        console.info(`Attack order: ${unit.definition.name} → ${targetUnit.definition.name}`);
+      } else if (isFriendlyTarget && targetUnit) {
+        // 护卫命令
+        const order = actorOrder('Guard', unit.id, targetUnit.id);
+        const result = dispatcher.dispatch(order);
+        if (result.success) {
+          // eslint-disable-next-line no-console
+          console.info(result.message);
+        } else {
+          console.warn(result.message);
+        }
       } else {
         // 移动命令
-        unit.logic.attackTarget = undefined;
-        const success = unit.logic.moveTo(cell.x, cell.y, this.pathfinder);
-        if (success) {
+        const order = groundOrder('Move', unit.id, cell.x, cell.y);
+        const result = dispatcher.dispatch(order);
+        if (result.success) {
           // eslint-disable-next-line no-console
-          console.info(`Move order: ${unit.definition.name} → (${cell.x}, ${cell.y})`);
+          console.info(result.message);
         } else {
-          console.warn(`Move failed for ${unit.definition.name} → (${cell.x}, ${cell.y})`);
+          console.warn(result.message);
         }
       }
     }
