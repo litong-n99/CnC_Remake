@@ -928,7 +928,68 @@
 
 ---
 
+## Phase 6.5: Rules 系统与架构升级（Architecture Upgrade）
+
+> **定位**：核心循环（Phase 4–6）已稳定运行后，将硬编码常量架构升级为 YAML 驱动 + Trait 组合的 Mod 友好架构。本 Phase 不新增游戏功能，只重构数据层和对象模型。
+
+### Task 11.1: YAML 规则解析基础设施 🔴 P0
+- **目标**：将当前硬编码的 `UNIT_DEFINITIONS` / `BUILDING_DEFINITIONS` / `GameRules` 外置为 YAML 文件，建立从 YAML → TS 对象的加载管道。
+- **文件**：`src/game/rules/YamlLoader.ts`, `src/game/rules/RuleRegistry.ts`, `public/rules/defaults.yaml`, `public/rules/units.yaml`, `public/rules/buildings.yaml`
+- **OpenRA 对标**：`OpenRA.Game/MiniYaml.cs` + `FieldLoader.cs` + `Ruleset.cs`
+- **关键变更**：
+  - `MiniYaml` 解析器：支持 YAML 子节点、继承（`Inherits:`）、删除（`-TraitName:`）语法
+  - `RuleRegistry`：显式注册表模式（`register('Unit', UnitDefinition)`），替代 OpenRA 的 C# 反射
+  - 加载管道：启动时 `fetch('/rules/*.yaml')` → 解析 → 合并 → 生成运行时定义对象
+  - 回退机制：YAML 加载失败时回退到内置 TS 常量（保证离线可用）
+- **依赖**：Phase 4–6 核心循环稳定（Unit / Building / Input 系统已能独立运行）
+- **验收**：删除 `UNIT_DEFINITIONS` 中一个单位的 TS 定义，改为 `public/rules/units.yaml` 中同名条目，游戏启动后该单位属性与之前完全一致。
+- **状态**：[ ] `done`
+
+### Task 11.3: 轻量 Trait/Component 系统 🟡 P1
+- **目标**：将当前内聚的 `Unit` / `Building` 类拆分为数据容器 + 可组合的行为组件（Trait），实现 OpenRA Actor + Trait 架构的 Web 端适配。
+- **文件**：`src/game/traits/Trait.ts`, `src/game/traits/HealthTrait.ts`, `src/game/traits/MobileTrait.ts`, `src/game/traits/ArmamentTrait.ts`, `src/game/actors/Actor.ts`
+- **OpenRA 对标**：`OpenRA.Game/Actor.cs` + `TraitDictionary.cs` + `Traits/` 目录
+- **关键变更**：
+  - `Actor` 空容器：仅持有 `id`, `owner`, `info`（`ActorInfo` 引用），所有行为由挂载的 `Trait` 提供
+  - `Trait` 基类：`Tick()` / `OnCreated()` / `OnRemoved()` 生命周期钩子
+  - `HealthTrait`：从 `Unit` / `Building` 的 HP 逻辑迁移
+  - `MobileTrait`：从 `UnitMovement` 迁移，管理位置、路径、阻塞处理
+  - `ArmamentTrait`：从 `Unit` 的炮塔/武器逻辑迁移，管理武器引用、冷却、开火角度
+  - `TraitRegistry`：显式注册（`register('Health', HealthTrait)`），避免 Web 端反射性能问题
+  - 与 YAML 对接：`units.yaml` 中 `Traits: [Health, Mobile, Armament]` 列表定义单位能力组合
+- **依赖**：Task 11.1（YAML 基础设施先就位）；Phase 4–6 核心循环稳定（确保迁移前行为基线通过 e2e）
+- **验收**：创建一个只有 `Health` 和 `Render` 两个 Trait 的测试 Actor，它不能移动也不能攻击，但可以被选中、显示血条、被摧毁。原有全部 e2e 测试通过，无回归。
+- **状态**：[ ] `done`
+
+### Task 11.4: 规则继承与抽象 Actor 🟡 P1
+- **目标**：在 YAML 规则中支持 `Inherits:` 语法，减少重复定义；支持 `^` 前缀的抽象 Actor 模板。
+- **文件**：`src/game/rules/YamlLoader.ts`（扩展继承解析）
+- **OpenRA 对标**：`ActorInfo.cs` 中 `Inherits:` 处理 + `^` 抽象 Actor 过滤
+- **关键变更**：
+  - YAML 继承解析：`Inherits: ^Vehicle` → 将 `^Vehicle` 的 Trait 列表合并到当前 Actor，当前可覆盖父级字段
+  - 抽象 Actor：`^Vehicle`、`^Infantry`、`^Building` 等模板不生成实际游戏对象，仅被继承
+  - Trait 删除语法：`-Mobile:` 表示继承后移除该 Trait
+  - 循环继承检测：加载时检测并报错
+- **依赖**：Task 11.1（YAML 基础设施）+ Task 11.3（Trait 系统）
+- **验收**：定义 `^Vehicle`（含 Mobile + Health + Render），`LightTank` 继承 `^Vehicle` 并只覆盖 `speed` 和 `primaryWeapon`，`Harvester` 继承 `^Vehicle` 并移除 `Armament`。
+- **状态**：[ ] `done`
+
+---
+
 ## Phase 7: 战斗与经济（Combat & Economy）
+
+### Task 11.2: Weapon 规则系统（WeaponInfo + Projectile + Warheads）🔴 P0
+- **目标**：当前单位定义中只有简单的 `range` 字段，没有完整的武器系统。建立与 OpenRA 对标的 `WeaponInfo` 规则层，作为 Task 28 弹道渲染的数据前置。
+- **文件**：`src/game/rules/WeaponInfo.ts`, `src/game/rules/ProjectileInfo.ts`, `src/game/rules/WarheadInfo.ts`, `public/rules/weapons.yaml`
+- **OpenRA 对标**：`OpenRA.Game/GameRules/WeaponInfo.cs` + `ProjectileArgs` + `WarheadArgs`
+- **关键变更**：
+  - `WeaponInfo`：range, burst, reloadDelay, burstDelays, validTargets, invalidTargets, minRange
+  - `ProjectileInfo`：即时命中（Bullet） vs 抛射体（Missile）两种类型，初速、转向率、重力
+  - `WarheadInfo`：伤害值、伤害衰减（距离）、对装甲修正表（vs None/Wood/Aluminum/Steel/Concrete）、延迟触发
+  - 与 `UnitDefinitions` 对接：单位定义中的 `range` 废弃，改为引用 `primaryWeapon: string`（指向 weapons.yaml 中的键）
+- **依赖**：Task 11.1（YAML 基础设施先就位，或如 YAML 未就绪则先硬编码在 TS 中）
+- **验收**：`weapons.yaml` 中定义 `105mm` 武器，坦克引用后，开火时可见抛射体飞行、命中后按装甲类型计算伤害。
+- **状态**：[ ] `done`
 
 ### Task 28: 武器与弹道系统（翻译 WEAPON.CPP / BULLET.CPP）
 - **目标**：武器定义（射程、射速、伤害、弹道类型），子弹飞行逻辑。
@@ -959,6 +1020,24 @@
 - **文件**：`src/renderer/effects/FogOfWar.ts`
 - **Dummy 资源**：迷雾用黑白网格纹理，单位视野半径固定 10 格。
 - **验收**：单位移动后，周围圆形区域变为"已探索"，离开后不显示敌方单位。
+- **状态**：[ ] `done`
+
+---
+
+## Phase 7.5: Mod 支持与地图规则（Modding & Map Rules）
+
+> **定位**：核心游戏功能已完备后，开放 Mod 和自定义地图的能力。本 Phase 依赖 Phase 6.5 的 YAML + Trait 架构。
+
+### Task 11.5: 地图级规则覆盖 🟢 P2
+- **目标**：支持地图内嵌 `map.yaml` 覆盖默认规则，实现单图自定义规则（如特殊武器伤害、单位属性调整）。
+- **文件**：`src/game/rules/Ruleset.ts`（或扩展 `YamlLoader.ts`）
+- **OpenRA 对标**：`Ruleset.Load()` 中 `MergeOrDefault` 的 `mapRules` 覆盖逻辑
+- **关键变更**：
+  - 加载顺序：默认 rules → 地图 mapRules（合并覆盖）
+  - 安全白名单：仅允许覆盖数值字段（damage、speed、cost），禁止添加/删除 Trait（防止地图注入逻辑）
+  - `IRulesetLoaded` 回调：规则合并完成后，通知所有 Trait 做二次解析（如武器引用校验）
+- **依赖**：Task 11.1 + Task 11.4
+- **验收**：某地图的 `map.yaml` 将 `MediumTank.speed` 从 6 改为 9，加载该地图后 MediumTank 明显移动更快，其他地图不受影响。
 - **状态**：[ ] `done`
 
 ---
@@ -1472,7 +1551,9 @@
 | Phase 5 建筑系统 | 4 | 4 | Task 20–23 全部完成 |
 | Phase 5.5 寻路碰撞深度对齐 | 31 | 19 | 23.1–23.19 完成；23.20–23.31 为 OpenRA 核心能力缺口回填（P0–P3）|
 | Phase 6 交互 | 3 | 0 | Task 24 已合并到 23.10；25–27 待开发 |
-| Phase 7 战斗经济 | 4 | 0 | |
+| Phase 6.5 架构升级 | 3 | 0 | 11.1 YAML、11.3 Trait、11.4 规则继承；核心循环稳定后执行 |
+| Phase 7 战斗经济 | 5 | 0 | 含 11.2 Weapon 规则（Task 28 前置） |
+| Phase 7.5 Mod 支持 | 1 | 0 | 11.5 地图级规则覆盖 |
 | Phase 8 循环发布 | 4 | 0 | |
 | Phase 9 UI Shell | 7 | 0 | 主菜单、战役、遭遇战、多人、设置、加载 |
 | Phase 10 交互增强 | 9 | 0 | 光标、Sidebar、Shift队列、攻击移动、编组 |
@@ -1483,7 +1564,7 @@
 | Phase 15 AI高级 | 7 | 0 | Bot、超级武器、空军、桥梁 |
 | Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
 | Phase 17 发布平台 | 3 | 0 | 桌面打包、移动端、Steam |
-| **总计** | **130** | **47** | |
+| **总计** | **135** | **47** | |
 
 ---
 
