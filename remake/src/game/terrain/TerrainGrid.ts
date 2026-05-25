@@ -8,6 +8,7 @@ import { CellLayer, type CellEntryChangedHandler } from './CellLayer';
 import { MapGrid } from './MapGrid';
 import type { TileSet, TerrainTile } from './TileSet';
 import { DefaultTileCache } from './DefaultTileCache';
+import { TerrainDecalLayer } from '../../renderer/terrain/TerrainDecalLayer';
 
 /**
  * Terrain types translated from the original C&C `LandType` enum
@@ -58,6 +59,7 @@ export class TerrainGrid {
   private waterTime = 0;
   private dirtySplatCells = new Set<string>();
   private splatFlushPending = false;
+  private decalLayer: TerrainDecalLayer | null = null;
 
   constructor(scene: Scene, width = 64, height = 64) {
     this.cellLayer = new CellLayer<CellData>(width, height, { landType: LandType.Clear });
@@ -589,6 +591,54 @@ export class TerrainGrid {
     }
   }
 
+  // ── Decal layer (Task 10.5) ──
+
+  /** Add a sprite decal on top of a cell. Requires atlas to be built first. */
+  addDecal(x: number, y: number, tile: TerrainTile): void {
+    const cache = this.tileCache;
+    if (!cache || !cache.hasAtlas()) return;
+
+    const slot = cache.getAtlasSlot(tile);
+    if (!slot) return;
+
+    const world = this.mapGrid.centerOfCell({ x, y });
+    const key = `${x},${y}`;
+
+    if (!this.decalLayer) {
+      const tex = cache.getAtlasTexture();
+      if (!tex) return;
+      this.decalLayer = new TerrainDecalLayer(this.terrainMesh?.getScene() ?? this.getSceneFromMesh(), tex);
+    }
+
+    this.decalLayer.add(key, {
+      x: world.x,
+      z: world.z,
+      width: 1,
+      height: 1,
+      atlasSlot: slot,
+      parent: this.terrainMesh ?? undefined,
+    });
+  }
+
+  /** Remove the decal from a cell. */
+  removeDecal(x: number, y: number): void {
+    this.decalLayer?.remove(`${x},${y}`);
+  }
+
+  /** Clear all decals. */
+  clearDecals(): void {
+    this.decalLayer?.clear();
+  }
+
+  getDecalCount(): number {
+    return this.decalLayer?.getDecalCount() ?? 0;
+  }
+
+  private getSceneFromMesh(): Scene {
+    if (this.terrainMesh) return this.terrainMesh.getScene();
+    throw new Error('TerrainGrid has no mesh and no scene reference');
+  }
+
   /** Dispose terrain mesh, grid lines, and material. */
   dispose(): void {
     this.terrainMesh?.dispose();
@@ -599,5 +649,6 @@ export class TerrainGrid {
     this.splatMaterial?.dispose();
     this.splatMap?.dispose();
     this.splatMap2?.dispose();
+    this.decalLayer?.dispose();
   }
 }
