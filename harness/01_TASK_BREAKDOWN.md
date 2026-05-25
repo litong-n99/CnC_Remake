@@ -252,12 +252,90 @@
 > **9.1（CellLayer）→ 9.2（TileSet）→ 9.3（ResourceLayer）→ 9.4（Texture Splatting）→ 23.29（Height）→ 9.5（Coordinates）→ 9.6（Map Format）→ 9.7（Shroud）→ 9.8（Editor Brush）**
 
 ### Task 10: 地形材质与纹理系统
-- **目标**：支持多材质混合（草地、道路、水域、悬崖）。
+
+> **状态说明**：Task 10 基础骨架（顶点色三色地形）已完成。以下子任务是按 OpenRA 对标分析后制定的**扩展路线图**，将地形渲染从"程序化着色器原型"推进到"可加载真实 C&C 美术资源的混合渲染系统"。
+
+- **总体目标**：在保持 Babylon.js 3D 引擎优势的前提下，实现与 OpenRA 地形生态兼容的多层渲染系统——底层用 Texture Splatting 提供自然过渡，关键 tile 用真实 sprite/decal 精确覆盖。
 - **参考 C++**：`TERRAIN.CPP` 中的地形类型枚举。
-- **文件**：`src/renderer/materials/TerrainMaterial.ts`
-- **Dummy 资源**：纯色材质 + 网格线框，真实纹理待 `ready` 后替换。
-- **验收**：同一地图中三种地形同时可见，边界清晰。
-- **状态**：[x] `done`
+- **OpenRA 对标**：`TerrainSpriteLayer.cs` + `TerrainRenderer.cs` + `DefaultTileCache.cs` + `SheetBuilder.cs`
+
+---
+
+#### Task 10.1: Splat Shader 扩展至 8 层 + 水面动画
+- **目标**：当前 `TerrainSplatMaterial` 仅支持 4 层（grass/road/water/rock），无法覆盖全部地形类型。扩展至 8 层，覆盖 Beach、Rough、Tiberium、Snow/Wall；并为 Water 类型添加动态波纹。
+- **文件**：`src/renderer/terrain/TerrainSplatMaterial.ts`, `src/renderer/terrain/ProceduralTextures.ts`, `src/game/terrain/TerrainGrid.ts`
+- **关键变更**：
+  - Fragment shader 增加 `beachTex` / `roughTex` / `tiberiumTex` / `snowTex`（或通用 `layer5-8`）
+  - 新增 `time` uniform，Water 层 UV 做正弦扰动 `sin(time + uv * freq) * amp`
+  - `landTypeToSplat` 映射表扩展至全部 `LandType` 枚举
+- **依赖**：Task 9.4（基础 splat shader 已就位）
+- **验收**：64×64 地图中同时出现草地、道路、水域、岩石、沙滩五种地形，Water 格子有可见波纹动画
+- **状态**：[ ] `done`
+
+#### Task 10.2: Splat Map 渐变过渡
+- **目标**：消除当前硬切边界。相邻不同 `LandType` 的格子之间应在 splat map 上产生 2–4 格的双线性权重渐变，使 shader 混合出自然过渡带。
+- **文件**：`src/game/terrain/TerrainGrid.ts`
+- **关键变更**：
+  - `rebuildSplatMap()` 在写入 splat 权重后，对相邻异质地形做盒式模糊或线性插值
+  - 过渡宽度可配置（默认 2 格），避免大面积同质化模糊
+  - 保留悬崖/墙壁等需要硬边界的类型（通过 `TerrainTileInfo.rampType` 或 `LandType` 白名单控制）
+- **依赖**：Task 10.1（8 层 splat 先就位）
+- **验收**：草地→道路、道路→水域的交界处呈现 2–4 格的柔和渐变，无锯齿硬边
+- **状态**：[ ] `done`
+
+#### Task 10.3: Splat 更新合并优化
+- **目标**：当前 `updateSplatCell` 每格变更立即调用 `DynamicTexture.update()`，在 `ResourceLayer.tickResources()` 高频变更或大地图（256×256）场景下会造成 CPU→GPU 带宽 stall。
+- **文件**：`src/game/terrain/TerrainGrid.ts`
+- **关键变更**：
+  - 引入 `dirtySplatCells: Set<string>` 缓冲队列
+  - `CellEntryChanged` 触发时仅标记 dirty，通过 `requestAnimationFrame` 批量 flush
+  - 研究 Babylon.js `DynamicTexture` 局部更新 API（如 `update()` 是否支持 dirty rect），或降级为 `RawTexture` + `updateRGBDAsync`
+- **依赖**：Task 9.4（splat map 更新链路已存在）
+- **验收**：连续 100 次 `setCellLandType` 调用在 1 帧内完成，仅触发 1 次 GPU texture upload
+- **状态**：[ ] `done`
+
+#### Task 10.4: TileSet 真实 Sprite 加载（OpenRA 美术资源接入）
+- **目标**：让 `DefaultTileCache` 从 OpenRA 原始的 `.shp`/`.tmp` 文件解析真实图像，替代 Canvas 2D 程序化纹理。这是与 OpenRA 生态兼容的核心步骤。
+- **文件**：`src/game/terrain/DefaultTileCache.ts`, `src/renderer/terrain/ShpLoader.ts`（或 `TmpLoader.ts`）
+- **关键变更**：
+  - 实现 `.shp` 格式解析器（Westwood Sprite 格式，社区已有 JS 参考实现）
+  - 将解析后的帧图像打包为 Babylon.js `Texture` atlas（类似 OpenRA 的 `SheetBuilder`）
+  - `DefaultTileCache.resolve(tile)` 返回真实 `Texture` + UV rect，而非 fallback `LandType`
+  - 回退机制：若真实图像缺失，继续使用 procedural texture
+- **依赖**：Task 9.2（TileSet YAML 解析已就位）
+- **验收**：加载 `temperat.yaml` + 对应 `.shp`/`.tmp` 后，`TerrainGrid` 显示真实 C&C 地形 sprite，不再是纯色方块
+- **状态**：[ ] `done`
+
+#### Task 10.5: Macro Tile Decal 层
+- **目标**：在 Texture Splatting 之上增加贴花（decal）层，用真实 sprite 精确覆盖关键地形特征（建筑地基、特殊悬崖、桥梁、道路标记）。实现"底层 shader 自然过渡 + 上层 sprite 精确还原"的混合视觉。
+- **文件**：`src/renderer/terrain/TerrainDecalLayer.ts`
+- **关键变更**：
+  - 每个需要精确覆盖的 cell 生成一个贴花 mesh（Babylon `Decal` 或平铺 quad），贴附在 terrain surface 上
+  - Decal 使用 `DefaultTileCache` 解析的真实 sprite texture + alpha 混合
+  - 支持 `PickAny` 随机变体，与 OpenRA 的随机化逻辑一致
+  - 非关键 cell（大面积草地/水域）不生成 decal，由 splat shader 负责，减少 draw call
+- **依赖**：Task 10.4（真实 sprite 加载先就位）
+- **验收**：同屏显示 100 个 decal tile，fps 不低于 55；悬崖边缘呈现原版像素精确形状，底部仍由 splat 草地自然过渡
+- **状态**：[ ] `done`
+
+#### Task 10.6: Palette 索引 Shader 支持
+- **目标**：C&C 原版大量 sprite 使用 Indexed（1-channel）+ Palette 查找。为 100% 还原原版视觉效果，shader 需支持 1-channel texture + 256-entry palette uniform。
+- **文件**：`src/renderer/terrain/TerrainIndexedMaterial.ts`（或扩展 `TerrainSplatMaterial`）
+- **关键变更**：
+  - Shader variant：1-channel `sampler2D` + `vec4 palette[256]` uniform
+  - 在 fragment stage 用 `texture2D(indexTex, uv).r * 255.0` 作为 palette 索引
+  - 支持 OpenRA 的 `TextureChannel`（R/G/B/A 各存一个 palette 的 sprite）——通过 shader swizzle 选择通道
+  - 与 `SpriteRenderer.SheetCount` 限制对齐：单 draw call 最多 8 个 atlas texture
+- **依赖**：Task 10.4（真实 sprite 加载先就位）
+- **验收**：同一个 atlas texture 的 R/G/B/A 四个通道分别映射到四个不同 palette 的 sprite，shader 正确渲染出四种不同颜色方案的地形
+- **状态**：[ ] `done`
+
+---
+
+> **📋 地形材质系统演进路线**
+>
+> Task 10 按**依赖顺序**递进：
+> **10.1（8 层 Splat + 水面动画）→ 10.2（渐变过渡）→ 10.3（更新合并）→ 10.4（真实 Sprite 加载）→ 10.5（Decal 层）→ 10.6（Palette Shader）**
 
 ---
 
