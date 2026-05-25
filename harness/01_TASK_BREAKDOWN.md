@@ -356,6 +356,18 @@
 - **验收**：创建两个 House（GDI 与 Nod），各自拥有独立资金与单位列表。
 - **状态**：[x] `done`
 
+> **Task 12 架构升级任务索引**（按实现阶段分布）：
+> | 任务 | 阶段 | 内容 | 优先级 |
+> |------|------|------|--------|
+> | Task 23.32 | Phase 5 | 电力系统自动汇总（建筑自注册） | 🟡 P1 |
+> | Task 27.5 | Phase 6 | 外交关系系统（Ally/Enemy/Neutral） | 🔴 P0 |
+> | Task 27.6 | Phase 6 | Bot 类型支持（rush/normal/defensive） | 🟢 P2 |
+> | Task 100 | Phase 6.5 | House 类拆分（God Class → 子模块） | 🟡 P1 |
+> | Task 101 | Phase 6.5 | 科技树 Watcher（自动维护可建造列表） | 🟡 P1 |
+> | Task 30.5 | Phase 7 | 经济双轨化（Cash + Resources） | 🔴 P0 |
+> | Task 51.5 | Phase 10 | 立场着色（关系着色 UI） | 🟢 P2 |
+> | Task 68.5 | Phase 12 | 观战者身份系统 | 🟢 P2 |
+
 ### Task 13: 地图加载器与序列化
 - **目标**：定义地图数据结构（二维 Cell 数组），支持从 JSON 加载地图。先使用 Dummy 地图数据。
 - **参考 C++**：地图文件解析逻辑（简化版）。
@@ -974,7 +986,7 @@
 
 > **定位**：核心循环（Phase 4–6）已稳定运行后，将硬编码常量架构升级为 YAML 驱动 + Trait 组合的 Mod 友好架构。本 Phase 不新增游戏功能，只重构数据层和对象模型。
 
-### Task 11.1: YAML 规则解析基础设施 🔴 P0
+### Task 95: YAML 规则解析基础设施 🔴 P0
 - **目标**：将当前硬编码的 `UNIT_DEFINITIONS` / `BUILDING_DEFINITIONS` / `GameRules` 外置为 YAML 文件，建立从 YAML → TS 对象的加载管道。
 - **文件**：`src/game/rules/YamlLoader.ts`, `src/game/rules/RuleRegistry.ts`, `public/rules/defaults.yaml`, `public/rules/units.yaml`, `public/rules/buildings.yaml`
 - **OpenRA 对标**：`OpenRA.Game/MiniYaml.cs` + `FieldLoader.cs` + `Ruleset.cs`
@@ -984,10 +996,11 @@
   - 加载管道：启动时 `fetch('/rules/*.yaml')` → 解析 → 合并 → 生成运行时定义对象
   - 回退机制：YAML 加载失败时回退到内置 TS 常量（保证离线可用）
 - **依赖**：Phase 4–6 核心循环稳定（Unit / Building / Input 系统已能独立运行）
+- **备注**：本任务原编号 Task 11.1，因跨 Phase 编号不符合层级规范，改为独立编号 Task 95。
 - **验收**：删除 `UNIT_DEFINITIONS` 中一个单位的 TS 定义，改为 `public/rules/units.yaml` 中同名条目，游戏启动后该单位属性与之前完全一致。
 - **状态**：[ ] `done`
 
-### Task 11.3: 轻量 Trait/Component 系统 🟡 P1
+### Task 96: 轻量 Trait/Component 系统 🟡 P1
 - **目标**：将当前内聚的 `Unit` / `Building` 类拆分为数据容器 + 可组合的行为组件（Trait），实现 OpenRA Actor + Trait 架构的 Web 端适配。
 - **文件**：`src/game/traits/Trait.ts`, `src/game/traits/HealthTrait.ts`, `src/game/traits/MobileTrait.ts`, `src/game/traits/ArmamentTrait.ts`, `src/game/actors/Actor.ts`
 - **OpenRA 对标**：`OpenRA.Game/Actor.cs` + `TraitDictionary.cs` + `Traits/` 目录
@@ -999,11 +1012,12 @@
   - `ArmamentTrait`：从 `Unit` 的炮塔/武器逻辑迁移，管理武器引用、冷却、开火角度
   - `TraitRegistry`：显式注册（`register('Health', HealthTrait)`），避免 Web 端反射性能问题
   - 与 YAML 对接：`units.yaml` 中 `Traits: [Health, Mobile, Armament]` 列表定义单位能力组合
-- **依赖**：Task 11.1（YAML 基础设施先就位）；Phase 4–6 核心循环稳定（确保迁移前行为基线通过 e2e）
+- **依赖**：Task 95（YAML 基础设施先就位）；Phase 4–6 核心循环稳定（确保迁移前行为基线通过 e2e）
+- **备注**：原编号 Task 11.3，改为独立编号 Task 96。
 - **验收**：创建一个只有 `Health` 和 `Render` 两个 Trait 的测试 Actor，它不能移动也不能攻击，但可以被选中、显示血条、被摧毁。原有全部 e2e 测试通过，无回归。
 - **状态**：[ ] `done`
 
-### Task 11.4: 规则继承与抽象 Actor 🟡 P1
+### Task 97: 规则继承与抽象 Actor 🟡 P1
 - **目标**：在 YAML 规则中支持 `Inherits:` 语法，减少重复定义；支持 `^` 前缀的抽象 Actor 模板。
 - **文件**：`src/game/rules/YamlLoader.ts`（扩展继承解析）
 - **OpenRA 对标**：`ActorInfo.cs` 中 `Inherits:` 处理 + `^` 抽象 Actor 过滤
@@ -1012,12 +1026,14 @@
   - 抽象 Actor：`^Vehicle`、`^Infantry`、`^Building` 等模板不生成实际游戏对象，仅被继承
   - Trait 删除语法：`-Mobile:` 表示继承后移除该 Trait
   - 循环继承检测：加载时检测并报错
-- **依赖**：Task 11.1（YAML 基础设施）+ Task 11.3（Trait 系统）
+- **依赖**：Task 95（YAML 基础设施）+ Task 96（Trait 系统）
+- **备注**：原编号 Task 11.4，改为独立编号 Task 97。
 - **验收**：定义 `^Vehicle`（含 Mobile + Health + Render），`LightTank` 继承 `^Vehicle` 并只覆盖 `speed` 和 `primaryWeapon`，`Harvester` 继承 `^Vehicle` 并移除 `Armament`。
 - **状态**：[ ] `done`
 
-### Task 11.6: House 类拆分（God Class 治理）🟡 P1
+### Task 100: House 类拆分（God Class 治理）🟡 P1
 - **目标**：当前 `House.ts` 是 293 行的上帝类，聚合经济/电力/计数/难度/统计/状态等 50+ 字段，违反 SRP。在不引入完整 Trait 系统的前提下，先拆分为组合式子模块。
+- **领域归属**：本任务属于 Task 12（House 系统）的架构升级，因实现阶段在核心循环稳定后，故放在 Phase 6.5。
 - **文件**：`src/game/house/House.ts`, `src/game/house/HouseEconomy.ts`, `src/game/house/HousePower.ts`, `src/game/house/HouseTechTree.ts`, `src/game/house/HouseStatistics.ts`, `src/game/house/HouseDiplomacy.ts`
 - **OpenRA 对标**：`OpenRA.Game/Player.cs`（轻量容器）+ `PlayerResources` / `PowerManager` / `TechTree` Traits
 - **关键变更**：
@@ -1029,11 +1045,13 @@
   - `HouseDiplomacy`：盟友/敌人/中立关系（从 Task 27.5 迁移）
   - 向后兼容：`House.addCredits()` 代理到 `HouseEconomy.addCredits()`
 - **依赖**：Task 23.32（电力模块先独立）+ Task 27.5（外交模块先独立）
+- **备注**：原编号 Task 11.6（错误归属于 Rules 系统），改为独立编号 Task 100，明确归属 House 系统。
 - **验收**：`House.ts` 行数 < 100；每个子模块可独立单元测试；原有全部 e2e 通过。
 - **状态**：[ ] `done`
 
-### Task 11.7: 科技树 Watcher 机制 🟡 P1
+### Task 101: 科技树 Watcher 机制 🟡 P1
 - **目标**：当前 `availableBuildings` 是静态 `Set<string>`，需手动 `addBuilding(typeId)` 维护。改为监听 `GameObjectManager` 的 Actor 增删事件，自动计算可建造列表。
+- **领域归属**：本任务属于 Task 12（House 系统）的自动化升级，建立在 Task 100（House 拆分）基础上。
 - **文件**：`src/game/house/HouseTechTree.ts`
 - **OpenRA 对标**：`OpenRA.Mods.Common/Traits/Player/TechTree.cs`
 - **关键变更**：
@@ -1042,7 +1060,8 @@
   - `hasPrerequisites(prereqs: string[]): boolean` — 检查是否满足建造前提
   - `buildLimitReached(typeId: string): boolean` — 检查是否达到建造上限
   - 建筑出售/被摧毁/被占领时自动重新计算
-- **依赖**：Task 11.6（HouseTechTree 模块先拆分出来）
+- **依赖**：Task 100（HouseTechTree 模块先拆分出来）
+- **备注**：原编号 Task 11.7（错误归属于 Rules 系统），改为独立编号 Task 101。
 - **验收**：建造兵营后，Sidebar 自动解锁步枪兵；卖掉兵营后，步枪兵图标自动变灰。
 - **状态**：[ ] `done`
 
@@ -1050,7 +1069,7 @@
 
 ## Phase 7: 战斗与经济（Combat & Economy）
 
-### Task 11.2: Weapon 规则系统（WeaponInfo + Projectile + Warheads）🔴 P0
+### Task 98: Weapon 规则系统（WeaponInfo + Projectile + Warheads）🔴 P0
 - **目标**：当前单位定义中只有简单的 `range` 字段，没有完整的武器系统。建立与 OpenRA 对标的 `WeaponInfo` 规则层，作为 Task 28 弹道渲染的数据前置。
 - **文件**：`src/game/rules/WeaponInfo.ts`, `src/game/rules/ProjectileInfo.ts`, `src/game/rules/WarheadInfo.ts`, `public/rules/weapons.yaml`
 - **OpenRA 对标**：`OpenRA.Game/GameRules/WeaponInfo.cs` + `ProjectileArgs` + `WarheadArgs`
@@ -1059,7 +1078,8 @@
   - `ProjectileInfo`：即时命中（Bullet） vs 抛射体（Missile）两种类型，初速、转向率、重力
   - `WarheadInfo`：伤害值、伤害衰减（距离）、对装甲修正表（vs None/Wood/Aluminum/Steel/Concrete）、延迟触发
   - 与 `UnitDefinitions` 对接：单位定义中的 `range` 废弃，改为引用 `primaryWeapon: string`（指向 weapons.yaml 中的键）
-- **依赖**：Task 11.1（YAML 基础设施先就位，或如 YAML 未就绪则先硬编码在 TS 中）
+- **依赖**：Task 95（YAML 基础设施先就位，或如 YAML 未就绪则先硬编码在 TS 中）
+- **备注**：原编号 Task 11.2，改为独立编号 Task 98。
 - **验收**：`weapons.yaml` 中定义 `105mm` 武器，坦克引用后，开火时可见抛射体飞行、命中后按装甲类型计算伤害。
 - **状态**：[ ] `done`
 
@@ -1098,7 +1118,7 @@
   - `TakeCash(num)`：花费时先扣 Resources（矿石），不足再扣 Cash
   - `ChangeCash(amount)`：统一入口，正数=收入，负数=支出
   - 低资金通知：余额不足时触发语音/文字提示（带冷却间隔）
-- **依赖**：Task 11.6（HouseEconomy 模块先拆分出来）
+- **依赖**：Task 100（HouseEconomy 模块先拆分出来）
 - **验收**：矿车卸货 500 矿石 → Resources=500；建造电厂花费 300 → Resources=200（先扣矿石）；Resources 满后矿车继续采矿但无法卸货。
 - **状态**：[ ] `done`
 
@@ -1116,7 +1136,7 @@
 
 > **定位**：核心游戏功能已完备后，开放 Mod 和自定义地图的能力。本 Phase 依赖 Phase 6.5 的 YAML + Trait 架构。
 
-### Task 11.5: 地图级规则覆盖 🟢 P2
+### Task 99: 地图级规则覆盖 🟢 P2
 - **目标**：支持地图内嵌 `map.yaml` 覆盖默认规则，实现单图自定义规则（如特殊武器伤害、单位属性调整）。
 - **文件**：`src/game/rules/Ruleset.ts`（或扩展 `YamlLoader.ts`）
 - **OpenRA 对标**：`Ruleset.Load()` 中 `MergeOrDefault` 的 `mapRules` 覆盖逻辑
@@ -1124,7 +1144,8 @@
   - 加载顺序：默认 rules → 地图 mapRules（合并覆盖）
   - 安全白名单：仅允许覆盖数值字段（damage、speed、cost），禁止添加/删除 Trait（防止地图注入逻辑）
   - `IRulesetLoaded` 回调：规则合并完成后，通知所有 Trait 做二次解析（如武器引用校验）
-- **依赖**：Task 11.1 + Task 11.4
+- **依赖**：Task 95 + Task 97
+- **备注**：原编号 Task 11.5，改为独立编号 Task 99。
 - **验收**：某地图的 `map.yaml` 将 `MediumTank.speed` 从 6 改为 9，加载该地图后 MediumTank 明显移动更快，其他地图不受影响。
 - **状态**：[ ] `done`
 
@@ -1667,9 +1688,9 @@
 | Phase 5 建筑系统 | 5 | 4 | Task 20–23 完成；23.32 电力自动汇总（P1）待开发 |
 | Phase 5.5 寻路碰撞深度对齐 | 31 | 19 | 23.1–23.19 完成；23.20–23.31 为 OpenRA 核心能力缺口回填（P0–P3）|
 | Phase 6 交互 | 5 | 0 | Task 24 已合并到 23.10；25–27 待开发；27.5 外交、27.6 Bot 类型 |
-| Phase 6.5 架构升级 | 5 | 0 | 11.1 YAML、11.3 Trait、11.4 规则继承、11.6 House 拆分、11.7 科技树 Watcher |
-| Phase 7 战斗经济 | 6 | 0 | 含 11.2 Weapon 规则（Task 28 前置）；30.5 经济双轨化（P0） |
-| Phase 7.5 Mod 支持 | 1 | 0 | 11.5 地图级规则覆盖 |
+| Phase 6.5 架构升级 | 5 | 0 | 95 YAML、96 Trait、97 规则继承、100 House 拆分、101 科技树 Watcher |
+| Phase 7 战斗经济 | 6 | 0 | 含 98 Weapon 规则（Task 28 前置）；30.5 经济双轨化（P0） |
+| Phase 7.5 Mod 支持 | 1 | 0 | 99 地图级规则覆盖 |
 | Phase 8 循环发布 | 4 | 0 | |
 | Phase 9 UI Shell | 7 | 0 | 主菜单、战役、遭遇战、多人、设置、加载 |
 | Phase 10 交互增强 | 10 | 0 | 光标、Sidebar、Shift队列、攻击移动、编组；51.5 立场着色 |
