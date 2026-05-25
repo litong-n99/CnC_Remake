@@ -193,6 +193,20 @@ export class GamePage {
     );
   }
 
+  /**
+   * Load an OpenRA-format map from a folder URL.
+   * @returns Parsed map metadata and application status.
+   */
+  async openraMap(folderUrl: string): Promise<Record<string, unknown>> {
+    return await this.page.evaluate(
+      ({ url }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (cnc.openraMap?.(url) as Record<string, unknown> | undefined) ?? { error: 'openraMap not available' };
+      },
+      { url: folderUrl }
+    );
+  }
+
   /** Get debug state for all units. */
   async debugState(): Promise<
     Array<{

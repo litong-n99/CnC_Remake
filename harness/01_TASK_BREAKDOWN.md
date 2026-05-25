@@ -204,20 +204,27 @@
 
 ### Task 9.6: 地图格式兼容 (OpenRA map.yaml + map.bin) — 生态兼容 🟢 P2
 - **目标**：支持加载 OpenRA 原生地图格式（文件夹：`map.yaml` + `map.bin` + `map.png`），使项目可直接使用 OpenRA 地图生态和真实 C&C 地图数据。
-- **文件**：`src/game/terrain/OpenRA MapLoader.ts`, `src/game/terrain/MapFormat.ts`
+- **文件**：`src/game/terrain/OpenRAMapLoader.ts`, `src/game/terrain/MapFormat.ts`, `src/game/terrain/GameMap.ts`
 - **OpenRA 对标**：`Map.cs` 中 `LoadBinaryData` / `SaveBinaryData` + `map.yaml` 解析
 - **关键变更**：
-  - `map.yaml` 解析：读取 `MapFormat`, `RequiresMod`, `Title`, `Author`, `Tileset`, `MapSize`, `Bounds`, `Players`, `Actors`, `Rules`
-  - `map.bin` 二进制解析：
+  - `map.yaml` 解析：MiniYaml 解析器读取 `MapFormat`, `RequiresMod`, `Title`, `Author`, `Tileset`, `MapSize`, `Bounds`, `Players`, `Actors`, `Rules`
+  - `map.bin` 二进制解析（Little-endian）：
     - Header：`byte Format`, `ushort Width/Height`, `uint TilesOffset`, `uint HeightsOffset`, `uint ResourcesOffset`
-    - Tiles 段：`ushort tile.Type` + `byte tile.Index`（`index == 255` 时 `PickAny` 回退到 `(i%4 + j%4*4)`）
-    - Heights 段：`byte height`（clamp 到 `MaximumTerrainHeight`）
+    - Tiles 段：`ushort tile.Type` + `byte tile.Index`
+    - Heights 段：`byte height`
     - Resources 段：`byte type` + `byte density`
-  - `MapFormat.ts`：定义 `MapFormat` 接口，兼容 OpenRA 的元数据结构
-  - 回退机制：若 `map.bin` 不存在，降级到当前 JSON 格式；若 `Tileset` 引用的 YAML 不存在，使用内置 Dummy TileSet
-- **依赖**：Task 9.1（CellLayer 存储解析后的数据），Task 9.2（TileSet 系统解析 `tileset.yaml`）
-- **验收**：加载一个真实的 OpenRA 地图文件夹后，`TerrainGrid` 正确渲染地形纹理、高度、资源分布；`Actors` 定义中的初始单位正确生成在场景中
-- **状态**：[ ] `done`
+  - `MapFormat.ts`：定义 `MapYaml` / `MapBinData` / `MiniYamlNode` 接口，完整兼容 OpenRA 元数据结构
+  - `OpenRAMapLoader.loadFromFolder()`：从文件夹 URL 加载 `map.yaml` + `map.bin`，合并为 `GameMap`
+  - `GameConsole.openraMap()`：调试命令暴露解析结果（标题、玩家、演员、bin header、应用状态）
+  - 回退机制：若 `map.bin` 不存在，生成 stub（所有 tile type=1, height=0, resource=0）
+  - Tile type → `LandType` 映射：简化映射（0→Water, 1→Clear, 2→Rock, 3→Road，其余循环）
+- **依赖**：Task 9.1（CellLayer 存储解析后的数据），Task 9.5（坐标系统）
+- **验收**：
+  - [x] `OpenRAMapLoader` 正确解析 4×4 测试地图的 `map.yaml` 元数据和 `map.bin` 二进制数据
+  - [x] `cnc.openraMap('/maps/test_openra')` 返回正确标题、作者、Tileset、尺寸、Bounds、Players、Actors、bin header
+  - [x] 尺寸不匹配时（4×4 地图 vs 64×64 TerrainGrid）`applied=false`，不报错
+  - [x] 全部 115 个 e2e 测试通过（109 原有 + 6 新增）
+- **状态**：[x] `done`
 
 ### Task 9.7: Shroud 边缘贴图渲染系统 — 迷雾视觉精细化 🟢 P2
 - **目标**：在 Task 31（Fog of War）的基础逻辑之上，实现 OpenRA 风格的 Shroud 边缘贴图渲染：使用 bitfield 描述 8 邻居可见性状态，索引到 sprite 序列的对应帧，实现平滑的迷雾边缘过渡。

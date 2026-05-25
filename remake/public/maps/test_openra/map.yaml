@@ -1,0 +1,29 @@
+MapFormat: 11
+RequiresMod: ra
+Title: Test OpenRA Map
+Author: CnC Remake Dev
+Tileset: TEMPERAT
+MapSize: 4,4
+Bounds: 0,0,4,4
+Visibility: Lobby
+Categories: Test
+
+Players:
+	PlayerReference@Neutral:
+		Name: Neutral
+		OwnsWorld: True
+		NonCombatant: True
+		Faction: Random
+	PlayerReference@Multi0:
+		Name: Multi0
+		Playable: True
+		Faction: Random
+		Enemies: Creeps
+
+Actors:
+	Actor0: mcv
+		Location: 1,1
+		Owner: Multi0
+	Actor1: fact
+		Location: 2,2
+		Owner: Multi0

@@ -14,6 +14,7 @@ import type { House } from '../game/house/House';
 import { RTSCamera } from '../core/RTSCamera';
 import { TerrainGrid, LandType } from '../game/terrain/TerrainGrid';
 import { loadTileSetFromUrl } from '../game/terrain/TileSet';
+import { OpenRAMapLoader } from '../game/terrain/OpenRAMapLoader';
 import { ResourceLayer } from '../game/economy/ResourceLayer';
 import { UnitCollision } from '../game/unit/UnitCollision';
 import { BlockedByActor } from '../game/unit/BlockedByActor';
@@ -120,6 +121,7 @@ export class GameConsole {
       createIndexedTest: this.createIndexedTest.bind(this),
       readIndexedPixels: this.readIndexedPixels.bind(this),
       clearIndexedTest: this.clearIndexedTest.bind(this),
+      openraMap: this.openraMap.bind(this),
       help: this.help.bind(this),
     };
     // eslint-disable-next-line no-console
@@ -1062,6 +1064,69 @@ export class GameConsole {
     const wpos = grid.centerOfSubCellWPos(cpos, index);
     const babylon = grid.wposToBabylon(wpos);
     return { cpos, index, wpos, babylon };
+  }
+
+  /**
+   * Load an OpenRA-format map (`map.yaml` + `map.bin`) from a folder URL.
+   *
+   * If the map dimensions match the current TerrainGrid, tile data is applied
+   * to the grid.  Metadata (title, players, actors) is always returned.
+   *
+   * @param folderUrl — e.g. `"/maps/test_openra"`.
+   */
+  private async openraMap(folderUrl: string): Promise<Record<string, unknown>> {
+    try {
+      // Prepend Vite base path if the URL is relative and missing it
+      const base = (import.meta.env.BASE_URL as string) ?? '/';
+      let resolvedUrl = folderUrl;
+      if (folderUrl.startsWith('/') && base !== '/' && !folderUrl.startsWith(base)) {
+        resolvedUrl = `${base}${folderUrl}`.replace(/\/+/g, '/');
+      }
+      const result = await OpenRAMapLoader.loadFromFolder(resolvedUrl);
+      const { gameMap, mapYaml, mapBin } = result;
+
+      // Apply tile data only if dimensions match
+      const applied = gameMap.width === this.terrain.getWidth() && gameMap.height === this.terrain.getHeight();
+      if (applied) {
+        for (let y = 0; y < gameMap.height; y++) {
+          for (let x = 0; x < gameMap.width; x++) {
+            this.terrain.setCellLandType(x, y, gameMap.cells[y][x].landType);
+          }
+        }
+      }
+
+      return {
+        title: mapYaml.Title,
+        author: mapYaml.Author,
+        tileset: mapYaml.Tileset,
+        mapFormat: mapYaml.MapFormat,
+        width: mapYaml.MapSize.width,
+        height: mapYaml.MapSize.height,
+        bounds: mapYaml.Bounds,
+        players: mapYaml.Players.map((p) => ({
+          id: p.id,
+          name: p.name,
+          playable: p.playable,
+          ownsWorld: p.ownsWorld,
+        })),
+        actors: mapYaml.Actors.map((a) => ({
+          id: a.id,
+          type: a.type,
+          location: a.location,
+          owner: a.owner,
+        })),
+        binHeader: {
+          format: mapBin.header.format,
+          tilesOffset: mapBin.header.tilesOffset,
+          heightsOffset: mapBin.header.heightsOffset,
+          resourcesOffset: mapBin.header.resourcesOffset,
+        },
+        applied,
+      };
+    } catch (err) {
+      console.warn('Failed to load OpenRA map:', err);
+      return { error: String(err) };
+    }
   }
 
   /** Load a TileSet from URL and attach it to the TerrainGrid. */
