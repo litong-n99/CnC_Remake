@@ -465,6 +465,19 @@
 - **验收**：卖掉所有电厂后，雷达与防御塔停止工作；未建兵营时 Sidebar 步兵图标灰色不可点。
 - **状态**：[x] `done`
 
+### Task 23.32: 电力系统自动汇总重构 🟡 P1
+- **目标**：当前电力由外部显式调用 `house.updatePower(production, consumption)` 更新，容易遗漏导致电力显示不同步。改为建筑自注册模式，由 `HousePower` 模块自动追踪每个建筑的电力贡献。
+- **文件**：`src/game/house/HousePower.ts`, `src/game/building/Building.ts`
+- **OpenRA 对标**：`OpenRA.Mods.Common/Traits/Power/Player/PowerManager.cs`
+- **关键变更**：
+  - `HousePower` 模块：维护 `Map<buildingId, {provide, drain}>`，自动计算总电力
+  - 建筑 `onPlaced()` 时自注册电力贡献到所属 House
+  - 建筑 `onDestroyed()` / `onSold()` 时自动注销
+  - 低电力状态变化时触发事件，通知受影响的建筑（雷达、防御塔等）
+- **依赖**：Task 20–23（建筑系统已稳定）
+- **验收**：建造电厂后电力自动增加；卖掉电厂后电力自动减少；整个过程无需外部手动调用 `updatePower()`。
+- **状态**：[ ] `done`
+
 ---
 
 ## Phase 5.5: 寻路碰撞系统重构（OpenRA 对齐）
@@ -926,6 +939,35 @@
 - **验收**：选中单位后，底部面板显示血量、速度、装甲类型。
 - **状态**：[ ] `done`
 
+### Task 27.5: 外交关系系统 🔴 P0
+- **目标**：当前只有 `isHuman` 布尔值区分人机，无法实现"盟友/敌人/中立"判定。攻击指令、框选高亮、小地图颜色、迷雾共享都依赖外交信息。
+- **文件**：`src/game/house/HouseDiplomacy.ts`, `src/game/house/HouseRelationship.ts`
+- **OpenRA 对标**：`OpenRA.Game/Player.cs` 中 `AlliedPlayersMask` / `EnemyPlayersMask` / `RelationshipWith()`
+- **关键变更**：
+  - `HouseRelationship` 枚举：`Ally` / `Enemy` / `Neutral`
+  - `HouseDiplomacy`：维护 `alliedMask: Set<HouseType>` + `enemyMask: Set<HouseType>`
+  - `getRelationshipWith(other: HouseType): HouseRelationship`
+  - `isAlliedWith(other: HouseType): boolean`
+  - `getEnemies(): House[]` — 替代当前简单过滤 `id !== type`
+  - 初始关系：同 Team = Ally，不同 Team = Enemy，Neutral 需显式设置
+  - 支持运行时变更（任务中临时结盟/背叛）
+- **依赖**：Task 12（House 系统已存在）
+- **验收**：GDI 与 Nod 关系为 Enemy；框选时友方显示绿色光环、敌方显示红色；右键点击盟友单位不会触发攻击。
+- **状态**：[ ] `done`
+
+### Task 27.6: Bot 类型支持 🟢 P2
+- **目标**：将 `isHuman: boolean` 扩展为 `controller: 'human' | 'bot-rush' | 'bot-normal' | 'bot-defensive'`，预留 AI 逻辑挂载点。
+- **文件**：`src/game/house/House.ts`, `src/game/ai/BotController.ts`
+- **OpenRA 对标**：`OpenRA.Game/Player.cs` 中 `IsBot` + `BotType`
+- **关键变更**：
+  - `House.controller: string` 替代 `isHuman: boolean`
+  - `BotController` 接口：`activate(house: House)` / `tick()` / `deactivate()`
+  - `BotRegistry`：显式注册 Bot 类型（`register('rush', RushBot)`）
+  - `HouseManager` 根据 `controller` 自动激活对应 Bot
+- **依赖**：Task 27.5（外交关系先就位，Bot 需要知道谁是敌人）
+- **验收**：创建一个 `controller='bot-rush'` 的 House，游戏开始后该 House 自动建造兵营并生产步兵攻击最近敌人。
+- **状态**：[ ] `done`
+
 ---
 
 ## Phase 6.5: Rules 系统与架构升级（Architecture Upgrade）
@@ -974,6 +1016,36 @@
 - **验收**：定义 `^Vehicle`（含 Mobile + Health + Render），`LightTank` 继承 `^Vehicle` 并只覆盖 `speed` 和 `primaryWeapon`，`Harvester` 继承 `^Vehicle` 并移除 `Armament`。
 - **状态**：[ ] `done`
 
+### Task 11.6: House 类拆分（God Class 治理）🟡 P1
+- **目标**：当前 `House.ts` 是 293 行的上帝类，聚合经济/电力/计数/难度/统计/状态等 50+ 字段，违反 SRP。在不引入完整 Trait 系统的前提下，先拆分为组合式子模块。
+- **文件**：`src/game/house/House.ts`, `src/game/house/HouseEconomy.ts`, `src/game/house/HousePower.ts`, `src/game/house/HouseTechTree.ts`, `src/game/house/HouseStatistics.ts`, `src/game/house/HouseDiplomacy.ts`
+- **OpenRA 对标**：`OpenRA.Game/Player.cs`（轻量容器）+ `PlayerResources` / `PowerManager` / `TechTree` Traits
+- **关键变更**：
+  - `House` 变为轻量容器：保留 `id`, `name`, `color`, `controller` 及状态标志
+  - `HouseEconomy`：Cash + Resources + Capacity + Earned/Spent（为未来双轨化做准备）
+  - `HousePower`：电力提供/消耗/余额（从 Task 23.32 迁移）
+  - `HouseTechTree`：可建造类型集合 + 前提条件检查（从 Task 23 的 TechTree 迁移）
+  - `HouseStatistics`：摧毁/建造/击杀统计
+  - `HouseDiplomacy`：盟友/敌人/中立关系（从 Task 27.5 迁移）
+  - 向后兼容：`House.addCredits()` 代理到 `HouseEconomy.addCredits()`
+- **依赖**：Task 23.32（电力模块先独立）+ Task 27.5（外交模块先独立）
+- **验收**：`House.ts` 行数 < 100；每个子模块可独立单元测试；原有全部 e2e 通过。
+- **状态**：[ ] `done`
+
+### Task 11.7: 科技树 Watcher 机制 🟡 P1
+- **目标**：当前 `availableBuildings` 是静态 `Set<string>`，需手动 `addBuilding(typeId)` 维护。改为监听 `GameObjectManager` 的 Actor 增删事件，自动计算可建造列表。
+- **文件**：`src/game/house/HouseTechTree.ts`
+- **OpenRA 对标**：`OpenRA.Mods.Common/Traits/Player/TechTree.cs`
+- **关键变更**：
+  - `TechTreeWatcher`：监听 `GameObjectManager` 的 `onActorAdded` / `onActorRemoved`
+  - 自动维护 `ownedPrerequisites: Map<string, number>`（某建筑拥有数量）
+  - `hasPrerequisites(prereqs: string[]): boolean` — 检查是否满足建造前提
+  - `buildLimitReached(typeId: string): boolean` — 检查是否达到建造上限
+  - 建筑出售/被摧毁/被占领时自动重新计算
+- **依赖**：Task 11.6（HouseTechTree 模块先拆分出来）
+- **验收**：建造兵营后，Sidebar 自动解锁步枪兵；卖掉兵营后，步枪兵图标自动变灰。
+- **状态**：[ ] `done`
+
 ---
 
 ## Phase 7: 战斗与经济（Combat & Economy）
@@ -1012,6 +1084,22 @@
 - **文件**：`src/game/economy/HarvesterAI.ts`, `src/game/economy/EconomyManager.ts`
 - **Dummy 资源**：矿场用绿色/金色发光 `Ground` 贴片表示；矿车用黄色 Box。
 - **验收**：矿车自动往返于矿场与矿厂，资金数字随卸货增长。
+- **状态**：[ ] `done`
+
+### Task 30.5: 经济双轨化（Cash + Resources）🔴 P0
+- **目标**：当前只有单轨 `credits`，矿石直接变现金，矿厂"存储容量"机制形同虚设。拆分为 Cash（可花费资金）+ Resources（矿石储量，受容量限制），与 OpenRA `PlayerResources` 对齐。
+- **文件**：`src/game/house/HouseEconomy.ts`
+- **OpenRA 对标**：`OpenRA.Mods.Common/Traits/Player/PlayerResources.cs`
+- **关键变更**：
+  - `Cash`：可立即用于建造/训练的资金
+  - `Resources`：矿石储量，矿车卸货时先增加 Resources
+  - `ResourceCapacity`：存储上限，由矿厂/筒仓数量决定
+  - `GiveResources(num)`：矿车卸货，增加 Resources（不超过 Capacity）
+  - `TakeCash(num)`：花费时先扣 Resources（矿石），不足再扣 Cash
+  - `ChangeCash(amount)`：统一入口，正数=收入，负数=支出
+  - 低资金通知：余额不足时触发语音/文字提示（带冷却间隔）
+- **依赖**：Task 11.6（HouseEconomy 模块先拆分出来）
+- **验收**：矿车卸货 500 矿石 → Resources=500；建造电厂花费 300 → Resources=200（先扣矿石）；Resources 满后矿车继续采矿但无法卸货。
 - **状态**：[ ] `done`
 
 ### Task 31: 战争迷雾（Fog of War）
@@ -1193,6 +1281,20 @@
 - **验收**：点击 Sell 后光标变 $，点击兵营获得一半资金，兵营消失。
 - **状态**：[ ] `done`
 
+### Task 51.5: 立场着色（Player Relationship Colors）🟢 P2
+- **目标**：UI 层根据外交关系渲染不同颜色，而非固定阵营色。自己=绿、盟友=蓝、敌人=红、中立=灰。
+- **文件**：`src/renderer/ui/RelationshipColors.ts`, `src/core/SelectionManager.ts`
+- **OpenRA 对标**：`OpenRA.Game/Player.cs` 中 `PlayerRelationshipColor()` + `SetupRelationshipColors()`
+- **关键变更**：
+  - `RelationshipColor` 配置：Self/Allies/Neutrals/Enemies 四色映射
+  - 选择环：盟友单位显示蓝色环、敌人显示红色环
+  - 小地图：按关系着色（而非固定 GDI 黄/Nod 红）
+  - 血条：敌人血条始终红色，友方血条绿色
+  - 建筑幽灵：放置预览时按所属关系着色
+- **依赖**：Task 27.5（外交关系系统先就位）
+- **验收**：同一辆中坦，GDI 玩家看自己是黄色+绿色选择环；Nod 玩家看该中坦是黄色+红色选择环；盟军看它是蓝色选择环。
+- **状态**：[ ] `done`
+
 ---
 
 ## Phase 11: 战役系统（Campaign & Scripting）
@@ -1318,6 +1420,20 @@
 - **参考 OpenRA**：`ReplayConnection.cs`
 - **文件**：`src/replay/ReplayRecorder.ts`, `src/replay/ReplayPlayer.ts`
 - **验收**：保存回放文件后，刷新页面加载回放，战斗过程与原始完全一致。
+- **状态**：[ ] `done`
+
+### Task 68.5: 观战者身份系统（Spectator Support）🟢 P2
+- **目标**：在 House 层完整支持观战者身份。观战者不拥有单位、不参与胜负判定、可查看全图（无迷雾限制）。
+- **文件**：`src/game/house/House.ts`, `src/game/house/HouseDiplomacy.ts`
+- **OpenRA 对标**：`OpenRA.Game/Player.cs` 中 `Spectating` 属性
+- **关键变更**：
+  - `House.isSpectating`：观战者标志
+  - 观战者视为所有活跃玩家的盟友（用于渲染和同步）
+  - `UnlockedRenderPlayer`：观战者可自由切换观察视角（任意玩家视角）
+  - 不占用 HouseType 枚举槽位（使用独立 Spectator 列表）
+  - 聊天消息：观战者消息标记为 [Observer]
+- **依赖**：Task 27.5（外交关系）+ Task 31（战争迷雾）
+- **验收**：创建一个 `isSpectating=true` 的观察者，可看到全地图单位和建筑，不显示战争迷雾；游戏胜负不影响观察者状态。
 - **状态**：[ ] `done`
 
 ---
@@ -1548,23 +1664,23 @@
 | Phase 2 3D核心 | 5 | 5 | |
 | Phase 3 数据层 | 4 | 4 | |
 | Phase 4 单位系统 | 5 | 5 | |
-| Phase 5 建筑系统 | 4 | 4 | Task 20–23 全部完成 |
+| Phase 5 建筑系统 | 5 | 4 | Task 20–23 完成；23.32 电力自动汇总（P1）待开发 |
 | Phase 5.5 寻路碰撞深度对齐 | 31 | 19 | 23.1–23.19 完成；23.20–23.31 为 OpenRA 核心能力缺口回填（P0–P3）|
-| Phase 6 交互 | 3 | 0 | Task 24 已合并到 23.10；25–27 待开发 |
-| Phase 6.5 架构升级 | 3 | 0 | 11.1 YAML、11.3 Trait、11.4 规则继承；核心循环稳定后执行 |
-| Phase 7 战斗经济 | 5 | 0 | 含 11.2 Weapon 规则（Task 28 前置） |
+| Phase 6 交互 | 5 | 0 | Task 24 已合并到 23.10；25–27 待开发；27.5 外交、27.6 Bot 类型 |
+| Phase 6.5 架构升级 | 5 | 0 | 11.1 YAML、11.3 Trait、11.4 规则继承、11.6 House 拆分、11.7 科技树 Watcher |
+| Phase 7 战斗经济 | 6 | 0 | 含 11.2 Weapon 规则（Task 28 前置）；30.5 经济双轨化（P0） |
 | Phase 7.5 Mod 支持 | 1 | 0 | 11.5 地图级规则覆盖 |
 | Phase 8 循环发布 | 4 | 0 | |
 | Phase 9 UI Shell | 7 | 0 | 主菜单、战役、遭遇战、多人、设置、加载 |
-| Phase 10 交互增强 | 9 | 0 | 光标、Sidebar、Shift队列、攻击移动、编组 |
+| Phase 10 交互增强 | 10 | 0 | 光标、Sidebar、Shift队列、攻击移动、编组；51.5 立场着色 |
 | Phase 11 战役系统 | 9 | 0 | Lua脚本、触发器、目标、过场 |
-| Phase 12 网络对战 | 8 | 0 | Lockstep、WebSocket、房间、回放 |
+| Phase 12 网络对战 | 9 | 0 | Lockstep、WebSocket、房间、回放；68.5 观战者身份 |
 | Phase 13 资源内容 | 7 | 0 | MIX/SHP解析、音频、视频、本地化 |
 | Phase 14 性能优化 | 6 | 0 | LOD、实例化、视锥剔除、对象池 |
 | Phase 15 AI高级 | 7 | 0 | Bot、超级武器、空军、桥梁 |
 | Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
 | Phase 17 发布平台 | 3 | 0 | 桌面打包、移动端、Steam |
-| **总计** | **135** | **47** | |
+| **总计** | **143** | **47** | |
 
 ---
 
