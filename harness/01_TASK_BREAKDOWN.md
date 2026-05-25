@@ -198,7 +198,7 @@
   - `WVec / WDist / CVec`：世界向量、世界距离、Cell 向量；支持 `Length`、`Rotate`、`Yaw` 等运算
   - `Viewport`：屏幕坐标 → 世界坐标 → Cell 坐标的转换链；`ViewToWorld` 使用候选 cell → 四边形 `PolygonContains` 精确 hit test（替代当前简单的 `Math.round`）
   - `MapGrid`：定义 `Type`（`Rectangular` / `RectangularIsometric`）、`TileSize`、`SubCellOffsets`、`Ramps`
-- **依赖**：Task 9.1（CellLayer 支持 CPos 索引），Task 23.29（高度系统提供 Z 坐标来源）
+- **依赖**：Task 9.1（CellLayer 支持 CPos 索引），Task 130（高度系统提供 Z 坐标来源）
 - **验收**：等轴测模式下，Cell (10,20) 的世界坐标与屏幕坐标双向转换误差 < 0.5 像素；`Viewport.ViewToWorld(mouseX, mouseY)` 在斜坡边缘精确命中正确的 Cell；高度差 ≥2 的悬崖不可通行
 - **状态**：[x] `done`
 
@@ -251,7 +251,7 @@
 > **📋 地形系统演进路线汇总**
 >
 > Task 9 完成基础骨架（`TerrainGrid` + `CellData` + 顶点色）。Task 9.1–9.8 按**建议执行顺序**递进：
-> **9.1（CellLayer）→ 9.2（TileSet）→ 9.3（ResourceLayer）→ 9.4（Texture Splatting）→ 23.29（Height）→ 9.5（Coordinates）→ 9.6（Map Format）→ 9.7（Shroud）→ 9.8（Editor Brush）**
+> **9.1（CellLayer）→ 9.2（TileSet）→ 9.3（ResourceLayer）→ 9.4（Texture Splatting）→ 130（Height）→ 9.5（Coordinates）→ 9.6（Map Format）→ 9.7（Shroud）→ 9.8（Editor Brush）**
 
 ### Task 10: 地形材质与纹理系统
 
@@ -496,13 +496,13 @@
 
 > 本 Phase 为**插入式重构任务**，目标是将当前简化版寻路/碰撞系统（Task 17/19 的临时实现）逐步替换为与 OpenRA 功能对齐的可靠架构。完成后 Phase 6 及后续功能将建立在可靠的移动底层之上。
 >
-> **本轮重构已完成（Task 23.1–23.11）**：
+> **本轮重构已完成（Task 102–112）**：
 > - ActorMap 格子占用映射、UnitCollision 四级阻塞检测、双格占用（fromCell/toCell）
 > - 完整 fallback 链（Wait→CellIsEvacuating→Repath→Nudge→Backup→GiveUp）
 > - Locomotor 配置层 + TerrainSpeeds + SubCell 步兵共享 + NotifyBlocker 响应
 > - 密集场景压力测试（桥梁交叉、Corner Cutting、60s 无死锁）
-> - 框选 + 群体移动（Task 23.10 + 24 合并）
-> - evaluateNearestMovableCell + close-enough 到达容忍度（Task 23.11）
+> - 框选 + 群体移动（Task 111 + 24 合并）
+> - evaluateNearestMovableCell + close-enough 到达容忍度（Task 112）
 >
 > **OpenRA 参考**（仅借鉴核心概念，不直译 C# trait 系统）：
 > - `OpenRA.Mods.Common/Traits/World/ActorMap.cs` — 格子占用映射
@@ -512,14 +512,14 @@
 > - `OpenRA.Mods.Common/Activities/Move/Nudge.cs` — 空闲单位避让
 > - `OpenRA.Mods.Common/Activities/Move/MoveWithinRange.cs` + `Follow.cs` — 移动活动变体
 
-### Task 23.1: ActorMap — 格子占用映射
+### Task 102: ActorMap — 格子占用映射
 - **目标**：实现一个极简的格子级单位占用映射。key = `"x,y"`，value = 该格子内的单位 ID 集合。每个单位只在其当前 `Math.round(x), Math.round(y)` 位置注册。
 - **文件**：`src/game/world/ActorMap.ts`
 - **接口**：`occupy(id, x, y)` / `vacate(id, x, y)` / `move(id, fx, fy, tx, ty)` / `getOccupants(x, y)` / `isOccupied(x, y)` / `getAllOccupiedCells()`
 - **验收**：创建 5 辆坦克，ActorMap 查询每个坦克所在格子返回正确 ID；移动后旧格子清空、新格子有记录。
 - **状态**：[x] `done`
 
-### Task 23.2: UnitCollision 重构 — 格子级阻塞查询
+### Task 103: UnitCollision 重构 — 格子级阻塞查询
 - **目标**：彻底替换当前浮点距离检测。`isPositionBlocked` 和 `getBlockedCells` 改为查询 ActorMap 的格子占用状态。移除 `MIN_SEPARATION` 浮点阈值。
 - **文件**：`src/game/unit/UnitCollision.ts`
 - **关键变更**：
@@ -529,7 +529,7 @@
 - **验收**：两辆坦克相距 1 格，各自朝对方移动；第一步 A* 就把对方位置视为阻塞，路径自动绕开。
 - **状态**：[x] `done`
 
-### Task 23.3: UnitMovement 重构 — 自驱阻塞 fallback 链
+### Task 104: UnitMovement 重构 — 自驱阻塞 fallback 链
 - **目标**：实现自驱式阻塞处理基础链：暂停 → 等待 → 重寻路 → Nudge → GiveUp。保留 `fromCell`/`toCell` 占位用于后续双格升级。
 - **文件**：`src/game/unit/UnitMovement.ts`
 - **阻塞处理逻辑**：
@@ -543,7 +543,7 @@
 - **验收**：两辆坦克相向而行碰撞后，等待片刻自动绕开对方，最终都到达目标点。
 - **状态**：[x] `done`
 
-### Task 23.4: 双格占用（Dual-Cell Occupancy）
+### Task 105: 双格占用（Dual-Cell Occupancy）
 - **目标**：将 ActorMap 占用从单格升级为双格（OpenRA FromCell + ToCell）。移动中单位同时注册当前格和下一格，解决交叉移动穿透问题。
 - **文件**：`src/game/unit/Unit.ts`, `src/game/unit/UnitMovement.ts`, `src/game/objects/Unit.ts`
 - **关键变更**：
@@ -553,7 +553,7 @@
 - **验收**：两辆车交叉移动（A: (30,30)→(32,30)，B: (32,30)→(30,30)）不会穿透。
 - **状态**：[x] `done`
 
-### Task 23.5: BlockedByActor 四级阻塞分级
+### Task 106: BlockedByActor 四级阻塞分级
 - **目标**：引入 OpenRA 风格的四级阻塞分级：`All` → `Stationary` → `Immovable` → `None`。Pathfinder 和 UnitCollision 支持按级别过滤阻塞者。
 - **文件**：`src/game/unit/BlockedByActor.ts`, `src/game/unit/UnitCollision.ts`, `src/game/terrain/Pathfinder.ts`
 - **关键变更**：
@@ -563,21 +563,21 @@
 - **验收**：`Stationary` 级别忽略移动中单位；`None` 级别完全忽略所有单位阻塞。
 - **状态**：[x] `done`
 
-### Task 23.6: Fallback 链完整实现
+### Task 107: Fallback 链完整实现
 - **目标**：实现 OpenRA 风格的完整阻塞处理链：Wait → CellIsEvacuating → Repath(四级回退) → Nudge → Backup → GiveUp。解决 head-on 相向而行死锁。
 - **文件**：`src/game/unit/UnitMovement.ts`, `src/game/terrain/Pathfinder.ts`
 - **关键变更**：
   - `cellIsEvacuating()`：检查格子内所有 occupants 是否都在离开（`isMovingBetweenCells && toCell ≠ 当前格`）
   - `Pathfinder` 新增 `allowBlockedEnd` 参数：终点允许被移动中的单位暂时占用，因为对方可能正在离开
   - Repath 时拒绝与当前路径完全相同的结果，避免无限循环
-  - `notifyBlockersAt` / `onNotifyBlockingMove` 骨架预埋（Task 23.8 实现响应）
+  - `notifyBlockersAt` / `onNotifyBlockingMove` 骨架预埋（Task 109 实现响应）
 - **验收**：
   1. CellIsEvacuating：B 离开 (31,30) 时，A 等待而非 repath
   2. Repath fallback：静止阻塞者挡住路径时，A 自动绕路
   3. Head-on：两车相向而行，最终都到达目标无死锁
 - **状态**：[x] `done`
 
-### Task 23.7: Locomotor 配置层 + TerrainSpeeds
+### Task 108: Locomotor 配置层 + TerrainSpeeds
 - **目标**：建立 OpenRA 风格的 Locomotor 配置层，将移动属性从"硬编码/全局统一"改为"按单位类型配置"。
 - **文件**：`src/game/rules/Locomotor.ts`, `src/game/terrain/Pathfinder.ts`, `src/game/unit/UnitMovement.ts`
 - **OpenRA 对标**：`LocomotorInfo`（`WaitAverage`、`WaitSpread`、`SharesCell`、`TerrainSpeeds`）
@@ -590,7 +590,7 @@
 - **验收**：同一地图，步兵路径穿过岩石缝隙，车辆路径自动绕开岩石；步兵与车辆的寻路代价不同。
 - **状态**：[x] `done`
 
-### Task 23.8: SubCell 步兵共享 + NotifyBlocker 完整实现
+### Task 109: SubCell 步兵共享 + NotifyBlocker 完整实现
 - **目标**：基于 Locomotor 的 `SharesCell` 实现步兵共享格子，并完成阻塞者的主动避让响应。
 - **文件**：`src/game/world/ActorMap.ts`, `src/game/unit/UnitCollision.ts`, `src/game/unit/Unit.ts`
 - **OpenRA 对标**：`LocomotorInfo.SharesCell` + `Mobile.OnNotifyBlockingMove` → `Nudge`
@@ -601,7 +601,7 @@
 - **验收**：5 名步枪兵站在同一格子，互相不阻塞；1 辆坦克驶入该格时，步兵被推开（或坦克绕开）。
 - **状态**：[x] `done`
 
-### Task 23.9: 密集场景压力测试
+### Task 110: 密集场景压力测试
 - **目标**：在狭窄地形（如桥梁、峡谷）中测试 10+ 单位交叉移动，验证无死锁、无穿透、无异常漂移。
 - **文件**：`src/main.ts`（测试场景）、`src/game/unit/UnitMovement.ts`、`src/game/terrain/Pathfinder.ts`
 - **关键变更**：
@@ -610,11 +610,11 @@
   - **Nudge/Backup 剪枝**：`findNudgeCell` 和 `findBackupCell` 中对角线方向增加 Corner Cutting 检查
   - **阻塞弹回平滑化**：车辆移动被阻塞时不再弹回 `fromCell + 0.1`，而是限制在 `fromCell` 边界内（maxOffset=0.499），消除视觉抖动
   - **GameConsole 增强**：`cnc.pathfind` 支持指定 `locomotion` 参数
-  - **e2e 测试**：`task-23.9-crossBridge.spec.ts`（60s 过桥验证）+ `task-23.9-cornerCutting.spec.ts`（A* 对角线剪枝 + 60s Rock 压力测试）
+  - **e2e 测试**：`task-110-crossBridge.spec.ts`（60s 过桥验证）+ `task-110-cornerCutting.spec.ts`（A* 对角线剪枝 + 60s Rock 压力测试）
 - **验收**：10 辆坦克分别从地图两侧出发前往对侧，所有单位最终到达目标或合理停止（无死锁）；60s 压力测试无车辆进入 Rock 格子；A* Track 路径不切割 Rock 墙角。
 - **状态**：[x] `done`
 
-### Task 23.10 + 24: 框选多单位 + 群体移动
+### Task 111 + 24: 框选多单位 + 群体移动
 - **目标**：将鼠标输入层（框选/点击/群体移动）与重构后的寻路碰撞系统对接。左键框选，右键对每个选中单位独立下达移动命令。
 - **文件**：`src/core/InputManager.ts`, `src/core/RTSCamera.ts`, `src/core/SelectionBox.ts`, `src/game/SelectionManager.ts`, `src/main.ts`
 - **OpenRA 对标**：`MoveOrderGenerator` — 为每个选中单位生成独立的 `Move` 活动，各单位独立寻路到目标附近；`World.Selection` 不随移动命令清空
@@ -626,7 +626,7 @@
 - **验收**：框选 3+ 单位命中正确；右键移动命令同步下达给所有选中单位；40 个 e2e 测试全部通过。
 - **状态**：[x] `done`
 
-### Task 23.11: evaluateNearestMovableCell + close-enough 到达容忍度
+### Task 112: evaluateNearestMovableCell + close-enough 到达容忍度
 - **目标**：解决"多单位被命令到同一目标格子时，后到达者无限重试/抖动"的问题。
 - **文件**：`src/game/unit/UnitMovement.ts`
 - **OpenRA 对标**：`Mobile.NearestMoveableCell` + `Move.PopPath` 中 `nearEnough` 判定
@@ -641,12 +641,12 @@
 
 ## Phase 5.5 续：寻路碰撞系统深度对齐（OpenRA 核心能力缺口）
 
-> 以下任务基于 OpenRA 源码 Cross Check 结果，将当前项目尚未实现的寻路/移动核心能力补齐。按**优先级**排序：性能层（23.12–23.15）→ 机动性层（23.16–23.17）→ 活动变体层（23.18–23.19）→ **OpenRA 核心能力缺口回填（23.20–23.31）**。
+> 以下任务基于 OpenRA 源码 Cross Check 结果，将当前项目尚未实现的寻路/移动核心能力补齐。按**优先级**排序：性能层（113–116）→ 机动性层（117–118）→ 活动变体层（119–120）→ **OpenRA 核心能力缺口回填（121–132）**。
 > 参考：`harness/05_OPENRA_ANALYSIS.md` §移动系统深度分析、§地形系统深度分析。
 >
 > **缺口回填优先级**：🔴 P0（性能/数据核心，100+单位或地图数据瓶颈）→ 🟡 P1（架构/表现，50+单位体验或地形真实感）→ 🟢 P2（细节优化/渲染升级）→ ⚪ P3（扩展性/调参/编辑器）。
 
-### Task 23.12: Locomotor Cache / CellFlag — 阻塞状态缓存层
+### Task 113: Locomotor Cache / CellFlag — 阻塞状态缓存层
 - **目标**：将每格阻塞状态从 O(occupants) ActorMap 查询改为 O(1) CellFlag 位域缓存。每个格子维护 `HasMovingActor | HasStationaryActor | HasCrushableActor | HasTemporaryBlocker` 标志，单位状态变更时标记 dirty，延迟重建。
 - **文件**：`src/game/world/LocomotorCache.ts`（或扩展 `ActorMap.ts`）
 - **OpenRA 对标**：`OpenRA.Mods.Common/Traits/World/Locomotor.cs` 中 `CellFlag` enum + `blockingCache` + `UpdateCellBlocking`
@@ -655,11 +655,11 @@
   - `LocomotorCache`：二维数组 `CellCache[][]`，每个 cell 存储 `CellFlag` + `Immovable` bitset
   - 延迟更新：`dirtyCells` Set，首次查询时重建
   - `UnitCollision` 和 `Pathfinder` 优先查缓存，缓存无法裁决时回退 ActorMap
-- **依赖**：Task 23.17（Crush Logic）需要 `HasCrushableActor` 标志
+- **依赖**：Task 118（Crush Logic）需要 `HasCrushableActor` 标志
 - **验收**：50+ 单位同屏时，`getBlockedCells` 和 `findPath` 耗时降低 > 50%（Chrome DevTools Performance 验证）
 - **状态**：[x] `done`
 
-### Task 23.13: Hierarchical Pathfinding / DomainIndex — 分层寻路与区域索引
+### Task 114: Hierarchical Pathfinding / DomainIndex — 分层寻路与区域索引
 - **目标**：将地图划分为 10×10 网格，构建抽象图。通过 flood-fill 为每个连通区域分配 domain ID。寻路前 O(1) 判断起点与终点是否在同一 domain，不可达时直接返回 null，避免 A* 遍历整张地图。
 - **文件**：`src/game/terrain/HierarchicalPathfinder.ts`
 - **OpenRA 对标**：`OpenRA.Mods.Common/Pathfinder/HierarchicalPathFinder.cs`
@@ -672,7 +672,7 @@
 - **验收**：128×128 地图中，起点与终点被水域/悬崖隔开时，寻路在 <1ms 内返回 null，A* openSet 为空
 - **状态**：[x] `done`
 
-### Task 23.14: Bidirectional A* + Predicate Search — 双向寻路与条件目标搜索
+### Task 115: Bidirectional A* + Predicate Search — 双向寻路与条件目标搜索
 - **目标**：1) 实现双向 A*（从起点和终点同时扩展），在大地图上减少搜索空间。2) 实现 Predicate Search：给定条件函数（如"找到最近的可达敌方单位"），A* 搜索到第一个满足条件的格子即停止。
 - **文件**：`src/game/terrain/Pathfinder.ts` 扩展或 `src/game/terrain/BidirectionalPathSearch.ts`
 - **OpenRA 对标**：`PathSearch.FindBidiPath` + `ToTargetCellByPredicate`
@@ -683,7 +683,7 @@
 - **验收**：256×256 大地图上双向 A* 比单向快 30%+；Predicate Search 能在 10 步内找到"距离起点最近的敌方可见单位"
 - **状态**：[x] `done`
 
-### Task 23.15: MoveCooldownHelper — 重寻路频率限制
+### Task 116: MoveCooldownHelper — 重寻路频率限制
 - **目标**：为 `Move` 和 `Follow` 活动引入冷却机制，防止追逐移动目标时频繁 repath。冷却时间按距离动态调整（越近冷却越短）。
 - **文件**：`src/game/unit/MoveCooldownHelper.ts`
 - **OpenRA 对标**：`OpenRA.Mods.Common/Activities/Move/MoveCooldownHelper.cs`
@@ -694,7 +694,7 @@
 - **验收**：单位跟随移动目标时，repath 频率从每帧 1 次降至每秒 2-5 次，移动轨迹平滑无抖动
 - **状态**：[x] `done`
 
-### Task 23.16: Turn Speed / Pre-movement Turn — 转向机制
+### Task 117: Turn Speed / Pre-movement Turn — 转向机制
 - **目标**：为每个 Locomotor 定义 `TurnSpeed`（每 tick 最大转向角度）。支持 `TurnsWhileMoving` 模式：false 时单位必须在格子边界停下来完成转向后才能进入下一格；true 时边走边转，使用 `TickFacing` 逐步插值。非连续方向变化（如 U-turn）使用弧线轨迹。
 - **文件**：`src/game/rules/Locomotor.ts`, `src/game/unit/UnitRotation.ts`, `src/game/unit/UnitMovement.ts`
 - **OpenRA 对标**：`MobileInfo.TurnSpeed` + `Turn` activity + `MoveFirstHalf.IsTurn`
@@ -706,7 +706,7 @@
 - **验收**：重型坦克（TurnsWhileMoving=false）从北转向东时，会在格子边界停下、车身旋转 90° 后再前进；轻坦（TurnsWhileMoving=true）边移动边平滑转向，无滑步感
 - **状态**：[x] `done`
 
-### Task 23.17: Crush Logic — 碾压逻辑
+### Task 118: Crush Logic — 碾压逻辑
 - **目标**：为 Locomotor 添加 `Crushes` 类别（如 `"infantry"`）。车辆进入格子前 `WarnCrush` 通知可碾压单位（触发 `Nudge` 躲避）；进入后 `OnCrush` 直接击杀。`CellFlag` 缓存加速可碾压判定。
 - **文件**：`src/game/rules/Locomotor.ts`, `src/game/unit/Crushable.ts`, `src/game/unit/UnitMovement.ts`
 - **OpenRA 对标**：`Locomotor.Crushes` + `Crushable` trait + `EnteringCell`/`FinishedMoving`
@@ -716,11 +716,11 @@
   - `WarnCrush`：进入格子前通知 occupant，75% 概率触发 Nudge 躲避
   - `OnCrush`：`UnitMovement.update` 中到达目标格后，对未被 Nudge 的 crushable 单位执行击杀
   - `CellFlag.HasCrushableActor`：Locomotor Cache 中标记该格有可被碾压单位
-- **依赖**：Task 23.12（Locomotor Cache 提供 `HasCrushableActor` 标志）
+- **依赖**：Task 113（Locomotor Cache 提供 `HasCrushableActor` 标志）
 - **验收**：坦克驶入步兵格子时，步兵有 75% 概率被警告并 Nudge 躲开；若未躲开则被碾压击杀，步兵状态变为 `Dying`
 - **状态**：[x] `done`
 
-### Task 23.18: MoveWithinRange + Follow — 范围移动与跟随活动
+### Task 119: MoveWithinRange + Follow — 范围移动与跟随活动
 - **目标**：实现 `MoveWithinRange`：在目标 min/max 环形范围内寻找可达格子停止（用于远程单位攻击就位）。实现 `Follow`：持续跟随目标，使用 MoveCooldownHelper 防 spam-repath。
 - **文件**：`src/game/unit/activities/MoveWithinRange.ts`, `src/game/unit/activities/Follow.ts`
 - **OpenRA 对标**：`MoveWithinRange.cs` + `Follow.cs`
@@ -728,11 +728,11 @@
   - `MoveWithinRange`：继承/复用 `UnitMovement`，目标变为"任意满足 `minRange <= distance <= maxRange` 的可达格子"，A* 在到达容忍范围内即可停止
   - `Follow`：每 tick 检测目标位置，超出跟随距离时触发 `MoveWithinRange(target, 0, followRange)`；使用 MoveCooldownHelper 限制 repath
   - `UnitController` 扩展：支持 `moveWithinRange(target, minRange, maxRange)` 和 `follow(target, range)` API
-- **依赖**：Task 23.15（MoveCooldownHelper）
+- **依赖**：Task 116（MoveCooldownHelper）
 - **验收**：火箭兵被命令攻击移动时，在距目标 5 格处停下并进入攻击状态；跟随友方 MCV 时保持 3 格距离平滑跟随，MCV 停下后火箭兵也停下
 - **状态**：[x] `done`
 
-### Task 23.19: PathGraph 抽象与 ICustomMovementLayer 预留 — 寻路图与多层移动架构
+### Task 120: PathGraph 抽象与 ICustomMovementLayer 预留 — 寻路图与多层移动架构
 - **目标**：1) 抽象 `IPathGraph` 接口，支持不同移动层的邻居生成和代价计算。2) 预留 `ICustomMovementLayer` 接口（Entry/Exit 代价、层索引），为隧道、地下、跳跃喷气、高架桥、空军/海军层做准备。3) 当前仅实现 GroundLayer，其他层为骨架。
 - **文件**：`src/game/terrain/IPathGraph.ts`, `src/game/terrain/ICustomMovementLayer.ts`, `src/game/terrain/GroundPathGraph.ts`
 - **OpenRA 对标**：`IPathGraph.cs` + `ICustomMovementLayer.cs` + `DensePathGraph.cs`
@@ -745,7 +745,7 @@
   - 预留层类型：`Tunnel=1`, `Subterranean=2`, `Jumpjet=3`, `ElevatedBridge=4`
 - **验收**：代码结构支持未来添加 `SubterraneanLayer`、`JumpjetLayer`、`TerrainTunnelLayer` 而不修改 `Pathfinder` 核心 A* 逻辑；现有所有 e2e 测试通过
 
-### Task 23.20: A* 优先队列（Binary Heap）— 寻路 Open 集合优化 🔴 P0
+### Task 121: A* 优先队列（Binary Heap）— 寻路 Open 集合优化 🔴 P0
 - **目标**：将 `Pathfinder` 中线性数组扫描找最小 `f`（O(n)）替换为二叉堆（O(log n)）。解决 100+ 单位同屏时寻路性能瓶颈。
 - **文件**：`src/game/terrain/BinaryHeap.ts`, `src/game/terrain/Pathfinder.ts`
 - **OpenRA 对标**：`PathSearch.cs` 中的 `PriorityQueue` + `GraphConnection.CostComparer`
@@ -757,8 +757,8 @@
 - **验收**：100×100 地图随机起点终点寻路 1000 次，`openSet` 操作总耗时降低 > 50%；e2e 回归测试全部通过
 - **状态**：[ ] `done`
 
-### Task 23.21: HPF 抽象图 + 抽象启发式引导 — 分层寻路完整实现 🔴 P0
-- **目标**：在当前地形 flood-fill domain（Task 23.13）基础上，构建完整的 10×10 grid 抽象图（抽象节点 + 抽象边），并用抽象路径的反向 A* 预计算结果引导局部搜索的启发值，实现"先上高速再下匝道"的分层策略。
+### Task 122: HPF 抽象图 + 抽象启发式引导 — 分层寻路完整实现 🔴 P0
+- **目标**：在当前地形 flood-fill domain（Task 114）基础上，构建完整的 10×10 grid 抽象图（抽象节点 + 抽象边），并用抽象路径的反向 A* 预计算结果引导局部搜索的启发值，实现"先上高速再下匝道"的分层策略。
 - **文件**：`src/game/terrain/HierarchicalPathfinder.ts`, `src/game/terrain/AbstractPathGraph.ts`
 - **OpenRA 对标**：`HierarchicalPathFinder.cs` 中 `AbstractEdge` / `AbstractNode` / `Heuristic` 生成 + `AbstractNodeForCost`
 - **关键变更**：
@@ -768,11 +768,11 @@
   - 局部启发值 = 当前格子到下一抽象节点的直线代价 + 抽象路径剩余代价
   - `AbstractNodeForCost`：延迟跟随抽象路径——只有当抽象路径确实需要绕开障碍时才跟随，否则允许单位直接直线走向目标
   - 双向分层搜索：单源单目标时用双向；多源或不可达源时用单向
-- **依赖**：Task 23.13（已有 domain 索引），Task 23.20（优先队列提升抽象图搜索效率）
+- **依赖**：Task 114（已有 domain 索引），Task 121（优先队列提升抽象图搜索效率）
 - **验收**：128×128 地图含水域/悬崖障碍，长距离（>50格）寻路搜索节点数比纯 A* 减少 60%+；路径质量（长度）与纯 A* 差异 <5%
 - **状态**：[ ] `done`
 
-### Task 23.22: HPF 动态更新 — 脏 Grid 增量重建与建筑监听 🔴 P0
+### Task 123: HPF 动态更新 — 脏 Grid 增量重建与建筑监听 🔴 P0
 - **目标**：`HierarchicalPathfinder` 不再仅在构造时一次性 build，而是在地形变化或建筑建造/销毁/受损时自动延迟标记脏 grid，在下次寻路时增量重建受影响的抽象节点和边。
 - **文件**：`src/game/terrain/HierarchicalPathfinder.ts`, `src/game/building/Building.ts`, `src/game/terrain/TerrainGrid.ts`
 - **OpenRA 对标**：`HierarchicalPathFinder.cs` 中 `dirtyGridIndexes` + `RebuildDirtyGrids` + `ActorMap.CellUpdated` 监听
@@ -782,11 +782,11 @@
   - 增量重建：仅重建 dirty grid 内的抽象节点和与相邻 grid 的抽象边，非全图重建
   - 两层缓存：terrain-only（`BlockedByActor.None`）和 terrain+immovable（`BlockedByActor.Immovable`），分别维护抽象图
   - `areConnected` 查询前先 flush dirty grids
-- **依赖**：Task 23.21（完整抽象图实现后才有可增量更新的结构）
+- **依赖**：Task 122（完整抽象图实现后才有可增量更新的结构）
 - **验收**：建筑建造后 1 秒内，该 grid 的 domain 和抽象边自动更新；寻路结果正确反映新阻塞状态；增量重建耗时 < 全图重建的 10%
 - **状态**：[ ] `done`
 
-### Task 23.23: SubCell 精确位置 — 步兵同格子位移 🟡 P1
+### Task 124: SubCell 精确位置 — 步兵同格子位移 🟡 P1
 - **目标**：将步兵的 `sharesCell` 从布尔值升级为 `SubCell` 枚举（`FullCell` + 4~5 个精确偏移位置），同格步兵自动分配到不同子位置，解决多步兵同格视觉重叠问题。
 - **文件**：`src/game/terrain/SubCell.ts`, `src/game/unit/Unit.ts`, `src/game/terrain/ActorMap.ts`, `src/renderer/UnitRenderer.ts`
 - **OpenRA 对标**：`MapGrid.cs` 中 `SubCell` 枚举 + `Mobile.cs` 中 `GetAvailableSubCell`
@@ -796,11 +796,11 @@
   - `GetAvailableSubCell`：步兵进入格子时自动分配第一个空闲子位置；载具始终占 `FullCell`
   - 渲染层：步兵模型位置按 `SubCell` 偏移微调（如 TL = (-0.3, -0.3), TR = (0.3, -0.3) 等）
   - `UnitCollision` 和 `Pathfinder`：SubCell 级别不影响通行性判定（保持格子级），仅影响视觉和精确碰撞
-- **依赖**：Task 23.12（LocomotorCache 需兼容 subCell 信息）
+- **依赖**：Task 113（LocomotorCache 需兼容 subCell 信息）
 - **验收**：5 名步兵进入同一格子时，视觉上分散在 5 个不同子位置，不重叠；载具进入步兵格子时按原有 crush/warn 逻辑处理
 - **状态**：[ ] `done`
 
-### Task 23.24: Activity 树重构 — 从扁平状态机到嵌套活动系统 🟡 P1
+### Task 125: Activity 树重构 — 从扁平状态机到嵌套活动系统 🟡 P1
 - **目标**：将当前扁平的 `UnitStateMachine`（Idle/Moving/Attacking/Dying）重构为 OpenRA 风格的 Activity 树（嵌套子活动 + 链表队列 + 取消机制 + 生命周期钩子），使复杂行为组合（攻击移动、巡逻、进入载具）成为可能。
 - **文件**：`src/game/activities/Activity.ts`, `src/game/activities/MoveActivity.ts`, `src/game/activities/AttackMoveActivity.ts`, `src/game/unit/Unit.ts`
 - **OpenRA 对标**：`Activity.cs`（`TickOuter` / `ChildActivity` / `NextActivity` / `ChildHasPriority` / `IsInterruptible`）+ `Move.cs` + `MoveAdjacentTo.cs`
@@ -810,12 +810,12 @@
   - `MoveWithinRangeActivity` / `FollowActivity`：从 `UnitController` 中的方法迁移为独立 `Activity` 子类
   - `AttackMoveActivity`：父活动持有 `Move` 子活动 + 定期 `ScanForTarget`；发现敌人时取消当前 Move、排队 `AttackActivity`，攻击完成后恢复 Move
   - `UnitController`：`CurrentActivity` 驱动每 tick 状态；`QueueActivity()` / `CancelActivity()` 管理活动队列；原有 `stateMachine` 字段逐步废弃
-- **依赖**：Task 23.18（MoveWithinRange/Follow 需先稳定运行后迁移），Task 23.28（MovePart 拆分后 MoveActivity 更精细）
+- **依赖**：Task 119（MoveWithinRange/Follow 需先稳定运行后迁移），Task 129（MovePart 拆分后 MoveActivity 更精细）
 - **验收**：坦克移动时内部活动链可观测为 `AttackMove → Move → [MoveFirstHalf → MoveSecondHalf]`；收到新命令时旧 Activity 正确取消并调用 `OnLastRun`；支持嵌套（如 `AttackMove` 包含 `Move` + `ScanForTarget` + `Attack`）
 - **状态**：[ ] `done`
 
-### Task 23.25: CustomMovementLayer 实现 — 多层移动（隧道/地下/飞行/桥梁）🟡 P1
-- **目标**：基于 Task 23.19 预留的 `ICustomMovementLayer` 接口，完整实现 `TerrainTunnelLayer`（隧道）、`SubterraneanLayer`（地下）、`JumpjetLayer`（跳跃喷气）、`ElevatedBridgeLayer`（高架桥）四层；`MapPathGraph` 支持按 layer 索引的 `CellInfo` 数组；`Pathfinder` 在搜索中自动处理层间过渡。
+### Task 126: CustomMovementLayer 实现 — 多层移动（隧道/地下/飞行/桥梁）🟡 P1
+- **目标**：基于 Task 120 预留的 `ICustomMovementLayer` 接口，完整实现 `TerrainTunnelLayer`（隧道）、`SubterraneanLayer`（地下）、`JumpjetLayer`（跳跃喷气）、`ElevatedBridgeLayer`（高架桥）四层；`MapPathGraph` 支持按 layer 索引的 `CellInfo` 数组；`Pathfinder` 在搜索中自动处理层间过渡。
 - **文件**：`src/game/terrain/layers/TerrainTunnelLayer.ts`, `src/game/terrain/layers/SubterraneanLayer.ts`, `src/game/terrain/layers/JumpjetLayer.ts`, `src/game/terrain/layers/ElevatedBridgeLayer.ts`, `src/game/terrain/MapPathGraph.ts`, `src/game/terrain/Pathfinder.ts`
 - **OpenRA 对标**：`TerrainTunnelLayer.cs` + `SubterraneanActorLayer.cs` + `JumpjetActorLayer.cs` + `ElevatedBridgeLayer.cs` + `MapPathGraph.cs` + `DensePathGraph.GetConnections` 层过渡逻辑
 - **关键变更**：
@@ -826,23 +826,23 @@
   - `ElevatedBridgeLayer`（ElevatedBridge=4）：桥两端可上下桥；桥面上移动不受下方水域/地形影响；桥可炸毁（层失效）
   - 层间过渡：`entryCost` / `exitCost` 控制切换代价；`DensePathGraph.GetConnections` 在 layer 0 时检查所有启用的自定义层的入口；在自定义层时检查返回地面的出口
   - `ActorMap` 按 layer 索引存储占用（`Map<layer, Map<cellKey, Set<id>>>`）
-- **依赖**：Task 23.19（接口预留），Task 23.22（HPF 动态更新需支持多层抽象图），Task 23.29（高度系统用于判断桥/斜坡过渡）
+- **依赖**：Task 120（接口预留），Task 123（HPF 动态更新需支持多层抽象图），Task 130（高度系统用于判断桥/斜坡过渡）
 - **验收**：钻地坦克从 A 点潜入地下层、地下移动至 B 点、钻出地面，全程路径正确；火箭兵跳跃跨越悬崖；桥梁层可正常上下通行且炸毁后不可通行
 - **状态**：[ ] `done`
 
-### Task 23.26: Lane Bias + 方向邻居裁剪 — A* 邻居优化 🟢 P2
+### Task 127: Lane Bias + 方向邻居裁剪 — A* 邻居优化 🟢 P2
 - **目标**：1) **Lane Bias**：同向移动单位在 A* 边代价上增加 ±1 偏移，让同向单位自然分流到不同"车道"，减少拥堵。2) **Directed Neighbors**：利用父节点信息裁剪邻居集合，避免重复搜索可从父节点更便宜到达的格子。
 - **文件**：`src/game/terrain/GroundPathGraph.ts`
 - **OpenRA 对标**：`DensePathGraph.cs` 中 `CalculateCellPathCost`（Lane Bias）+ `DirectedNeighbors` / `DirectedNeighborsConservative`
 - **关键变更**：
   - Lane Bias：基于当前移动方向，在 `CalculateCellPathCost` 中对特定方向的邻居代价 ±1；同向单位代价略减（鼓励保持方向），逆向略增（鼓励让路）
   - Directed Neighbors：水平/垂直移动时只考虑前方 3 格（排除父节点方向及侧后方）；对角移动时考虑前方 3 格 + 侧方 2 格
-  - Conservative 模式：当存在高度不连续（Task 23.29）时，使用保守裁剪（仅排除父节点），因为高度差可能导致原本被父节点阻挡的格子从当前格子可达
-  - 与 `biasSeed`（Task 23.x）配合：Lane Bias 提供确定性分流，biasSeed 提供随机性分流
+  - Conservative 模式：当存在高度不连续（Task 130）时，使用保守裁剪（仅排除父节点），因为高度差可能导致原本被父节点阻挡的格子从当前格子可达
+  - 与 `biasSeed`（Task 102–132 系列已完成的寻路基础任务）配合：Lane Bias 提供确定性分流，biasSeed 提供随机性分流
 - **验收**：10 辆坦克同向移动时，自然形成 2-3 条车道而非挤成一团；搜索节点数减少 10-20%；e2e 回归测试通过
 - **状态**：[ ] `done`
 
-### Task 23.27: Path Cache / CellInfoLayerPool — 搜索层对象池 🟢 P2
+### Task 128: Path Cache / CellInfoLayerPool — 搜索层对象池 🟢 P2
 - **目标**：为 `Pathfinder` 引入搜索层对象池，避免每次 A* 搜索都分配新的 `CellInfo`（g/h/parent）大数组。按 World 实例隔离池，池大小上限 4，搜索结束后归还。
 - **文件**：`src/game/terrain/CellInfoLayerPool.ts`, `src/game/terrain/Pathfinder.ts`
 - **OpenRA 对标**：`CellInfoLayerPool.cs` + `ConditionalWeakTable<World, CellInfoLayerPool>` + `PooledCellInfoLayer`
@@ -855,7 +855,7 @@
 - **验收**：连续 100 次寻路，内存分配曲线平稳，无大数组分配导致的 GC 锯齿峰值；Chrome DevTools Memory 面板验证
 - **状态**：[ ] `done`
 
-### Task 23.28: MovePart 拆分 + 弧线移动 + 倒车 — 移动表现精细化 🟢 P2
+### Task 129: MovePart 拆分 + 弧线移动 + 倒车 — 移动表现精细化 🟢 P2
 - **目标**：将当前连续插值移动拆分为 `MoveFirstHalf`（从当前格子中心到两格中点）和 `MoveSecondHalf`（从中点到目标格子中心），支持弧线轨迹转向、倒车移动、进度延续，使重型坦克转向和矿车短距调头更自然。
 - **文件**：`src/game/unit/UnitMovement.ts`, `src/game/unit/UnitRotation.ts`, `src/game/unit/activities/MoveFirstHalf.ts`, `src/game/unit/activities/MoveSecondHalf.ts`
 - **OpenRA 对标**：`Move.cs` 中 `MoveFirstHalf` / `MoveSecondHalf` + elliptical arc + backwards movement + `carryoverProgress`
@@ -864,13 +864,13 @@
   - `MoveSecondHalf`：从中点沿新 facing 方向移动到 `toCell` 中心；支持 `carryoverProgress`（上一段未用完的移动进度带入本段）
   - 弧线轨迹（elliptical arc）：方向变化 > 90° 时，计算旋转中心，单位沿椭圆弧移动而非直角折线
   - 倒车（backwards movement）：角度差 > 256°（约 180°）且路径较短时，单位面向不变、倒行进入目标格（典型：矿车）
-  - 地形倾斜（terrain orientation）：斜坡（Task 23.29）上移动时，模型 Z 轴根据两端高度差插值倾斜
+  - 地形倾斜（terrain orientation）：斜坡（Task 130）上移动时，模型 Z 轴根据两端高度差插值倾斜
   - `carryoverProgress`：如果一 tick 内 `MoveFirstHalf` 已完成但剩余移动距离未用完，将剩余距离带入 `MoveSecondHalf`，保证速度视觉连续性
-- **依赖**：Task 23.16（TurnSpeed / TurnsWhileMoving 已实现），Task 23.24（Activity 树拆分后 MoveFirstHalf/MoveSecondHalf 为子 Activity）
+- **依赖**：Task 117（TurnSpeed / TurnsWhileMoving 已实现），Task 125（Activity 树拆分后 MoveFirstHalf/MoveSecondHalf 为子 Activity）
 - **验收**：重型坦克从北向东转向时走弧线而非直角折线；矿车接到后方短距命令时直接倒行；移动速度 tick 间连续无跳变
 - **状态**：[ ] `done`
 
-### Task 23.29: 高度系统（Cell Height）— 悬崖与斜坡 🟢 P2
+### Task 130: 高度系统（Cell Height）— 悬崖与斜坡 🟢 P2
 - **目标**：为每个 Cell 定义高度值（0~N），相邻格高度差 >1 时不可直接通行（悬崖），高度差 =1 时为斜坡（可通行且视觉上车身倾斜）。为 HPF 保守模式和桥梁层提供高度基础。
 - **文件**：`src/game/terrain/TerrainGrid.ts`, `src/game/terrain/GroundPathGraph.ts`, `src/renderer/terrain/TerrainMesh.ts`
 - **OpenRA 对标**：`Map.cs` 中 `Height` 定义 + `Locomotor.cs` 中 `MovementCostForCell` 高度检查
@@ -880,11 +880,11 @@
   - `GroundPathGraph` 邻居生成：检查 `|height[src] - height[dst]| > 1` 时该邻居不可达；`= 1` 时视为斜坡，正常通行
   - 渲染层：TerrainMesh 根据四角的 `height` 调整顶点 Z 坐标，实现斜坡视觉倾斜；单位在斜坡上时模型根据两端高度差插值倾斜
   - `HierarchicalPathfinder`：高度不连续影响抽象边建立（相邻 grid 边界上若存在高度差 >1 则不可建立抽象边）
-- **依赖**：Task 23.26（Directed Neighbors Conservative 模式需要高度信息）
+- **依赖**：Task 127（Directed Neighbors Conservative 模式需要高度信息）
 - **验收**：悬崖（高度差 ≥2）不可直接跨越，单位绕行；斜坡（高度差 =1）可通行且视觉上车身倾斜；高度变化后 HPF domain 正确更新
 - **状态**：[ ] `done`
 
-### Task 23.30: ActorMap Bin 划分 + 触发器系统 ⚪ P3
+### Task 131: ActorMap Bin 划分 + 触发器系统 ⚪ P3
 - **目标**：在格子精确查询基础上，增加 **Bin 空间划分**（`BoxSize=10` 世界单位）加速任意世界坐标范围查询；支持 `CellTrigger`（格子进入/离开事件）和 `ProximityTrigger`（圆形/盒形邻近事件）。
 - **文件**：`src/game/terrain/ActorMap.ts`, `src/game/world/TriggerSystem.ts`
 - **OpenRA 对标**：`ActorMap.cs` 中 `Bin` 系统 + `CellTrigger` / `ProximityTrigger`
@@ -898,7 +898,7 @@
 - **验收**：100×100 地图范围查询比遍历全图快 10 倍+；CellTrigger 在步兵进入地雷格时正确触发爆炸；ProximityTrigger 在核弹落点 5 格范围内正确选中所有单位
 - **状态**：[ ] `done`
 
-### Task 23.31: 启发式权重可调 — 次优路径换性能 ⚪ P3
+### Task 132: 启发式权重可调 — 次优路径换性能 ⚪ P3
 - **目标**：`Pathfinder` 支持 `heuristicWeightPercentage` 参数（默认 100% = 严格可采纳，可调至 125% 换取更快计算但允许路径次优）。在性能敏感场景（如大量单位同时寻路）下动态降低路径精度换取响应速度。
 - **文件**：`src/game/terrain/Pathfinder.ts`
 - **OpenRA 对标**：`PathSearch.cs` 中 `heuristicWeightPercentage`（默认 125）
@@ -1519,7 +1519,7 @@
 
 > 目标：200+ 单位 + 50+ 建筑 + 100+ 子弹仍保持 60FPS。
 >
-> **寻路性能子系统**：Phase 5.5 续中 Task 23.20（Binary Heap）、23.21（HPF 抽象图）、23.22（HPF 动态更新）、23.27（CellInfoLayerPool）专门负责寻路算法性能优化，与本 Phase 的渲染/逻辑优化形成互补。
+> **寻路性能子系统**：Phase 5.5 续中 Task 121（Binary Heap）、122（HPF 抽象图）、123（HPF 动态更新）、128（CellInfoLayerPool）专门负责寻路算法性能优化，与本 Phase 的渲染/逻辑优化形成互补。
 
 ### Task 76: 地形 LOD 与动态细分
 - **目标**：远距离地形降低顶点密度，近景保持高细节。Babylon.js `LOD` 系统或自定义 shader。
@@ -1686,8 +1686,8 @@
 | Phase 3 数据层 | 4 | 4 | |
 | Phase 4 单位系统 | 5 | 5 | |
 | Phase 5 建筑系统 | 5 | 4 | Task 20–23 完成；23.32 电力自动汇总（P1）待开发 |
-| Phase 5.5 寻路碰撞深度对齐 | 31 | 19 | 23.1–23.19 完成；23.20–23.31 为 OpenRA 核心能力缺口回填（P0–P3）|
-| Phase 6 交互 | 5 | 0 | Task 24 已合并到 23.10；25–27 待开发；27.5 外交、27.6 Bot 类型 |
+| Phase 5.5 寻路碰撞深度对齐 | 31 | 19 | Task 102–120 完成；Task 121–132 为 OpenRA 核心能力缺口回填（P0–P3）|
+| Phase 6 交互 | 5 | 0 | Task 24 已合并到 111；25–27 待开发；27.5 外交、27.6 Bot 类型 |
 | Phase 6.5 架构升级 | 5 | 0 | 95 YAML、96 Trait、97 规则继承、100 House 拆分、101 科技树 Watcher |
 | Phase 7 战斗经济 | 6 | 0 | 含 98 Weapon 规则（Task 28 前置）；30.5 经济双轨化（P0） |
 | Phase 7.5 Mod 支持 | 1 | 0 | 99 地图级规则覆盖 |
