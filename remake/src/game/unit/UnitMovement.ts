@@ -794,6 +794,11 @@ export class UnitMovement {
     controller.toCellY = controller.fromCellY;
   }
 
+  /** 外部调用：立即取消当前移动（如 Stop 命令）。 */
+  cancelMovement(controller: UnitController): void {
+    this.stop(controller);
+  }
+
   /**
    * 将移动方向向量转换为 C++ 风格的 DirType（0–255）。
    * 0 = 北, 64 = 东, 128 = 南, 192 = 西。

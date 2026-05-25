@@ -27,6 +27,8 @@ import type { PathNode, Pathfinder } from '../game/terrain/Pathfinder';
 import { Crushable } from '../game/unit/Crushable';
 import { getLocomotor, makeTerrainCostCallback } from '../game/rules/Locomotor';
 import { Locomotion } from '../game/rules/UnitDefinitions';
+import { OrderDispatcher } from '../game/order/OrderDispatcher';
+import { groundOrder, actorOrder, selfOrder, type GameOrder } from '../game/order/GameOrder';
 
 /**
  * Debug console — exposes `window.cnc` commands for runtime spawning,
@@ -127,6 +129,8 @@ export class GameConsole {
       clearIndexedTest: this.clearIndexedTest.bind(this),
       openraMap: this.openraMap.bind(this),
       editorLoadTileSet: this.editorLoadTileSet.bind(this),
+      orderDispatch: this.orderDispatch.bind(this),
+      orderList: this.orderList.bind(this),
       editorSelectBrush: this.editorSelectBrush.bind(this),
       editorPaint: this.editorPaint.bind(this),
       editorFloodFill: this.editorFloodFill.bind(this),
@@ -414,7 +418,7 @@ export class GameConsole {
       if (obj.id === unitId && obj.type === GameObjectType.Unit) {
         const unit = obj as Unit;
         const success = unit.logic.moveWithinRange(targetX, targetY, minRange, maxRange, this.pathfinder);
-        console.info(
+        console.warn(
           `MoveWithinRange ${unit.definition.name} (${unitId}) → (${targetX},${targetY}) [${minRange}-${maxRange}]:`,
           success ? 'STARTED' : 'FAILED'
         );
@@ -436,7 +440,7 @@ export class GameConsole {
       if (obj.id === unitId && obj.type === GameObjectType.Unit) {
         const unit = obj as Unit;
         unit.logic.follow(targetId, range, this.pathfinder);
-        console.info(`Follow ${unit.definition.name} (${unitId}) → ${targetId} @ ${range}`);
+        console.warn(`Follow ${unit.definition.name} (${unitId}) → ${targetId} @ ${range}`);
         found = true;
         break;
       }
@@ -1138,6 +1142,47 @@ export class GameConsole {
       console.warn('Failed to load OpenRA map:', err);
       return { error: String(err) };
     }
+  }
+
+  // ── Task 140: GameOrder ──
+
+  /** Dispatch a GameOrder and return the result. */
+  private orderDispatch(
+    orderString: string,
+    subjectId: string,
+    targetType: 'ground' | 'actor' | 'none' = 'none',
+    targetX?: number,
+    targetY?: number,
+    targetActorId?: string,
+    queued = false
+  ): Record<string, unknown> {
+    const dispatcher = OrderDispatcher.getInstance();
+    let order: GameOrder;
+    if (targetType === 'ground' && targetX !== undefined && targetY !== undefined) {
+      order = groundOrder(
+        orderString as import('../game/order/GameOrder').OrderString,
+        subjectId,
+        targetX,
+        targetY,
+        queued
+      );
+    } else if (targetType === 'actor' && targetActorId) {
+      order = actorOrder(
+        orderString as import('../game/order/GameOrder').OrderString,
+        subjectId,
+        targetActorId,
+        queued
+      );
+    } else {
+      order = selfOrder(orderString as import('../game/order/GameOrder').OrderString, subjectId);
+    }
+    const result = dispatcher.dispatch(order);
+    return { order, result };
+  }
+
+  /** List all registered order handlers. */
+  private orderList(): string[] {
+    return OrderDispatcher.getInstance().getRegisteredOrderStrings();
   }
 
   // ── Map Editor (Task 9.8) ──

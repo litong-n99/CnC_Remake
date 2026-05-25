@@ -21,6 +21,8 @@ import { ConstructionQueue } from './game/building/ConstructionQueue';
 import { BuildingPlacer } from './game/building/BuildingPlacer';
 import { Sidebar } from './renderer/ui/Sidebar';
 import { GameConsole } from './debug/GameConsole';
+import { OrderDispatcher } from './game/order/OrderDispatcher';
+import { MoveHandler, StopHandler } from './game/order/handlers';
 
 const bootstrap = async (): Promise<void> => {
   // ── Engine ──
@@ -437,6 +439,11 @@ const bootstrap = async (): Promise<void> => {
   // ── Debug Console ──
   const gameConsole = new GameConsole(scene, lighting, rtsCamera, terrain, placer, pathfinder);
   gameConsole.install();
+
+  // ── Task 140: OrderDispatcher 初始化 ──
+  const orderDispatcher = OrderDispatcher.getInstance();
+  orderDispatcher.register(new MoveHandler(pathfinder));
+  orderDispatcher.register(new StopHandler());
 
   // ── Task 24: InputManager（鼠标输入层）──
   const selectionManager = SelectionManager.getInstance();
