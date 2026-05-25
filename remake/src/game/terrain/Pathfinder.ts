@@ -3,12 +3,15 @@ import type { LandType } from './TerrainGrid';
 import { HierarchicalPathfinder } from './HierarchicalPathfinder';
 import { GroundPathGraph } from './GroundPathGraph';
 import type { PathNode, PathGraphContext } from './IPathGraph';
+import { BinaryHeap } from './BinaryHeap';
 
 /**
  * A* 寻路 — 基于 IPathGraph 抽象的多层寻路器。
  *
  * Task 23.19 重构：将邻居生成逻辑迁移到 GroundPathGraph，
  * Pathfinder 专注于 A* 算法框架，支持未来切换多层图（隧道、地下等）。
+ *
+ * Task 121 优化：openSet 从线性数组 O(n) 扫描替换为 BinaryHeap O(log n)。
  *
  * 对应 C++ `Find_Path()`（UNIT.CPP / FOOT.CPP）的简化 TS 实现。
  */
@@ -21,6 +24,8 @@ interface AStarNode {
   f: number;
   parent: AStarNode | null;
 }
+
+const nodeKey = (n: AStarNode): string => `${n.x},${n.y}`;
 
 export { PathNode };
 
@@ -86,7 +91,7 @@ export class Pathfinder {
     if (!allowBlockedEnd && (dynamicBlocked.has(`${endX},${endY}`) || extraBlocked?.has(`${endX},${endY}`)))
       return null;
 
-    const openSet: AStarNode[] = [];
+    const openSet = new BinaryHeap<AStarNode>((a, b) => a - b, nodeKey);
     const closedSet = new Set<string>();
 
     const startNode: AStarNode = {
@@ -98,25 +103,20 @@ export class Pathfinder {
       parent: null,
     };
     startNode.f = startNode.g + startNode.h;
-    openSet.push(startNode);
+    openSet.push(startNode, startNode.f);
 
     const graphContext: PathGraphContext = {
       getTerrainCost,
       biasSeed,
     };
 
-    while (openSet.length > 0) {
-      let currentIdx = 0;
-      for (let i = 1; i < openSet.length; i++) {
-        if (openSet[i].f < openSet[currentIdx].f) currentIdx = i;
-      }
-      const current = openSet[currentIdx];
+    while (!openSet.isEmpty()) {
+      const current = openSet.pop()!;
 
       if (current.x === endX && current.y === endY) {
         return this.reconstructPath(current);
       }
 
-      openSet.splice(currentIdx, 1);
       closedSet.add(`${current.x},${current.y}`);
 
       const connections = this.groundGraph.getConnections({ x: current.x, y: current.y }, graphContext);
@@ -133,15 +133,17 @@ export class Pathfinder {
         if (!allowBlockedEnd && isEndCell && (dynamicBlocked.has(key) || extraBlocked?.has(key))) continue;
 
         const g = current.g + conn.cost;
-        const existing = openSet.find((o) => o.x === nx && o.y === ny);
+        const existing = openSet.has({ x: nx, y: ny, g: 0, h: 0, f: 0, parent: null });
 
         if (!existing) {
           const h = this.groundGraph.getHeuristic({ x: nx, y: ny }, { x: endX, y: endY });
-          openSet.push({ x: nx, y: ny, g, h, f: g + h, parent: current });
-        } else if (g < existing.g) {
-          existing.g = g;
-          existing.f = g + existing.h;
-          existing.parent = current;
+          const node: AStarNode = { x: nx, y: ny, g, h, f: g + h, parent: current };
+          openSet.push(node, node.f);
+        } else {
+          // key 已存在：BinaryHeap.push 会自动 decrease-key（若新 f 更小）
+          const h = this.groundGraph.getHeuristic({ x: nx, y: ny }, { x: endX, y: endY });
+          const node: AStarNode = { x: nx, y: ny, g, h, f: g + h, parent: current };
+          openSet.push(node, node.f);
         }
       }
     }
@@ -178,12 +180,12 @@ export class Pathfinder {
     if (!allowBlockedEnd && (dynamicBlocked.has(`${endX},${endY}`) || extraBlocked?.has(`${endX},${endY}`)))
       return null;
 
-    const forwardOpen: AStarNode[] = [];
+    const forwardOpen = new BinaryHeap<AStarNode>((a, b) => a - b, nodeKey);
     const forwardClosed = new Set<string>();
     const forwardG = new Map<string, number>();
     const forwardParent = new Map<string, AStarNode>();
 
-    const backwardOpen: AStarNode[] = [];
+    const backwardOpen = new BinaryHeap<AStarNode>((a, b) => a - b, nodeKey);
     const backwardClosed = new Set<string>();
     const backwardG = new Map<string, number>();
     const backwardParent = new Map<string, AStarNode>();
@@ -197,7 +199,7 @@ export class Pathfinder {
       parent: null,
     };
     startNode.f = startNode.g + startNode.h;
-    forwardOpen.push(startNode);
+    forwardOpen.push(startNode, startNode.f);
     forwardG.set(`${startX},${startY}`, 0);
 
     const endNode: AStarNode = {
@@ -209,7 +211,7 @@ export class Pathfinder {
       parent: null,
     };
     endNode.f = endNode.g + endNode.h;
-    backwardOpen.push(endNode);
+    backwardOpen.push(endNode, endNode.f);
     backwardG.set(`${endX},${endY}`, 0);
 
     let bestMeeting: { node: AStarNode; totalG: number } | null = null;
@@ -219,12 +221,12 @@ export class Pathfinder {
       biasSeed,
     };
 
-    while (forwardOpen.length > 0 && backwardOpen.length > 0) {
-      const forwardF = forwardOpen[0].f;
-      const backwardF = backwardOpen[0].f;
+    while (!forwardOpen.isEmpty() && !backwardOpen.isEmpty()) {
+      const forwardF = forwardOpen.peekPriority() ?? Infinity;
+      const backwardF = backwardOpen.peekPriority() ?? Infinity;
       const useForward = forwardF <= backwardF;
 
-      const current = useForward ? this.popBest(forwardOpen) : this.popBest(backwardOpen);
+      const current = useForward ? forwardOpen.pop()! : backwardOpen.pop()!;
       const key = `${current.x},${current.y}`;
 
       if (useForward) {
@@ -249,10 +251,7 @@ export class Pathfinder {
         }
       }
 
-      const minF = Math.min(
-        forwardOpen.length > 0 ? forwardOpen[0].f : Infinity,
-        backwardOpen.length > 0 ? backwardOpen[0].f : Infinity
-      );
+      const minF = Math.min(forwardOpen.peekPriority() ?? Infinity, backwardOpen.peekPriority() ?? Infinity);
       if (bestMeeting && minF >= bestMeeting.totalG) {
         break;
       }
@@ -283,7 +282,7 @@ export class Pathfinder {
             : this.groundGraph.getHeuristic({ x: nx, y: ny }, { x: startX, y: startY });
           const node: AStarNode = { x: nx, y: ny, g, h, f: g + h, parent: null };
           const open = useForward ? forwardOpen : backwardOpen;
-          this.insertSorted(open, node);
+          open.push(node, node.f);
         }
       }
     }
@@ -312,7 +311,7 @@ export class Pathfinder {
   ): PathNode[] | null {
     const dynamicBlocked = this.getBlockedCells?.(check) ?? new Set<string>();
 
-    const openSet: AStarNode[] = [];
+    const openSet = new BinaryHeap<AStarNode>((a, b) => a - b, nodeKey);
     const closedSet = new Set<string>();
 
     const startNode: AStarNode = {
@@ -323,25 +322,20 @@ export class Pathfinder {
       f: 0,
       parent: null,
     };
-    openSet.push(startNode);
+    openSet.push(startNode, 0);
 
     const graphContext: PathGraphContext = {
       getTerrainCost,
       biasSeed,
     };
 
-    while (openSet.length > 0) {
-      let currentIdx = 0;
-      for (let i = 1; i < openSet.length; i++) {
-        if (openSet[i].f < openSet[currentIdx].f) currentIdx = i;
-      }
-      const current = openSet[currentIdx];
+    while (!openSet.isEmpty()) {
+      const current = openSet.pop()!;
 
       if (predicate(current.x, current.y)) {
         return this.reconstructPath(current);
       }
 
-      openSet.splice(currentIdx, 1);
       closedSet.add(`${current.x},${current.y}`);
 
       if (current.g >= maxDistance) continue;
@@ -356,14 +350,14 @@ export class Pathfinder {
         if (dynamicBlocked.has(key) || extraBlocked?.has(key)) continue;
 
         const g = current.g + conn.cost;
-        const existing = openSet.find((o) => o.x === nx && o.y === ny);
+        const existing = openSet.has({ x: nx, y: ny, g: 0, h: 0, f: 0, parent: null });
 
         if (!existing) {
-          openSet.push({ x: nx, y: ny, g, h: 0, f: g, parent: current });
-        } else if (g < existing.g) {
-          existing.g = g;
-          existing.f = g + existing.h;
-          existing.parent = current;
+          const node: AStarNode = { x: nx, y: ny, g, h: 0, f: g, parent: current };
+          openSet.push(node, node.f);
+        } else {
+          const node: AStarNode = { x: nx, y: ny, g, h: 0, f: g, parent: current };
+          openSet.push(node, node.f);
         }
       }
     }
@@ -372,16 +366,6 @@ export class Pathfinder {
   }
 
   // ── Helpers ──
-
-  private popBest(openSet: AStarNode[]): AStarNode {
-    return openSet.shift()!;
-  }
-
-  private insertSorted(openSet: AStarNode[], node: AStarNode): void {
-    let i = 0;
-    while (i < openSet.length && openSet[i].f < node.f) i++;
-    openSet.splice(i, 0, node);
-  }
 
   private reconstructPathBidirectional(
     meetingNode: AStarNode,

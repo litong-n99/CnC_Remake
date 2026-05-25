@@ -772,7 +772,7 @@
   - 预留层类型：`Tunnel=1`, `Subterranean=2`, `Jumpjet=3`, `ElevatedBridge=4`
 - **验收**：代码结构支持未来添加 `SubterraneanLayer`、`JumpjetLayer`、`TerrainTunnelLayer` 而不修改 `Pathfinder` 核心 A* 逻辑；现有所有 e2e 测试通过
 
-### Task 121: A* 优先队列（Binary Heap）— 寻路 Open 集合优化 🔴 P0
+### Task 121: A* 优先队列（Binary Heap）— 寻路 Open 集合优化 🔴 P0 ✅
 - **目标**：将 `Pathfinder` 中线性数组扫描找最小 `f`（O(n)）替换为二叉堆（O(log n)）。解决 100+ 单位同屏时寻路性能瓶颈。
 - **文件**：`src/game/terrain/BinaryHeap.ts`, `src/game/terrain/Pathfinder.ts`
 - **OpenRA 对标**：`PathSearch.cs` 中的 `PriorityQueue` + `GraphConnection.CostComparer`
@@ -1984,7 +1984,7 @@
 - [ ] **Task 93**：移动端触控适配
 - [ ] **Task 94**：Steam 集成（远期）
 - [ ] **Task 95**：YAML 规则解析基础设施 🔴 P0
-- [ ] **Task 121**：A* 优先队列（Binary Heap）— 寻路 Open 集合优化 🔴 P0
+- [x] **Task 121**：A* 优先队列（Binary Heap）— 寻路 Open 集合优化 🔴 P0
 - [ ] **Task 127**：Lane Bias + 方向邻居裁剪 — A* 邻居优化 🟢 P2
 - [ ] **Task 128**：Path Cache / CellInfoLayerPool — 搜索层对象池 🟢 P2
 - [ ] **Task 131**：ActorMap Bin 划分 + 触发器系统 ⚪ P3
