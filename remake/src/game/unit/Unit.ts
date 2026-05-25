@@ -13,6 +13,7 @@ import { GameObjectType } from '../objects/GameObject';
 import type { WeaponDef } from '../weapon/Weapon';
 import { WEAPON_DEFINITIONS } from '../weapon/Weapon';
 import { BulletManager } from '../weapon/Bullet';
+import { DamageCalculator, WarheadType } from '../combat/DamageCalculator';
 import type { Scene } from '@babylonjs/core';
 
 /**
@@ -333,9 +334,11 @@ export class UnitController {
     }
   }
 
-  /** 受到伤害 — 对应 C++ TechnoClass::Take_Damage() 简化。 */
+  /** 受到伤害 — 对应 C++ TechnoClass::Take_Damage() 简化。
+   *
+   * Task 29: 传入的伤害值应为 DamageCalculator 计算后的实际伤害。
+   * 装甲修正已在 applyDamageToTargetCell 中处理。 */
   takeDamage(amount: number): void {
-    // TODO: Phase 7 接入 DamageCalculator（含 ArmorBias / Warhead 修正）
     this.currentHealth = Math.max(0, this.currentHealth - amount);
     if (this.currentHealth <= 0) {
       this.stateMachine.transition(UnitState.Dying);
@@ -397,9 +400,9 @@ export class UnitController {
     this.reloadTimer = weapon.reloadTime;
     this.isFiring = true;
 
-    BulletManager.getInstance().spawn(scene, weapon, this.x, this.y, targetX, targetY, (_hx, _hy, damage) => {
-      // 命中伤害（简化：直接对目标格子上的所有敌方单位造成伤害）
-      this.applyDamageToTargetCell(targetX, targetY, damage);
+    BulletManager.getInstance().spawn(scene, weapon, this.x, this.y, targetX, targetY, (_hx, _hy, damage, warhead) => {
+      // 命中伤害（Task 29：使用 DamageCalculator 计算装甲修正）
+      this.applyDamageToTargetCell(targetX, targetY, damage, warhead);
     });
 
     return true;
@@ -424,7 +427,7 @@ export class UnitController {
     return undefined;
   }
 
-  private applyDamageToTargetCell(targetX: number, targetY: number, damage: number): void {
+  private applyDamageToTargetCell(targetX: number, targetY: number, rawDamage: number, warhead: WarheadType): void {
     const manager = GameObjectManager.getInstance();
     for (const obj of manager.getAll()) {
       if (!obj.isAlive()) continue;
@@ -432,11 +435,34 @@ export class UnitController {
       const dy = obj.y - targetY;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist < 1.5 && obj.id !== this.unitId) {
-        // Task 28: 通过 takeDamage 应用伤害（同步 logic + GameObject health）
+        // Task 29: 使用 DamageCalculator 计算装甲修正后的实际伤害
+        let actualDamage: number;
         if (obj.type === GameObjectType.Unit) {
-          (obj as import('../objects/Unit').Unit).logic.takeDamage(damage);
+          const unit = obj as import('../objects/Unit').Unit;
+          actualDamage = DamageCalculator.calculateDamage(
+            rawDamage,
+            warhead,
+            unit.definition.armor,
+            this.firepowerBias,
+            unit.logic.armorBias,
+            Math.round(dist)
+          );
+          unit.logic.takeDamage(actualDamage);
+        } else if (obj.type === GameObjectType.Building) {
+          const building = obj as import('../objects/Building').Building;
+          actualDamage = DamageCalculator.calculateDamage(
+            rawDamage,
+            warhead,
+            building.definition.armor,
+            this.firepowerBias,
+            1.0, // 建筑暂无 armorBias
+            Math.round(dist)
+          );
+          building.logic.takeDamage(actualDamage);
         } else {
-          obj.health = Math.max(0, obj.health - damage);
+          // 其他类型（Aircraft/Vessel 等）暂不处理装甲
+          actualDamage = rawDamage;
+          obj.takeDamage(actualDamage);
         }
       }
     }

@@ -7,6 +7,8 @@
  *   - fire()：创建 Bullet 并加入全局活跃列表
  */
 
+import { WarheadType } from '../combat/DamageCalculator';
+
 export type ProjectileType = 'instant' | 'projectile';
 
 export interface WeaponDef {
@@ -21,6 +23,8 @@ export interface WeaponDef {
   readonly projectileSpeed: number;
   /** 弹道类型：即时命中 或 抛射体。 */
   readonly projectileType: ProjectileType;
+  /** 弹头类型 — Task 29。 */
+  readonly warhead: WarheadType;
 }
 
 /** 默认武器库（硬编码，后续迁移到 YAML）。 */
@@ -32,6 +36,7 @@ export const WEAPON_DEFINITIONS: Record<string, WeaponDef> = {
     reloadTime: 30,
     projectileSpeed: 1.2,
     projectileType: 'projectile',
+    warhead: WarheadType.AP,
   },
   Rifle: {
     name: 'M16 Rifle',
@@ -40,6 +45,7 @@ export const WEAPON_DEFINITIONS: Record<string, WeaponDef> = {
     reloadTime: 15,
     projectileSpeed: 0,
     projectileType: 'instant',
+    warhead: WarheadType.SA,
   },
   Rocket: {
     name: 'Dragon Rocket',
@@ -48,5 +54,6 @@ export const WEAPON_DEFINITIONS: Record<string, WeaponDef> = {
     reloadTime: 45,
     projectileSpeed: 0.8,
     projectileType: 'projectile',
+    warhead: WarheadType.HE,
   },
 } as const;

@@ -8,9 +8,10 @@
 
 import { Vector3, MeshBuilder, StandardMaterial, Color3, type Scene } from '@babylonjs/core';
 import type { WeaponDef } from './Weapon';
+import { WarheadType } from '../combat/DamageCalculator';
 
 export interface BulletHitCallback {
-  (targetX: number, targetY: number, damage: number): void;
+  (targetX: number, targetY: number, damage: number, warhead: WarheadType): void;
 }
 
 /** 活跃的弹道实例。 */
@@ -93,7 +94,7 @@ export class Bullet {
 
   private hit(): void {
     this.destroyed = true;
-    this.onHit(this.toX, this.toY, this.weapon.damage);
+    this.onHit(this.toX, this.toY, this.weapon.damage, this.weapon.warhead);
     this.createExplosion();
     this.dispose();
   }

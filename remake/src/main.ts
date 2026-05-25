@@ -7,7 +7,7 @@ import { TerrainGrid, LandType } from './game/terrain/TerrainGrid';
 import { MapLoader } from './game/terrain/MapLoader';
 import { Pathfinder } from './game/terrain/Pathfinder';
 import { GameRules } from './game/rules/GameRules';
-import { UNIT_DEFINITIONS } from './game/rules/UnitDefinitions';
+import { UNIT_DEFINITIONS, ArmorType } from './game/rules/UnitDefinitions';
 import { BUILDING_DEFINITIONS, getBuildingFootprint } from './game/rules/BuildingDefinitions';
 import { HouseManager } from './game/house/HouseManager';
 import { HouseType } from './game/house/House';
@@ -26,6 +26,7 @@ import { OrderDispatcher } from './game/order/OrderDispatcher';
 import { MoveHandler, StopHandler, AttackHandler, GuardHandler } from './game/order/handlers';
 import { BulletManager } from './game/weapon/Bullet';
 import { WEAPON_DEFINITIONS } from './game/weapon/Weapon';
+import { DamageCalculator, WarheadType } from './game/combat/DamageCalculator';
 import { GameLoop } from './game/GameLoop';
 import { loadYamlRulesWithFallback } from './game/rules/YamlLoader';
 
@@ -550,6 +551,9 @@ const bootstrap = async (): Promise<void> => {
   w.BUILDING_DEFINITIONS = BUILDING_DEFINITIONS;
   w.GameRules = GameRules;
   w.WEAPON_DEFINITIONS = WEAPON_DEFINITIONS;
+  w.DamageCalculator = DamageCalculator;
+  w.WarheadType = WarheadType;
+  w.ArmorType = ArmorType;
 
   // ── Verification ──
   const goManager = GameObjectManager.getInstance();
