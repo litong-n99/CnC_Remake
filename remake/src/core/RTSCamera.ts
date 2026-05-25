@@ -62,6 +62,13 @@ export class RTSCamera {
   private rightClickPending = false;
   private rightDragStartX = 0;
   private rightDragStartY = 0;
+
+  // Double-click tracking
+  private lastClickTime = 0;
+  private lastClickX = 0;
+  private lastClickY = 0;
+  private readonly doubleClickThresholdMs = 300;
+  private readonly doubleClickThresholdPx = 10;
   private isRotatingLeft = false;
   private isRotatingRight = false;
   /** Camera rotation speed in radians per second (Insert / Delete). */
@@ -76,6 +83,8 @@ export class RTSCamera {
   onRightClick: ((screenX: number, screenY: number) => void) | null = null;
   /** 左键单击回调（仅在未发生拖拽时触发）。参数为屏幕像素坐标。 */
   onLeftClick: ((screenX: number, screenY: number) => void) | null = null;
+  /** 左键双击回调。参数为屏幕像素坐标。 */
+  onLeftDoubleClick: ((screenX: number, screenY: number) => void) | null = null;
   /** 左键拖动开始回调。参数为起始屏幕像素坐标。 */
   onLeftDragStart: ((startX: number, startY: number) => void) | null = null;
   /** 左键拖动中回调。参数为 (startX, startY, currentX, currentY)。 */
@@ -351,8 +360,25 @@ export class RTSCamera {
 
     // click 作为 onLeftClick 的后备触发（某些环境如 Playwright headless
     // 不触发 mousedown/mouseup，只触发 click）
-    if (!this.leftDragHappened && this.onLeftClick) {
-      this.onLeftClick(this.mouseX, this.mouseY);
+    if (!this.leftDragHappened) {
+      const now = performance.now();
+      const dt = now - this.lastClickTime;
+      const dx = this.mouseX - this.lastClickX;
+      const dy = this.mouseY - this.lastClickY;
+      const isDoubleClick =
+        dt < this.doubleClickThresholdMs &&
+        Math.abs(dx) < this.doubleClickThresholdPx &&
+        Math.abs(dy) < this.doubleClickThresholdPx;
+
+      if (isDoubleClick && this.onLeftDoubleClick) {
+        this.onLeftDoubleClick(this.mouseX, this.mouseY);
+      } else if (this.onLeftClick) {
+        this.onLeftClick(this.mouseX, this.mouseY);
+      }
+
+      this.lastClickTime = now;
+      this.lastClickX = this.mouseX;
+      this.lastClickY = this.mouseY;
     }
     // 重置拖动标志，为下一次交互做准备
     this.leftDragHappened = false;

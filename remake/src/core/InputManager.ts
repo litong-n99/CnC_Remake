@@ -33,6 +33,7 @@ export class InputManager {
   private selectionBox: SelectionBox;
 
   private isShiftDown = false;
+  private isCtrlDown = false;
 
   constructor(
     rtsCamera: RTSCamera,
@@ -59,9 +60,23 @@ export class InputManager {
   private setupKeyboard(): void {
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Shift') this.isShiftDown = true;
+      if (e.key === 'Control') this.isCtrlDown = true;
+
+      // Squad hotkeys: 0-9
+      if (/^[0-9]$/.test(e.key)) {
+        const index = parseInt(e.key, 10);
+        if (this.isCtrlDown) {
+          this.selectionManager.saveSquad(index);
+          console.warn(`Squad ${index} saved (${this.selectionManager.getSelected().length} units)`);
+        } else {
+          this.selectionManager.restoreSquad(index, this.scene);
+          console.warn(`Squad ${index} restored`);
+        }
+      }
     });
     window.addEventListener('keyup', (e) => {
       if (e.key === 'Shift') this.isShiftDown = false;
+      if (e.key === 'Control') this.isCtrlDown = false;
     });
   }
 
@@ -73,6 +88,7 @@ export class InputManager {
     this.rtsCamera.onLeftDragMove = (sx, sy, cx, cy) => this.handleLeftDragMove(sx, sy, cx, cy);
     this.rtsCamera.onLeftDragEnd = (sx, sy, ex, ey) => this.handleLeftDragEnd(sx, sy, ex, ey);
     this.rtsCamera.onRightClick = (sx, sy) => this.handleRightClick(sx, sy);
+    this.rtsCamera.onLeftDoubleClick = (sx, sy) => this.handleLeftDoubleClick(sx, sy);
   }
 
   // ── Coordinate helpers ──
@@ -152,6 +168,16 @@ export class InputManager {
     } else if (!this.isShiftDown) {
       this.selectionManager.clear();
       console.warn('Cleared selection');
+    }
+  }
+
+  private handleLeftDoubleClick(screenX: number, screenY: number): void {
+    const unit = this.pickUnitAt(screenX, screenY);
+    if (unit) {
+      this.selectionManager.selectSameType(unit, this.scene);
+      console.warn(
+        `Double-click selected all ${unit.definition.name} (${this.selectionManager.getSelected().length} units)`
+      );
     }
   }
 

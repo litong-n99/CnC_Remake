@@ -1904,7 +1904,7 @@
 
 | 深度 | 任务数 | 已完成 | 待完成 | 说明 |
 |------|--------|--------|--------|------|
-| 0 | 124 | 45 | 79 | 无显式前置依赖 |
+| 0 | 124 | 48 | 76 | 无显式前置依赖 |
 | 1 | 36 | 11 | 25 | 依赖深度 0 |
 | 2 | 1 | 0 | 1 | 依赖深度 1 |
 
@@ -1913,7 +1913,7 @@
 **已完成 48 个**：Task 0、Task 0.1、Task 0.2、Task 0.3、Task 0.4、Task 0.5、Task 1、Task 2、Task 3、Task 4、Task 5、Task 6、Task 7、Task 8、Task 9、Task 11、Task 12、Task 13、Task 14、Task 15、Task 16、Task 17、Task 18、Task 19、Task 20、Task 21、Task 22、Task 23、Task 24、Task 102、Task 103、Task 104、Task 105、Task 106、Task 107、Task 108、Task 109、Task 110、Task 112、Task 114、Task 115、Task 116、Task 117、Task 120、Task 121、Task 139、Task 140、Task 141
 
 **待完成 78 个**：
-- [ ] **Task 25**：选择系统（单选、框选、编队）
+- [x] **Task 25**：选择系统（单选、框选、编队）
 - [ ] **Task 26**：命令分发器（Move / Attack / Guard / Stop）
 - [ ] **Task 27**：HUD / UI 覆盖层（资源、小地图、单位信息）
 - [ ] **Task 28**：武器与弹道系统（翻译 WEAPON.CPP / BULLET.CPP）
@@ -1937,8 +1937,8 @@
 - [ ] **Task 46**：命令队列（Shift Queue）
 - [ ] **Task 47**：攻击移动（Attack-Move）
 - [ ] **Task 48**：巡逻（Patrol）
-- [ ] **Task 49**：单位编组（Ctrl+Number）
-- [ ] **Task 50**：双击选中同类单位 + 框选优化
+- [x] **Task 49**：单位编组（Ctrl+Number）
+- [x] **Task 50**：双击选中同类单位 + 框选优化
 - [ ] **Task 51**：Sell / Repair / Power 工具按钮
 - [ ] **Task 52**：战役数据层
 - [ ] **Task 53**：战役进度保存

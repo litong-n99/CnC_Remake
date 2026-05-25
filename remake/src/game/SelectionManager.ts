@@ -1,4 +1,5 @@
 import type { Unit } from './objects/Unit';
+import { GameObjectManager } from './objects/GameObjectManager';
 import { MeshBuilder, StandardMaterial, Color3, Vector3, type Scene } from '@babylonjs/core';
 
 /**
@@ -14,6 +15,9 @@ export class SelectionManager {
   private selectionRings: ReturnType<typeof MeshBuilder.CreateTorus>[] = [];
   private selectionMaterial: StandardMaterial | null = null;
   private scene: Scene | null = null;
+
+  /** 编组存储：0-9 共 10 个编组槽 */
+  private squads = new Map<number, Unit[]>();
 
   private constructor() {}
 
@@ -84,6 +88,47 @@ export class SelectionManager {
   /** 是否有选中单位。 */
   hasSelection(): boolean {
     return this.selected.size > 0;
+  }
+
+  // ── Squad / group management ──
+
+  /** 将当前选中单位保存到指定编组槽（0-9）。 */
+  saveSquad(index: number): void {
+    if (index < 0 || index > 9) return;
+    this.squads.set(index, [...this.selected]);
+  }
+
+  /** 从指定编组槽恢复选中。 */
+  restoreSquad(index: number, scene: Scene): void {
+    if (index < 0 || index > 9) return;
+    const squad = this.squads.get(index);
+    if (!squad || squad.length === 0) return;
+    // 过滤掉已销毁的单位
+    const alive = squad.filter((u) => u.isAlive());
+    if (alive.length > 0) {
+      this.selectMultiple(alive, scene);
+    }
+  }
+
+  /** 获取指定编组槽的内容（不修改当前选择）。 */
+  getSquad(index: number): readonly Unit[] {
+    return this.squads.get(index) ?? [];
+  }
+
+  /** 选中与给定单位同类型的所有可见单位。 */
+  selectSameType(unit: Unit, scene: Scene): void {
+    this.ensureScene(scene);
+    const targetId = unit.definition.id;
+    const sameType: Unit[] = [];
+    for (const obj of GameObjectManager.getInstance().getUnits()) {
+      const u = obj as Unit;
+      if (u.definition.id === targetId && u.isAlive()) {
+        sameType.push(u);
+      }
+    }
+    if (sameType.length > 0) {
+      this.selectMultiple(sameType, scene);
+    }
   }
 
   private showRings(): void {
