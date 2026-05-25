@@ -29,6 +29,8 @@ import { getLocomotor, makeTerrainCostCallback } from '../game/rules/Locomotor';
 import { Locomotion } from '../game/rules/UnitDefinitions';
 import { OrderDispatcher } from '../game/order/OrderDispatcher';
 import { groundOrder, actorOrder, selfOrder, type GameOrder } from '../game/order/GameOrder';
+import { OrderGeneratorManager } from '../game/order/OrderGenerator';
+import { TestOrderGenerator } from '../game/order/generators/TestOrderGenerator';
 
 /**
  * Debug console — exposes `window.cnc` commands for runtime spawning,
@@ -131,6 +133,10 @@ export class GameConsole {
       editorLoadTileSet: this.editorLoadTileSet.bind(this),
       orderDispatch: this.orderDispatch.bind(this),
       orderList: this.orderList.bind(this),
+      orderGeneratorCreate: this.orderGeneratorCreate.bind(this),
+      orderGeneratorState: this.orderGeneratorState.bind(this),
+      orderGeneratorClick: this.orderGeneratorClick.bind(this),
+      orderGeneratorCancel: this.orderGeneratorCancel.bind(this),
       editorSelectBrush: this.editorSelectBrush.bind(this),
       editorPaint: this.editorPaint.bind(this),
       editorFloodFill: this.editorFloodFill.bind(this),
@@ -1183,6 +1189,52 @@ export class GameConsole {
   /** List all registered order handlers. */
   private orderList(): string[] {
     return OrderDispatcher.getInstance().getRegisteredOrderStrings();
+  }
+
+  // ── Task 139: OrderGenerator ──
+
+  /** Create and activate a TestOrderGenerator. */
+  private orderGeneratorCreate(): Record<string, unknown> {
+    const mgr = OrderGeneratorManager.getInstance();
+    mgr.set(new TestOrderGenerator());
+    return { active: true, type: 'TestOrderGenerator' };
+  }
+
+  /** Query current OrderGenerator state. */
+  private orderGeneratorState(): Record<string, unknown> {
+    const mgr = OrderGeneratorManager.getInstance();
+    const gen = mgr.get();
+    if (!gen) return { active: false };
+    return {
+      active: gen.isActive(),
+      type: gen.constructor.name,
+      ...(gen instanceof TestOrderGenerator ? { clickCount: gen.getMoveCount() } : {}),
+    };
+  }
+
+  /** Simulate a click on the current OrderGenerator. */
+  private orderGeneratorClick(screenX: number, screenY: number, shift = false): Record<string, unknown> {
+    const mgr = OrderGeneratorManager.getInstance();
+    const result = mgr.handleDown({ screenX, screenY, shift });
+    return {
+      generated: result.generated,
+      feedback: result.feedback,
+      message: result.message,
+      order: result.order
+        ? {
+            orderString: result.order.orderString,
+            subjectId: result.order.subjectId,
+            target: result.order.target,
+            queued: result.order.queued,
+          }
+        : null,
+    };
+  }
+
+  /** Cancel current OrderGenerator. */
+  private orderGeneratorCancel(): Record<string, unknown> {
+    OrderGeneratorManager.getInstance().cancel();
+    return { active: false };
   }
 
   // ── Map Editor (Task 9.8) ──

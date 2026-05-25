@@ -1791,7 +1791,7 @@
   - `AttackMoveOrderGenerator`：Task 47 使用
 - **优先级**：🟡 P1
 - **依赖**：无（深度 0）
-- **状态**：[ ] `pending`
+- **状态**：[x] `done`
 - **验收**：`cnc.building()` 控制台命令通过 `PlaceBuildingOrderGenerator` 实现。
 
 ### Task 140: GameOrder 命令抽象与队列
@@ -1889,8 +1889,8 @@
 | Phase 15 AI高级 | 7 | 0 | Bot、超级武器、空军、桥梁 |
 | Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
 | Phase 17 发布平台 | 3 | 0 | 桌面打包、移动端、Steam |
-| 补充任务（OpenRA 差距填补） | 4 | 1 | 140 GameOrder done；139 OrderGenerator、141 逻辑帧分离、142 AudioManager pending |
-| **总计** | **153** | **48** | |
+| 补充任务（OpenRA 差距填补） | 4 | 2 | 139 OrderGenerator done、140 GameOrder done；141 逻辑帧分离、142 AudioManager pending |
+| **总计** | **153** | **49** | |
 
 ---
 
@@ -1910,7 +1910,7 @@
 
 ### 深度 0：根基层（无显式前置依赖）
 
-**已完成 45 个**：Task 0、Task 0.1、Task 0.2、Task 0.3、Task 0.4、Task 0.5、Task 1、Task 2、Task 3、Task 4、Task 5、Task 6、Task 7、Task 8、Task 9、Task 11、Task 12、Task 13、Task 14、Task 15、Task 16、Task 17、Task 18、Task 19、Task 20、Task 21、Task 22、Task 23、Task 24、Task 102、Task 103、Task 104、Task 105、Task 106、Task 107、Task 108、Task 109、Task 110、Task 112、Task 114、Task 115、Task 116、Task 117、Task 120、Task 140
+**已完成 46 个**：Task 0、Task 0.1、Task 0.2、Task 0.3、Task 0.4、Task 0.5、Task 1、Task 2、Task 3、Task 4、Task 5、Task 6、Task 7、Task 8、Task 9、Task 11、Task 12、Task 13、Task 14、Task 15、Task 16、Task 17、Task 18、Task 19、Task 20、Task 21、Task 22、Task 23、Task 24、Task 102、Task 103、Task 104、Task 105、Task 106、Task 107、Task 108、Task 109、Task 110、Task 112、Task 114、Task 115、Task 116、Task 117、Task 120、Task 139、Task 140
 
 **待完成 80 个**：
 - [ ] **Task 25**：选择系统（单选、框选、编队）
@@ -1989,7 +1989,7 @@
 - [ ] **Task 128**：Path Cache / CellInfoLayerPool — 搜索层对象池 🟢 P2
 - [ ] **Task 131**：ActorMap Bin 划分 + 触发器系统 ⚪ P3
 - [ ] **Task 132**：启发式权重可调 — 次优路径换性能 ⚪ P3
-- [ ] **Task 139**：统一 OrderGenerator 框架
+- [x] **Task 139**：统一 OrderGenerator 框架
 - [x] **Task 140**：GameOrder 命令抽象与队列
 - [ ] **Task 141**：逻辑帧与渲染帧分离架构
 - [ ] **Task 142**：音频分类管理器（AudioManager）
