@@ -99,6 +99,7 @@ export class GameConsole {
       tickResources: this.tickResources.bind(this),
       enableTextureMode: this.enableTextureMode.bind(this),
       terrainMaterial: this.terrainMaterial.bind(this),
+      waterTime: this.waterTime.bind(this),
       cposToWPos: this.cposToWPos.bind(this),
       wposToCPos: this.wposToCPos.bind(this),
       mpos: this.mpos.bind(this),
@@ -1135,6 +1136,13 @@ export class GameConsole {
     if (!mesh) return 'no-mesh';
     if (!mesh.material) return 'no-material';
     return mesh.material.getClassName();
+  }
+
+  /** Return current water animation time (Task 10.1). */
+  private waterTime(): number {
+    // Access internal waterTime via a cast — debug console only
+    const terrain = this.terrain as unknown as { waterTime: number };
+    return terrain.waterTime ?? 0;
   }
 
   private findNearestFreeCell(): { x: number; y: number } | undefined {

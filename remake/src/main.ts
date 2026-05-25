@@ -457,6 +457,7 @@ const bootstrap = async (): Promise<void> => {
     }
     sidebar.refresh(dt);
     GameObjectManager.getInstance().update(dt);
+    terrain.update(dt);
 
     // ── Overlap 检测（每秒一次）──
     overlapCheckAccumulator += dt;

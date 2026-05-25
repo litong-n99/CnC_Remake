@@ -53,7 +53,9 @@ export class TerrainGrid {
   private terrainMaterial: TerrainMaterial;
   private splatMaterial: TerrainSplatMaterial | null = null;
   private splatMap: DynamicTexture | null = null;
+  private splatMap2: DynamicTexture | null = null;
   private textureMode = false;
+  private waterTime = 0;
 
   constructor(scene: Scene, width = 64, height = 64) {
     this.cellLayer = new CellLayer<CellData>(width, height, { landType: LandType.Clear });
@@ -321,11 +323,16 @@ export class TerrainGrid {
     const w = this.cellLayer.getWidth();
     const h = this.cellLayer.getHeight();
 
-    // Create splat-map texture (one pixel per cell)
+    // Create splat-map textures (one pixel per cell, 8 channels across two textures)
     this.splatMap = new DynamicTexture('splatMap', { width: w, height: h }, scene, false);
     this.splatMap.wrapU = Texture.CLAMP_ADDRESSMODE;
     this.splatMap.wrapV = Texture.CLAMP_ADDRESSMODE;
-    this.splatMap.updateSamplingMode(Texture.NEAREST_NEAREST); // sharp pixel boundaries
+    this.splatMap.updateSamplingMode(Texture.NEAREST_NEAREST);
+
+    this.splatMap2 = new DynamicTexture('splatMap2', { width: w, height: h }, scene, false);
+    this.splatMap2.wrapU = Texture.CLAMP_ADDRESSMODE;
+    this.splatMap2.wrapV = Texture.CLAMP_ADDRESSMODE;
+    this.splatMap2.updateSamplingMode(Texture.NEAREST_NEAREST);
 
     // Build splat data from current cells
     this.rebuildSplatMap();
@@ -334,7 +341,20 @@ export class TerrainGrid {
     const tex = createProceduralTextures(scene);
 
     // Create shader material
-    this.splatMaterial = new TerrainSplatMaterial(scene, tex.grass, tex.road, tex.water, tex.rock, this.splatMap, 4.0);
+    this.splatMaterial = new TerrainSplatMaterial(
+      scene,
+      tex.grass,
+      tex.road,
+      tex.water,
+      tex.rock,
+      tex.beach,
+      tex.rough,
+      tex.tiberium,
+      tex.snow,
+      this.splatMap,
+      this.splatMap2,
+      4.0
+    );
 
     if (this.terrainMesh) {
       this.terrainMesh.material = this.splatMaterial.getMaterial();
@@ -342,54 +362,88 @@ export class TerrainGrid {
     }
   }
 
-  private landTypeToSplat(landType: LandType): { r: number; g: number; b: number; a: number } {
+  private landTypeToSplat(landType: LandType): {
+    r1: number;
+    g1: number;
+    b1: number;
+    a1: number;
+    r2: number;
+    g2: number;
+    b2: number;
+    a2: number;
+  } {
+    // splatMap1: R=grass, G=road, B=water, A=rock
+    // splatMap2: R=beach, G=rough, B=tiberium, A=snow
     switch (landType) {
       case LandType.Clear:
-      case LandType.Tiberium:
-      case LandType.Beach:
-      case LandType.Rough:
-        return { r: 255, g: 0, b: 0, a: 0 }; // grass
+        return { r1: 255, g1: 0, b1: 0, a1: 0, r2: 0, g2: 0, b2: 0, a2: 0 };
       case LandType.Road:
-        return { r: 0, g: 255, b: 0, a: 0 }; // road
+        return { r1: 0, g1: 255, b1: 0, a1: 0, r2: 0, g2: 0, b2: 0, a2: 0 };
       case LandType.Water:
       case LandType.River:
-        return { r: 0, g: 0, b: 255, a: 0 }; // water
+        return { r1: 0, g1: 0, b1: 255, a1: 0, r2: 0, g2: 0, b2: 0, a2: 0 };
       case LandType.Rock:
+        return { r1: 0, g1: 0, b1: 0, a1: 255, r2: 0, g2: 0, b2: 0, a2: 0 };
       case LandType.Wall:
-        return { r: 0, g: 0, b: 0, a: 255 }; // rock
+        return { r1: 0, g1: 0, b1: 0, a1: 255, r2: 0, g2: 0, b2: 0, a2: 0 };
+      case LandType.Tiberium:
+        return { r1: 0, g1: 0, b1: 0, a1: 0, r2: 0, g2: 0, b2: 255, a2: 0 };
+      case LandType.Beach:
+        return { r1: 0, g1: 0, b1: 0, a1: 0, r2: 255, g2: 0, b2: 0, a2: 0 };
+      case LandType.Rough:
+        return { r1: 0, g1: 0, b1: 0, a1: 0, r2: 0, g2: 255, b2: 0, a2: 0 };
       default:
-        return { r: 255, g: 0, b: 0, a: 0 };
+        return { r1: 255, g1: 0, b1: 0, a1: 0, r2: 0, g2: 0, b2: 0, a2: 0 };
     }
   }
 
   private rebuildSplatMap(): void {
-    if (!this.splatMap) return;
-    const ctx = this.splatMap.getContext();
+    if (!this.splatMap || !this.splatMap2) return;
+    const ctx1 = this.splatMap.getContext();
+    const ctx2 = this.splatMap2.getContext();
     const w = this.cellLayer.getWidth();
     const h = this.cellLayer.getHeight();
 
-    ctx.clearRect(0, 0, w, h);
+    ctx1.clearRect(0, 0, w, h);
+    ctx2.clearRect(0, 0, w, h);
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const splat = this.landTypeToSplat(this.cellLayer.get(x, y).landType);
-        ctx.fillStyle = `rgba(${splat.r},${splat.g},${splat.b},${splat.a / 255})`;
-        ctx.fillRect(x, y, 1, 1);
+        ctx1.fillStyle = `rgba(${splat.r1},${splat.g1},${splat.b1},${splat.a1 / 255})`;
+        ctx1.fillRect(x, y, 1, 1);
+        ctx2.fillStyle = `rgba(${splat.r2},${splat.g2},${splat.b2},${splat.a2 / 255})`;
+        ctx2.fillRect(x, y, 1, 1);
       }
     }
     this.splatMap.update();
+    this.splatMap2.update();
   }
 
   private updateSplatCell(x: number, y: number): void {
-    if (!this.splatMap || !this.textureMode) return;
-    const ctx = this.splatMap.getContext();
+    if (!this.splatMap || !this.splatMap2 || !this.textureMode) return;
     const splat = this.landTypeToSplat(this.cellLayer.get(x, y).landType);
-    ctx.fillStyle = `rgba(${splat.r},${splat.g},${splat.b},${splat.a / 255})`;
-    ctx.fillRect(x, y, 1, 1);
+
+    const ctx1 = this.splatMap.getContext();
+    ctx1.fillStyle = `rgba(${splat.r1},${splat.g1},${splat.b1},${splat.a1 / 255})`;
+    ctx1.fillRect(x, y, 1, 1);
     this.splatMap.update();
+
+    const ctx2 = this.splatMap2.getContext();
+    ctx2.fillStyle = `rgba(${splat.r2},${splat.g2},${splat.b2},${splat.a2 / 255})`;
+    ctx2.fillRect(x, y, 1, 1);
+    this.splatMap2.update();
   }
 
   isTextureMode(): boolean {
     return this.textureMode;
+  }
+
+  /** Per-frame update — drives water animation time uniform. */
+  update(dt: number): void {
+    if (this.splatMaterial) {
+      this.waterTime += dt * 0.001;
+      this.splatMaterial.updateTime(this.waterTime);
+    }
   }
 
   /** Dispose terrain mesh, grid lines, and material. */
@@ -401,5 +455,6 @@ export class TerrainGrid {
     this.terrainMaterial.dispose();
     this.splatMaterial?.dispose();
     this.splatMap?.dispose();
+    this.splatMap2?.dispose();
   }
 }
