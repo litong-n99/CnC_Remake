@@ -102,6 +102,8 @@ export class GameConsole {
       waterTime: this.waterTime.bind(this),
       splatPixel: this.splatPixel.bind(this),
       pendingSplatUpdates: this.pendingSplatUpdates.bind(this),
+      injectTestSprite: this.injectTestSprite.bind(this),
+      buildAtlas: this.buildAtlas.bind(this),
       cposToWPos: this.cposToWPos.bind(this),
       wposToCPos: this.wposToCPos.bind(this),
       mpos: this.mpos.bind(this),
@@ -1166,6 +1168,26 @@ export class GameConsole {
   private pendingSplatUpdates(): number {
     const terrain = this.terrain as unknown as { pendingSplatUpdates: () => number };
     return terrain.pendingSplatUpdates();
+  }
+
+  /** Inject a test RGBA frame into the tile cache (Task 10.4 e2e). */
+  private injectTestSprite(id: string, width: number, height: number, rgba: number[]): void {
+    const cache = this.terrain.getTileCache();
+    if (!cache) {
+      console.warn('No TileSet loaded');
+      return;
+    }
+    cache.injectTestFrame(id, width, height, new Uint8Array(rgba));
+  }
+
+  /** Build texture atlas from current TileSet images (Task 10.4). */
+  private async buildAtlas(): Promise<Record<string, unknown>> {
+    const cache = this.terrain.getTileCache();
+    if (!cache) {
+      return { error: 'No TileSet loaded' };
+    }
+    const ok = await cache.buildAtlas(this.scene);
+    return { built: ok, slotCount: cache.hasAtlas() ? 'yes' : 'no' };
   }
 
   private findNearestFreeCell(): { x: number; y: number } | undefined {
