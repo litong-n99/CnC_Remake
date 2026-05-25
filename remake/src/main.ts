@@ -20,6 +20,7 @@ import { Unit } from './game/objects/Unit';
 import { ConstructionQueue } from './game/building/ConstructionQueue';
 import { BuildingPlacer } from './game/building/BuildingPlacer';
 import { Sidebar } from './renderer/ui/Sidebar';
+import { HUD } from './renderer/ui/HUD';
 import { GameConsole } from './debug/GameConsole';
 import { OrderDispatcher } from './game/order/OrderDispatcher';
 import { MoveHandler, StopHandler, AttackHandler, GuardHandler } from './game/order/handlers';
@@ -456,6 +457,12 @@ const bootstrap = async (): Promise<void> => {
   const selectionManager = SelectionManager.getInstance();
   const inputManager = new InputManager(rtsCamera, scene, selectionManager, placer, gameConsole);
 
+  // ── Task 27: HUD 覆盖层 ──
+  const hud = new HUD();
+  selectionManager.onSelectionChanged = (selected) => {
+    hud.showUnitInfo(selected as Unit[]);
+  };
+
   // worldToScreen 通过 inputManager.worldToScreen 暴露给 e2e 测试
 
   // ── Task 141: GameLoop — 逻辑帧与渲染帧分离 ──
@@ -504,6 +511,7 @@ const bootstrap = async (): Promise<void> => {
       placer.updateFromScreen(ptr.x, ptr.y);
     }
     sidebar.refresh(_dt);
+    hud.updateResourceBar(gdi);
   });
 
   const engine = engineManager.getEngine();

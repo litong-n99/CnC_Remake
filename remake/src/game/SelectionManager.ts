@@ -46,6 +46,7 @@ export class SelectionManager {
     this.clear();
     this.selected.add(unit);
     this.showRings();
+    this.notifySelectionChanged();
   }
 
   /** 多选：设置选中单位列表（框选用）。 */
@@ -56,6 +57,7 @@ export class SelectionManager {
       this.selected.add(unit);
     }
     this.showRings();
+    this.notifySelectionChanged();
   }
 
   /** Shift+点击：切换单个单位的选择状态。 */
@@ -67,6 +69,7 @@ export class SelectionManager {
       this.selected.add(unit);
     }
     this.showRings();
+    this.notifySelectionChanged();
   }
 
   /** 判断单位是否被选中。 */
@@ -76,8 +79,12 @@ export class SelectionManager {
 
   /** 清除当前选择。 */
   clear(): void {
+    const hadSelection = this.selected.size > 0;
     this.selected.clear();
     this.hideRings();
+    if (hadSelection) {
+      this.notifySelectionChanged();
+    }
   }
 
   /** 获取当前选中的单位列表。 */
@@ -88,6 +95,15 @@ export class SelectionManager {
   /** 是否有选中单位。 */
   hasSelection(): boolean {
     return this.selected.size > 0;
+  }
+
+  /** 选中变化回调（HUD 等外部系统订阅）。 */
+  onSelectionChanged: ((selected: readonly Unit[]) => void) | null = null;
+
+  private notifySelectionChanged(): void {
+    if (this.onSelectionChanged) {
+      this.onSelectionChanged(this.getSelected());
+    }
   }
 
   // ── Squad / group management ──
