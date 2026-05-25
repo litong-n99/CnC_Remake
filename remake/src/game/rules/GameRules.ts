@@ -123,3 +123,53 @@ export const GameRules = {
 
 /** @deprecated Use `GameRules` directly. Kept for backward compatibility. */
 export type GameRulesType = typeof GameRules;
+
+// ── Task 95: YAML 规则解析基础设施 ──
+
+function parseNum(raw: unknown): number {
+  if (typeof raw === 'number') return raw;
+  if (typeof raw === 'string') {
+    const n = parseFloat(raw);
+    if (!Number.isNaN(n)) return n;
+  }
+  throw new Error(`Expected number, got ${typeof raw}`);
+}
+
+/**
+ * 用 YAML 解析后的原始记录部分覆盖 GameRules。
+ * 仅更新顶层数值字段；difficulty 等嵌套对象暂不支持 YAML 覆盖。
+ */
+export function loadYamlGameRules(raw: Record<string, unknown>): void {
+  const gr = GameRules as Record<string, unknown>;
+  const scalarKeys = [
+    'soloCrateMoney',
+    'mpDefaultMoney',
+    'mpMaxMoney',
+    'buildSpeedBias',
+    'buildupTime',
+    'oreDumpRate',
+    'atomDamage',
+    'minDamage',
+    'maxDamage',
+    'damageDelay',
+    'proneDamageBias',
+    'quakeDamagePercent',
+    'avMineDamage',
+    'apMineDamage',
+    'engineerDamage',
+    'buildingMax',
+    'tiberiumShortScan',
+    'tiberiumLongScan',
+    'vortexSpeed',
+    'vortexDamage',
+    'gameSpeedBias',
+  ] as const;
+
+  for (const key of scalarKeys) {
+    if (raw[key] !== undefined) {
+      gr[key] = parseNum(raw[key]);
+    }
+  }
+
+  console.info('[GameRules] Loaded YAML overrides');
+}

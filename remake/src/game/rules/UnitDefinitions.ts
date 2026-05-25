@@ -447,3 +447,124 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
 export const UNIT_BY_ID: Record<string, UnitDefinition> = Object.fromEntries(
   Object.values(UNIT_DEFINITIONS).map((u) => [u.id, u])
 );
+
+// ── Task 95: YAML 规则解析基础设施 ──
+
+import { RuleRegistry } from './RuleRegistry';
+
+/** 字符串 → Locomotion enum 映射 */
+const LOCOMOTION_MAP: Record<string, Locomotion> = {
+  Foot: Locomotion.Foot,
+  Track: Locomotion.Track,
+  Wheel: Locomotion.Wheel,
+  Winged: Locomotion.Winged,
+  Float: Locomotion.Float,
+};
+
+/** 字符串 → ArmorType enum 映射 */
+const ARMOR_MAP: Record<string, ArmorType> = {
+  None: ArmorType.None,
+  Wood: ArmorType.Wood,
+  Aluminum: ArmorType.Aluminum,
+  Steel: ArmorType.Steel,
+  Concrete: ArmorType.Concrete,
+};
+
+/** 字符串 → MovementZone enum 映射 */
+const MZONE_MAP: Record<string, MovementZone> = {
+  Normal: MovementZone.Normal,
+  Crusher: MovementZone.Crusher,
+  Destroyer: MovementZone.Destroyer,
+  Water: MovementZone.Water,
+};
+
+function parseEnum<T>(raw: unknown, map: Record<string, T>, field: string): T {
+  if (typeof raw !== 'string') {
+    throw new Error(`Expected string for ${field}, got ${typeof raw}`);
+  }
+  const val = map[raw];
+  if (val === undefined) {
+    throw new Error(`Unknown ${field} value: "${raw}"`);
+  }
+  return val;
+}
+
+function parseBool(raw: unknown): boolean {
+  if (typeof raw === 'boolean') return raw;
+  if (raw === 'true' || raw === 1 || raw === '1') return true;
+  if (raw === 'false' || raw === 0 || raw === '0') return false;
+  throw new Error(`Expected boolean, got ${typeof raw}`);
+}
+
+function parseNum(raw: unknown): number {
+  if (typeof raw === 'number') return raw;
+  if (typeof raw === 'string') {
+    const n = parseFloat(raw);
+    if (!Number.isNaN(n)) return n;
+  }
+  throw new Error(`Expected number, got ${typeof raw}`);
+}
+
+function parseStr(raw: unknown): string {
+  if (typeof raw === 'string') return raw;
+  throw new Error(`Expected string, got ${typeof raw}`);
+}
+
+/** 将 YAML 原始记录转换为 UnitDefinition。 */
+export function convertUnitDefinition(raw: Record<string, unknown>, key: string): UnitDefinition {
+  const def: UnitDefinition = {
+    id: parseStr(raw.id ?? key),
+    name: parseStr(raw.name ?? key),
+    strength: parseNum(raw.strength),
+    sight: parseNum(raw.sight),
+    speed: parseNum(raw.speed),
+    locomotion: parseEnum(raw.locomotion, LOCOMOTION_MAP, 'locomotion'),
+    cost: parseNum(raw.cost),
+    techLevel: parseNum(raw.techLevel),
+    armor: parseEnum(raw.armor, ARMOR_MAP, 'armor'),
+    range: parseNum(raw.range),
+    mzone: parseEnum(raw.mzone, MZONE_MAP, 'mzone'),
+    hasTurret: parseBool(raw.hasTurret),
+    isSelfHealing: parseBool(raw.isSelfHealing),
+    isCloakable: parseBool(raw.isCloakable),
+    isCrusher: parseBool(raw.isCrusher),
+    isScanner: parseBool(raw.isScanner),
+    rotationSpeed: parseNum(raw.rotationSpeed),
+  };
+  if (raw.crushClass !== undefined) {
+    (def as unknown as Record<string, unknown>).crushClass = parseStr(raw.crushClass);
+  }
+  return def;
+}
+
+/** 注册单位规则转换器到 RuleRegistry。 */
+export function registerUnitRuleConverter(): void {
+  RuleRegistry.getInstance().register<UnitDefinition>('Unit', convertUnitDefinition);
+}
+
+/**
+ * 从 RuleRegistry 加载 YAML 单位定义并覆盖运行时表。
+ * 调用前需先执行 `registerUnitRuleConverter()` 和 `YamlLoader.loadYamlRules()`。
+ */
+export function loadYamlUnitDefinitions(): void {
+  const registry = RuleRegistry.getInstance();
+  const yamlDefs = registry.getAll<UnitDefinition>('Unit');
+  const keys = Object.keys(yamlDefs);
+  if (keys.length === 0) return;
+
+  // 覆盖 UNIT_DEFINITIONS（const 对象，修改属性）
+  for (const k of keys) {
+    (UNIT_DEFINITIONS as Record<string, UnitDefinition>)[k] = yamlDefs[k];
+  }
+
+  // 重建 UNIT_BY_ID
+  const all = Object.values(UNIT_DEFINITIONS);
+  for (const key of Object.keys(UNIT_BY_ID)) {
+    delete (UNIT_BY_ID as Record<string, UnitDefinition | undefined>)[key];
+  }
+  for (const u of all) {
+    (UNIT_BY_ID as Record<string, UnitDefinition>)[u.id] = u;
+  }
+
+  console.info(`[UnitDefinitions] Loaded ${keys.length} units from YAML: ${keys.join(', ')}`);
+}

@@ -1,0 +1,23 @@
+# Building definitions — Task 95
+# Migrated from BUILDING_DEFINITIONS in BuildingDefinitions.ts
+
+# PowerPlant:
+#   id: STRUCT_PWR
+#   name: Power Plant
+#   strength: 400
+#   sight: 4
+#   cost: 300
+#   techLevel: 1
+#   power: 100
+#   armor: Wood
+#   isFactory: false
+#   isRefinery: false
+#   isRepairFacility: false
+#   isHelipad: false
+#   isSelfHealing: false
+#   isExploding: false
+#   isStealthy: false
+#   width: 2
+#   height: 2
+#   buildTime: 160
+#   requiresPower: false

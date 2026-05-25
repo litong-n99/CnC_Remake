@@ -8,7 +8,7 @@ import { MapLoader } from './game/terrain/MapLoader';
 import { Pathfinder } from './game/terrain/Pathfinder';
 import { GameRules } from './game/rules/GameRules';
 import { UNIT_DEFINITIONS } from './game/rules/UnitDefinitions';
-import { getBuildingFootprint } from './game/rules/BuildingDefinitions';
+import { BUILDING_DEFINITIONS, getBuildingFootprint } from './game/rules/BuildingDefinitions';
 import { HouseManager } from './game/house/HouseManager';
 import { HouseType } from './game/house/House';
 import { GameObjectFactory } from './game/objects/GameObjectFactory';
@@ -24,8 +24,12 @@ import { GameConsole } from './debug/GameConsole';
 import { OrderDispatcher } from './game/order/OrderDispatcher';
 import { MoveHandler, StopHandler } from './game/order/handlers';
 import { GameLoop } from './game/GameLoop';
+import { loadYamlRulesWithFallback } from './game/rules/YamlLoader';
 
 const bootstrap = async (): Promise<void> => {
+  // ── Task 95: YAML 规则解析基础设施 ──
+  await loadYamlRulesWithFallback();
+
   // ── Engine ──
   const engineManager = EngineManager.getInstance();
   engineManager.initialize('app');
@@ -528,6 +532,9 @@ const bootstrap = async (): Promise<void> => {
     return inputManager.worldToScreen(new Vector3(worldX, worldY, worldZ));
   };
   w._gameLoop = gameLoop;
+  w.UNIT_DEFINITIONS = UNIT_DEFINITIONS;
+  w.BUILDING_DEFINITIONS = BUILDING_DEFINITIONS;
+  w.GameRules = GameRules;
 
   // ── Verification ──
   const goManager = GameObjectManager.getInstance();

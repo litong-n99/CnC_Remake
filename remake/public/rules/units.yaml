@@ -1,0 +1,18 @@
+# Unit definitions — Task 95
+# Migrated from UNIT_DEFINITIONS in UnitDefinitions.ts
+
+LightTank:
+  Inherits: ^Vehicle
+  id: UNIT_LTANK
+  name: Light Tank
+  strength: 300
+  sight: 5
+  speed: 7
+  locomotion: Track
+  cost: 700
+  techLevel: 2
+  range: 4.75
+  mzone: Crusher
+  hasTurret: true
+  isCrusher: true
+  rotationSpeed: 0.12

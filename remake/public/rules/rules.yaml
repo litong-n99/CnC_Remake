@@ -1,0 +1,7 @@
+# Global game rules — Task 95
+# Migrated from GameRules in GameRules.ts
+
+# gameRules:
+#   soloCrateMoney: 2000
+#   mpDefaultMoney: 10000
+#   mpMaxMoney: 10000

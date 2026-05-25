@@ -304,3 +304,113 @@ export const BUILDING_DEFINITIONS: Record<string, BuildingDefinition> = {
 export const BUILDING_BY_ID: Record<string, BuildingDefinition> = Object.fromEntries(
   Object.values(BUILDING_DEFINITIONS).map((b) => [b.id, b])
 );
+
+// ── Task 95: YAML 规则解析基础设施 ──
+
+import { RuleRegistry } from './RuleRegistry';
+
+function parseBool(raw: unknown): boolean {
+  if (typeof raw === 'boolean') return raw;
+  if (raw === 'true' || raw === 1 || raw === '1') return true;
+  if (raw === 'false' || raw === 0 || raw === '0') return false;
+  throw new Error(`Expected boolean, got ${typeof raw}`);
+}
+
+function parseNum(raw: unknown): number {
+  if (typeof raw === 'number') return raw;
+  if (typeof raw === 'string') {
+    const n = parseFloat(raw);
+    if (!Number.isNaN(n)) return n;
+  }
+  throw new Error(`Expected number, got ${typeof raw}`);
+}
+
+function parseStr(raw: unknown): string {
+  if (typeof raw === 'string') return raw;
+  throw new Error(`Expected string, got ${typeof raw}`);
+}
+
+const ARMOR_MAP: Record<string, ArmorType> = {
+  None: ArmorType.None,
+  Wood: ArmorType.Wood,
+  Aluminum: ArmorType.Aluminum,
+  Steel: ArmorType.Steel,
+  Concrete: ArmorType.Concrete,
+};
+
+function parseArmor(raw: unknown): ArmorType {
+  if (typeof raw === 'string') {
+    const val = ARMOR_MAP[raw];
+    if (val !== undefined) return val;
+  }
+  if (typeof raw === 'number') return raw as ArmorType;
+  throw new Error(`Unknown armor value: ${String(raw)}`);
+}
+
+function parseFootprint(raw: unknown): Array<{ dx: number; dy: number }> | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (!Array.isArray(raw)) throw new Error('Expected array for footprint');
+  return raw.map((item) => {
+    if (typeof item !== 'object' || item === null) throw new Error('Expected object in footprint array');
+    return { dx: parseNum((item as Record<string, unknown>).dx), dy: parseNum((item as Record<string, unknown>).dy) };
+  });
+}
+
+/** 将 YAML 原始记录转换为 BuildingDefinition。 */
+export function convertBuildingDefinition(raw: Record<string, unknown>, key: string): BuildingDefinition {
+  const def: BuildingDefinition = {
+    id: parseStr(raw.id ?? key),
+    name: parseStr(raw.name ?? key),
+    strength: parseNum(raw.strength),
+    sight: parseNum(raw.sight),
+    cost: parseNum(raw.cost),
+    techLevel: parseNum(raw.techLevel),
+    power: parseNum(raw.power),
+    armor: parseArmor(raw.armor),
+    isFactory: parseBool(raw.isFactory),
+    isRefinery: parseBool(raw.isRefinery),
+    isRepairFacility: parseBool(raw.isRepairFacility),
+    isHelipad: parseBool(raw.isHelipad),
+    isSelfHealing: parseBool(raw.isSelfHealing),
+    isExploding: parseBool(raw.isExploding),
+    isStealthy: parseBool(raw.isStealthy),
+    width: parseNum(raw.width),
+    height: parseNum(raw.height),
+    buildTime: parseNum(raw.buildTime),
+    requiresPower: parseBool(raw.requiresPower),
+  };
+  const footprint = parseFootprint(raw.footprint);
+  if (footprint) {
+    (def as unknown as Record<string, unknown>).footprint = footprint;
+  }
+  return def;
+}
+
+/** 注册建筑规则转换器到 RuleRegistry。 */
+export function registerBuildingRuleConverter(): void {
+  RuleRegistry.getInstance().register<BuildingDefinition>('Building', convertBuildingDefinition);
+}
+
+/**
+ * 从 RuleRegistry 加载 YAML 建筑定义并覆盖运行时表。
+ */
+export function loadYamlBuildingDefinitions(): void {
+  const registry = RuleRegistry.getInstance();
+  const yamlDefs = registry.getAll<BuildingDefinition>('Building');
+  const keys = Object.keys(yamlDefs);
+  if (keys.length === 0) return;
+
+  for (const k of keys) {
+    (BUILDING_DEFINITIONS as Record<string, BuildingDefinition>)[k] = yamlDefs[k];
+  }
+
+  const all = Object.values(BUILDING_DEFINITIONS);
+  for (const key of Object.keys(BUILDING_BY_ID)) {
+    delete (BUILDING_BY_ID as Record<string, BuildingDefinition | undefined>)[key];
+  }
+  for (const b of all) {
+    (BUILDING_BY_ID as Record<string, BuildingDefinition>)[b.id] = b;
+  }
+
+  console.info(`[BuildingDefinitions] Loaded ${keys.length} buildings from YAML: ${keys.join(', ')}`);
+}

@@ -1,0 +1,8 @@
+# OpenRA-style defaults — Task 95
+# Abstract templates prefixed with ^ are resolved but not exposed as units/buildings.
+
+^Vehicle:
+  armor: Steel
+  isSelfHealing: false
+  isCloakable: false
+  isScanner: false
