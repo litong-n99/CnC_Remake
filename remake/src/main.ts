@@ -23,6 +23,7 @@ import { Sidebar } from './renderer/ui/Sidebar';
 import { GameConsole } from './debug/GameConsole';
 import { OrderDispatcher } from './game/order/OrderDispatcher';
 import { MoveHandler, StopHandler } from './game/order/handlers';
+import { GameLoop } from './game/GameLoop';
 
 const bootstrap = async (): Promise<void> => {
   // ── Engine ──
@@ -451,18 +452,15 @@ const bootstrap = async (): Promise<void> => {
 
   // worldToScreen 通过 inputManager.worldToScreen 暴露给 e2e 测试
 
-  // ── Game loop ──
-  const engine = engineManager.getEngine();
+  // ── Task 141: GameLoop — 逻辑帧与渲染帧分离 ──
+  // 当前保持 60 FPS 逻辑帧以兼容现有单位移动系统；
+  // 后续 Task 65（Lockstep）时统一降至 25 FPS 并更新单位插值逻辑。
+  const gameLoop = new GameLoop({ logicFps: 60 });
   let overlapCheckAccumulator = 0;
-  scene.onBeforeRenderObservable.add(() => {
-    const dt = engine.getDeltaTime();
 
+  // 逻辑帧（25 FPS）：所有游戏状态更新
+  gameLoop.onLogicTick((dt: number) => {
     queue.tick(dt);
-    if (placer.isPlacing()) {
-      const ptr = rtsCamera.getPointerPosition();
-      placer.updateFromScreen(ptr.x, ptr.y);
-    }
-    sidebar.refresh(dt);
     GameObjectManager.getInstance().update(dt);
     terrain.update(dt);
 
@@ -493,8 +491,17 @@ const bootstrap = async (): Promise<void> => {
     }
   });
 
-  // ── Render loop ──
-  sceneManager.runRenderLoop();
+  // 渲染帧（可变 FPS）：视觉更新和插值
+  gameLoop.onRenderTick((_dt: number) => {
+    if (placer.isPlacing()) {
+      const ptr = rtsCamera.getPointerPosition();
+      placer.updateFromScreen(ptr.x, ptr.y);
+    }
+    sidebar.refresh(_dt);
+  });
+
+  const engine = engineManager.getEngine();
+  gameLoop.start(engine, scene);
 
   // ── Lifecycle cleanup ──
   window.addEventListener('beforeunload', () => {
@@ -520,6 +527,7 @@ const bootstrap = async (): Promise<void> => {
   w._worldToScreen = (worldX: number, worldY: number, worldZ: number) => {
     return inputManager.worldToScreen(new Vector3(worldX, worldY, worldZ));
   };
+  w._gameLoop = gameLoop;
 
   // ── Verification ──
   const goManager = GameObjectManager.getInstance();

@@ -1,5 +1,6 @@
 import { UnitState } from './UnitState';
 import type { UnitController } from './Unit';
+import type { Unit } from '../objects/Unit';
 import type { PathNode, Pathfinder } from '../terrain/Pathfinder';
 import { UnitCollision } from './UnitCollision';
 import { BlockedByActor } from './BlockedByActor';
@@ -337,16 +338,19 @@ export class UnitMovement {
     const nextCY = Math.round(nextY);
     if (nextCX !== controller.fromCellX || nextCY !== controller.fromCellY) {
       if (UnitCollision.isPositionBlocked(nextX, nextY, controller.unitId, BlockedByActor.All)) {
-        this.handleBlocked(controller, deltaTime);
-        // 不再弹回 fromCell + 0.1（会导致明显抖动），
-        // 而是将车辆限制在 fromCell 的边界内（maxOffset=0.499 确保 round() 仍在 fromCell），
-        // 这样车辆只回退极短距离，视觉上像是"停在边界"而非"弹回格子"。
-        const maxOffset = 0.499;
-        controller.x =
-          controller.fromCellX + Math.max(-maxOffset, Math.min(maxOffset, controller.x - controller.fromCellX));
-        controller.y =
-          controller.fromCellY + Math.max(-maxOffset, Math.min(maxOffset, controller.y - controller.fromCellY));
-        return;
+        // Task 23.17: 若所有阻塞者都可被碾压，不进入 handleBlocked，直接继续前进
+        if (!this.canCrushAllOccupants(nextCX, nextCY, controller.unitId)) {
+          this.handleBlocked(controller, deltaTime);
+          // 不再弹回 fromCell + 0.1（会导致明显抖动），
+          // 而是将车辆限制在 fromCell 的边界内（maxOffset=0.499 确保 round() 仍在 fromCell），
+          // 这样车辆只回退极短距离，视觉上像是"停在边界"而非"弹回格子"。
+          const maxOffset = 0.499;
+          controller.x =
+            controller.fromCellX + Math.max(-maxOffset, Math.min(maxOffset, controller.x - controller.fromCellX));
+          controller.y =
+            controller.fromCellY + Math.max(-maxOffset, Math.min(maxOffset, controller.y - controller.fromCellY));
+          return;
+        }
       }
     } else {
       // 仍在 fromCell 内：如果 toCell 已被阻塞，提前停止，
@@ -354,8 +358,11 @@ export class UnitMovement {
       if (
         UnitCollision.isPositionBlocked(controller.toCellX, controller.toCellY, controller.unitId, BlockedByActor.All)
       ) {
-        this.handleBlocked(controller, deltaTime);
-        return;
+        // Task 23.17: 若所有阻塞者都可被碾压，不进入 handleBlocked
+        if (!this.canCrushAllOccupants(controller.toCellX, controller.toCellY, controller.unitId)) {
+          this.handleBlocked(controller, deltaTime);
+          return;
+        }
       }
     }
 
@@ -776,6 +783,27 @@ export class UnitMovement {
       return { x: bx, y: by };
     }
     return null;
+  }
+
+  /**
+   * Task 23.17: 检查指定格子中的所有阻塞者是否都可被当前单位碾压。
+   * 若所有 occupant 都是 crushable 步兵，返回 true — 车辆不应因此停下。
+   */
+  private canCrushAllOccupants(cellX: number, cellY: number, crusherId: string): boolean {
+    const occupants = ActorMap.getInstance()
+      .getOccupants(cellX, cellY)
+      .filter((id) => id !== crusherId);
+    if (occupants.length === 0) return false;
+
+    const crusher = GameObjectManager.getInstance().get(crusherId);
+    if (!crusher || crusher.type !== GameObjectType.Unit) return false;
+
+    for (const id of occupants) {
+      const obj = GameObjectManager.getInstance().get(id);
+      if (!obj || obj.type !== GameObjectType.Unit || !obj.isAlive()) return false;
+      if (!Crushable.isCrushable(obj as Unit, crusher as Unit)) return false;
+    }
+    return true;
   }
 
   private stop(controller: UnitController): void {

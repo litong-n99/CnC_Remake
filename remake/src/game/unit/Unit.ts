@@ -359,10 +359,10 @@ export class UnitController {
   }
 
   private tickMoving(deltaTime: number): void {
-    this.movement.update(this, deltaTime);
-    // 移动过程中车身平滑转向目标方向
+    // 先更新朝向，再更新移动 — 确保 isTurningInPlace 时 bodyFacing 仍能推进
     // Task 23.16: 使用 locomotor.turnSpeed 限制旋转速度
     UnitRotation.updateBodyFacing(this, deltaTime, this.locomotor.turnSpeed);
+    this.movement.update(this, deltaTime);
   }
 
   private tickAttacking(): void {

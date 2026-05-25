@@ -31,6 +31,7 @@ import { OrderDispatcher } from '../game/order/OrderDispatcher';
 import { groundOrder, actorOrder, selfOrder, type GameOrder } from '../game/order/GameOrder';
 import { OrderGeneratorManager } from '../game/order/OrderGenerator';
 import { TestOrderGenerator } from '../game/order/generators/TestOrderGenerator';
+import { GameLoop } from '../game/GameLoop';
 
 /**
  * Debug console — exposes `window.cnc` commands for runtime spawning,
@@ -137,6 +138,8 @@ export class GameConsole {
       orderGeneratorState: this.orderGeneratorState.bind(this),
       orderGeneratorClick: this.orderGeneratorClick.bind(this),
       orderGeneratorCancel: this.orderGeneratorCancel.bind(this),
+      gameLoopState: this.gameLoopState.bind(this),
+      gameLoopStep: this.gameLoopStep.bind(this),
       editorSelectBrush: this.editorSelectBrush.bind(this),
       editorPaint: this.editorPaint.bind(this),
       editorFloodFill: this.editorFloodFill.bind(this),
@@ -1235,6 +1238,35 @@ export class GameConsole {
   private orderGeneratorCancel(): Record<string, unknown> {
     OrderGeneratorManager.getInstance().cancel();
     return { active: false };
+  }
+
+  // ── Task 141: GameLoop ──
+
+  /** Query GameLoop state (logic tick count, progress, running). */
+  private gameLoopState(): Record<string, unknown> {
+    // GameLoop is not a singleton; we expose it via window for e2e tests
+    const w = window as unknown as Record<string, unknown>;
+    const loop = w._gameLoop as GameLoop | undefined;
+    if (!loop) return { error: 'GameLoop not exposed' };
+    return {
+      running: loop.isRunning(),
+      logicTickCount: loop.getLogicTickCount(),
+      logicTickProgress: loop.getLogicTickProgress(),
+      logicIntervalMs: loop.getLogicIntervalMs(),
+    };
+  }
+
+  /** Manually step one logic frame (for testing / pause-resume). */
+  private gameLoopStep(): Record<string, unknown> {
+    const w = window as unknown as Record<string, unknown>;
+    const loop = w._gameLoop as GameLoop | undefined;
+    if (!loop) return { error: 'GameLoop not exposed' };
+    const before = loop.getLogicTickCount();
+    loop.stepLogic();
+    return {
+      beforeTick: before,
+      afterTick: loop.getLogicTickCount(),
+    };
   }
 
   // ── Map Editor (Task 9.8) ──

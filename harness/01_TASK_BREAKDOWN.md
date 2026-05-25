@@ -1812,8 +1812,8 @@
 - **验收**：Task 26（命令分发器）基于 `GameOrder` 实现；Task 46（Shift 队列）基于 `GameOrder.queued` 实现。
 - **关联**：Task 139（OrderGenerator 生成 GameOrder）、Task 62（Order 序列化，深度 1）、Task 68（回放录制 Order 数组，深度 1）。
 
-### Task 141: 逻辑帧与渲染帧分离架构
-- **目标**：将游戏模拟从渲染循环中分离，固定 25 FPS 逻辑帧 + 可变渲染帧插值。
+### Task 141: 逻辑帧与渲染帧分离架构 ✅
+- **目标**：将游戏模拟从渲染循环中分离，固定 60 FPS 逻辑帧（与现有单位移动系统兼容）+ 可变渲染帧插值。后续 Task 65（Lockstep）统一降至 25 FPS。
 - **OpenRA 对标**：`OpenRA.Game/Game.cs`（`LogicTick` vs `RenderTick`）
 - **设计要点**：
   - `GameLoop.ts` 维护独立的 `logicTickCount`（每 40ms +1）
@@ -1991,7 +1991,7 @@
 - [ ] **Task 132**：启发式权重可调 — 次优路径换性能 ⚪ P3
 - [x] **Task 139**：统一 OrderGenerator 框架
 - [x] **Task 140**：GameOrder 命令抽象与队列
-- [ ] **Task 141**：逻辑帧与渲染帧分离架构
+- [x] **Task 141**：逻辑帧与渲染帧分离架构
 - [ ] **Task 142**：音频分类管理器（AudioManager）
 
 ### 深度 1：依赖深度 0
