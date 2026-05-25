@@ -1833,16 +1833,15 @@
 
 | 深度 | 任务数 | 已完成 | 待完成 | 说明 |
 |------|--------|--------|--------|------|
-| 0 | 120 | 43 | 77 | 无显式前置依赖 |
+| 0 | 120 | 44 | 76 | 无显式前置依赖 |
 | 1 | 36 | 11 | 25 | 依赖深度 0 |
 | 2 | 1 | 0 | 1 | 依赖深度 1 |
 
 ### 深度 0：根基层（无显式前置依赖）
 
-**已完成 43 个**：Task 0.1、Task 0.2、Task 0.3、Task 0.4、Task 0.5、Task 1、Task 2、Task 3、Task 4、Task 5、Task 6、Task 7、Task 8、Task 9、Task 11、Task 12、Task 13、Task 14、Task 15、Task 16、Task 17、Task 18、Task 19、Task 20、Task 21、Task 22、Task 23、Task 24、Task 102、Task 103、Task 104、Task 105、Task 106、Task 107、Task 108、Task 109、Task 110、Task 112、Task 114、Task 115、Task 116、Task 117、Task 120
+**已完成 44 个**：Task 0、Task 0.1、Task 0.2、Task 0.3、Task 0.4、Task 0.5、Task 1、Task 2、Task 3、Task 4、Task 5、Task 6、Task 7、Task 8、Task 9、Task 11、Task 12、Task 13、Task 14、Task 15、Task 16、Task 17、Task 18、Task 19、Task 20、Task 21、Task 22、Task 23、Task 24、Task 102、Task 103、Task 104、Task 105、Task 106、Task 107、Task 108、Task 109、Task 110、Task 112、Task 114、Task 115、Task 116、Task 117、Task 120
 
-**待完成 77 个**：
-- [ ] **Task 0**：获取原始 C++ 源码并放置到 origin/
+**待完成 76 个**：
 - [ ] **Task 25**：选择系统（单选、框选、编队）
 - [ ] **Task 26**：命令分发器（Move / Attack / Guard / Stop）
 - [ ] **Task 27**：HUD / UI 覆盖层（资源、小地图、单位信息）
@@ -1913,48 +1912,48 @@
 - [ ] **Task 92**：桌面应用打包（Electron / Tauri）
 - [ ] **Task 93**：移动端触控适配
 - [ ] **Task 94**：Steam 集成（远期）
-- [ ] **Task 95**：YAML 规则解析基础设施 P0
-- [ ] **Task 121**：A* 优先队列（Binary Heap）— 寻路 Open 集合优化 P0
-- [ ] **Task 127**：Lane Bias + 方向邻居裁剪 — A* 邻居优化 P2
-- [ ] **Task 128**：Path Cache / CellInfoLayerPool — 搜索层对象池 P2
-- [ ] **Task 131**：ActorMap Bin 划分 + 触发器系统 P3
-- [ ] **Task 132**：启发式权重可调 — 次优路径换性能 P3
+- [ ] **Task 95**：YAML 规则解析基础设施 🔴 P0
+- [ ] **Task 121**：A* 优先队列（Binary Heap）— 寻路 Open 集合优化 🔴 P0
+- [ ] **Task 127**：Lane Bias + 方向邻居裁剪 — A* 邻居优化 🟢 P2
+- [ ] **Task 128**：Path Cache / CellInfoLayerPool — 搜索层对象池 🟢 P2
+- [ ] **Task 131**：ActorMap Bin 划分 + 触发器系统 ⚪ P3
+- [ ] **Task 132**：启发式权重可调 — 次优路径换性能 ⚪ P3
 
 ### 深度 1：依赖深度 0
 
 **已完成 11 个**：Task 9.1、Task 9.2、Task 9.3、Task 9.4、Task 9.5、Task 9.6、Task 9.8、Task 10、Task 113、Task 118、Task 119
 
 **待完成 25 个**：
-- [ ] **Task 9.7**：Shroud 边缘贴图渲染系统 — 迷雾视觉精细化 P2 ← 31（Fog）, 9.1（CellLayer）, 9.5（PPos）
-- [ ] **Task 23.32**：电力系统自动汇总重构 P1 ← 20–23（建筑系统已稳定）, 20, 21, 22, 23
-- [ ] **Task 27.5**：外交关系系统 P0 ← 12（House）
-- [ ] **Task 27.6**：Bot 类型支持 P2 ← 27.5（外交关系先就位）
-- [ ] **Task 30.5**：经济双轨化（Cash + Resources）P0 ← 100（HouseEconomy）
-- [ ] **Task 51.5**：立场着色（Player Relationship Colors）P2 ← 27.5（外交关系系统先就位）
-- [ ] **Task 68.5**：观战者身份系统（Spectator Support）P2 ← 27.5（外交关系）, 31（战争迷雾）
-- [ ] **Task 96**：轻量 Trait/Component 系统 P1 ← 95（YAML）
-- [ ] **Task 97**：规则继承与抽象 Actor P1 ← 95（YAML）, 96（Trait）
-- [ ] **Task 98**：Weapon 规则系统（WeaponInfo + Projectile + Warheads）P0 ← 95（YAML）
-- [ ] **Task 100**：House 类拆分（God Class 治理）P1 ← 23.32（电力模块先独立）, 27.5（外交模块先独立）
-- [ ] **Task 101**：科技树 Watcher 机制 P1 ← 100（HouseTechTree）
-- [ ] **Task 122**：HPF 抽象图 + 抽象启发式引导 — 分层寻路完整实现 P0 ← 114（已有）, 121（优先队列提升抽象图搜索效率）
-- [ ] **Task 123**：HPF 动态更新 — 脏 Grid 增量重建与建筑监听 P0 ← 122（完整抽象图实现后才有可增量更新的结构）
-- [ ] **Task 124**：SubCell 精确位置 — 步兵同格子位移 P1 ← 113（LocomotorCache）
-- [ ] **Task 125**：Activity 树重构 — 从扁平状态机到嵌套活动系统 P1 ← 119（MoveWithinRange/Follow）, 129（MovePart）
-- [ ] **Task 126**：CustomMovementLayer 实现 — 多层移动（隧道/地下/飞行/桥梁）P1 ← 120（接口预留）, 130（高度系统用于判断桥/斜坡过渡）
-- [ ] **Task 129**：MovePart 拆分 + 弧线移动 + 倒车 — 移动表现精细化 P2 ← 117（TurnSpeed）, 125（Activity）
-- [ ] **Task 130**：高度系统（Cell Height）— 悬崖与斜坡 P2 ← 127（Directed）
-- [ ] **Task 133**：DamageTypes 伤害类型标签系统 P0 ← 29（伤害计算器）
-- [ ] **Task 134**：前提条件令牌与动态 TechTree P0 ← 96（Trait）
-- [ ] **Task 135**：阵营限制与建造限制 P1 ← 134（动态）
-- [ ] **Task 136**：游戏速度与大厅选项系统 P1 ← 32（GameLoop）, 134（TechTree）
-- [ ] **Task 137**：条件 Trait 系统（GrantConditionOnPrerequisite）P2 ← 96（Trait）, 134（TechTree）
-- [ ] **Task 138**：序列系统（Sequences）P3 ← 10.4（Sprite）, 96（Trait）
+- [ ] **Task 9.7**：Shroud 边缘贴图渲染系统 — 迷雾视觉精细化 🟢 P2 ← 31（Fog, 9.1（CellLayer, 9.5（PPos
+- [ ] **Task 23.32**：电力系统自动汇总重构 🟡 P1 ← 20–23（建筑系统已稳定）, 20, 21, 22, 23
+- [ ] **Task 27.5**：外交关系系统 🔴 P0 ← 12（House
+- [ ] **Task 27.6**：Bot 类型支持 🟢 P2 ← 27.5（外交关系先就位，Bot
+- [ ] **Task 30.5**：经济双轨化（Cash + Resources）🔴 P0 ← 100（HouseEconomy
+- [ ] **Task 51.5**：立场着色（Player Relationship Colors）🟢 P2 ← 27.5（外交关系系统先就位）
+- [ ] **Task 68.5**：观战者身份系统（Spectator Support）🟢 P2 ← 27.5（外交关系）+, 31（战争迷雾）
+- [ ] **Task 96**：轻量 Trait/Component 系统 🟡 P1 ← 95（YAML
+- [ ] **Task 97**：规则继承与抽象 Actor 🟡 P1 ← 95（YAML, 96（Trait
+- [ ] **Task 98**：Weapon 规则系统（WeaponInfo + Projectile + Warheads）🔴 P0 ← 95（YAML
+- [ ] **Task 100**：House 类拆分（God Class 治理）🟡 P1 ← 23.32（电力模块先独立）+, 27.5（外交模块先独立）
+- [ ] **Task 101**：科技树 Watcher 机制 🟡 P1 ← 100（HouseTechTree
+- [ ] **Task 122**：HPF 抽象图 + 抽象启发式引导 — 分层寻路完整实现 🔴 P0 ← 114（已有, 121（优先队列提升抽象图搜索效率）
+- [ ] **Task 123**：HPF 动态更新 — 脏 Grid 增量重建与建筑监听 🔴 P0 ← 122（完整抽象图实现后才有可增量更新的结构）
+- [ ] **Task 124**：SubCell 精确位置 — 步兵同格子位移 🟡 P1 ← 113（LocomotorCache
+- [ ] **Task 125**：Activity 树重构 — 从扁平状态机到嵌套活动系统 🟡 P1 ← 119（MoveWithinRange/Follow, 129（MovePart
+- [ ] **Task 126**：CustomMovementLayer 实现 — 多层移动（隧道/地下/飞行/桥梁）🟡 P1 ← 120（接口预留），Task, 130（高度系统用于判断桥/斜坡过渡）
+- [ ] **Task 129**：MovePart 拆分 + 弧线移动 + 倒车 — 移动表现精细化 🟢 P2 ← 117（TurnSpeed, 125（Activity
+- [ ] **Task 130**：高度系统（Cell Height）— 悬崖与斜坡 🟢 P2 ← 127（Directed
+- [ ] **Task 133**：DamageTypes 伤害类型标签系统 🔴 P0 ← 29（伤害计算器）、Task
+- [ ] **Task 134**：前提条件令牌与动态 TechTree 🔴 P0 ← 96（Trait
+- [ ] **Task 135**：阵营限制与建造限制 🟡 P1 ← 134（动态
+- [ ] **Task 136**：游戏速度与大厅选项系统 🟡 P1 ← 32（GameLoop, 134（TechTree
+- [ ] **Task 137**：条件 Trait 系统（GrantConditionOnPrerequisite）🟢 P2 ← 96（Trait, 134（TechTree
+- [ ] **Task 138**：序列系统（Sequences）⚪ P3 ← 10.4（Sprite, 96（Trait
 
 ### 深度 2：依赖深度 1
 
 **待完成 1 个**：
-- [ ] **Task 99**：地图级规则覆盖 P2 ← 95, 97
+- [ ] **Task 99**：地图级规则覆盖 🟢 P2 ← 95, 97
 
 ### 循环依赖说明
 
@@ -1967,23 +1966,20 @@
 
 | 任务 | 被依赖数 | 说明 |
 |------|---------|------|
-| Task 95 | 1 | YAML 规则解析基础设施 P0 |
-| Task 97 | 1 | 规则继承与抽象 Actor P1 |
+| Task 95 | 1 | YAML 规则解析基础设施 🔴 P0 |
+| Task 97 | 1 | 规则继承与抽象 Actor 🟡 P1 |
 
 ### P0 级待办速查（按深度排序）
 
 以下仅列出标记为 **P0**（最高优先级）的待完成任务，按拓扑深度排序，可作为近期 Sprint 的候选池：
 
- 1. [深度0] **Task 95** — YAML 规则解析基础设施 P0
+ 1. [深度0] **Task 95** — YAML 规则解析基础设施 🔴 P0
  2. [深度0] **Task 121** — A* 优先队列（Binary Heap）
- 3. [深度1] **Task 27.5** — 外交关系系统 P0
- 4. [深度1] **Task 30.5** — 经济双轨化（Cash + Resources）P0
- 5. [深度1] **Task 98** — Weapon 规则系统（WeaponInfo + Projectile + Warheads）P0
+ 3. [深度1] **Task 27.5** — 外交关系系统 🔴 P0
+ 4. [深度1] **Task 30.5** — 经济双轨化（Cash + Resources）🔴 P0
+ 5. [深度1] **Task 98** — Weapon 规则系统（WeaponInfo + Projectile + Warheads）🔴 P0
  6. [深度1] **Task 122** — HPF 抽象图 + 抽象启发式引导
  7. [深度1] **Task 123** — HPF 动态更新
- 8. [深度1] **Task 133** — DamageTypes 伤害类型标签系统 P0
- 9. [深度1] **Task 134** — 前提条件令牌与动态 TechTree P0
+ 8. [深度1] **Task 133** — DamageTypes 伤害类型标签系统 🔴 P0
+ 9. [深度1] **Task 134** — 前提条件令牌与动态 TechTree 🔴 P0
 
----
-
-*本文档随开发进度更新，新增任务或调整顺序时直接在此文件修改。*
