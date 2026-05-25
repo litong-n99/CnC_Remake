@@ -1166,6 +1166,96 @@
 
 ---
 
+## Phase 7.6: Rules 全局配置补充（OpenRA Rules Gap Fill）
+
+> **定位**：补齐当前 Rules 系统与 OpenRA 之间的剩余差距。本 Phase 依赖 Phase 6.5 的 YAML + Trait 架构和 Phase 7 的 Weapon 系统。
+
+### Task 133: DamageTypes 伤害类型标签系统 🔴 P0
+- **目标**：在 Task 29 的装甲克制表基础上，增加行为级伤害类型标签，让伤害不仅改变数值，还影响单位状态与死亡表现。
+- **文件**：`src/game/combat/DamageTypes.ts`, `src/game/combat/DamageCalculator.ts`
+- **OpenRA 对标**：`Warhead` 中的 `DamageTypes:` 字段 + `TakeCover` Trait 的响应逻辑
+- **关键变更**：
+  - `DamageType` 枚举/标签集：`Prone50Percent`（触发匍匐且伤害减半）、`TriggerProne`（仅触发匍匐）、`FireDeath`（火焰死亡动画）、`ExplosionDeath`（爆炸死亡动画）、`ElectroDeath`（电击死亡）
+  - `DamageCalculator.applyDamage()` 返回 `DamageResult`：包含 `actualDamage`、`triggeredProne`、`deathType`
+  - `Unit.takeDamage()` 根据 `DamageResult` 切换状态机：触发匍匐姿态、播放对应死亡动画
+  - 与 `Locomotor` 联动：匍匐后步兵使用 `ProneSpeedModifier`（速度下降、受击面积变化）
+- **依赖**：Task 29（伤害计算器）、Task 96（Trait 系统，用于 `TakeCover` Trait）
+- **验收**：步枪攻击步兵 → 触发匍匐且伤害减半；火焰喷射器击杀步兵 → 播放火焰死亡动画而非普通倒地。
+- **状态**：[ ] `done`
+
+### Task 134: 前提条件令牌与动态 TechTree 🔴 P0
+- **目标**：将当前静态的 `UNIT_PREREQUISITES` / `BUILDING_PREREQUISITES` 硬编码映射表升级为 OpenRA 风格的动态令牌图，支持"任一即可"、"阵营专属"、"科技等级"多重门控。
+- **文件**：`src/game/rules/TechTree.ts`, `src/game/rules/PrerequisiteToken.ts`, `src/game/building/Building.ts`（新增 `ProvidesCustomPrerequisite` Trait）
+- **OpenRA 对标**：`TechTree.cs` + `ProvidesCustomPrerequisite` Trait + `Buildable` Trait 中的 `Prerequisites`
+- **关键变更**：
+  - `PrerequisiteToken`：字符串令牌（如 `weap`、`anypower`、`barracks`、`structures.soviet`、`techlevel.unrestricted`）
+  - `ProvidesCustomPrerequisite` Trait：建筑建造后向所属玩家的 `TechTree` 注册令牌；销毁时注销
+  - `TechTree.isAvailable(tokens: string[])`：解析令牌表达式，支持 `~` 前缀（必须拥有）、逗号（AND）、管道符（OR）
+  - 与 `Sidebar` 对接：每帧（或事件驱动）查询 `TechTree`，动态显示/灰显生产按钮
+  - 与 `MapEditor` 对接：导出时记录建筑的 `ProvidesCustomPrerequisite` 配置
+- **依赖**：Task 96（Trait 系统）
+- **验收**：建造战车工厂后 `weap` 令牌点亮，此时兵营中的火箭兵从灰显变为可造；摧毁战车工厂后火箭兵再次灰显。
+- **状态**：[ ] `done`
+
+### Task 135: 阵营限制与建造限制 🟡 P1
+- **目标**：实现单局阵营门控（GDI 无法建造 Nod 建筑）和单位建造上限（谭雅限造 1 个）。
+- **文件**：`src/game/rules/FactionRules.ts`, `src/game/rules/BuildLimitTracker.ts`
+- **OpenRA 对标**：`Buildable` Trait 中的 `Prerequisites: ~structures.soviet` + `BuildLimit`
+- **关键变更**：
+  - 阵营令牌：`~structures.gdi`、`~structures.nod`、`~structures.allies`、`~structures.soviet` 由对应阵营的 ConstructionYard 提供
+  - `UnitDefinition` / `BuildingDefinition` 新增 `buildLimit?: number`
+  - `BuildLimitTracker`：每个玩家维护 `Map<actorType, count>`，创建时 +1、销毁时 -1，与 `TechTree` 联合判定可用性
+  - `FactionRules`：定义阵营科技树差异（如 Nod 没有医院、GDI 没有 Obelisk）
+- **依赖**：Task 134（动态 TechTree）
+- **验收**：GDI 玩家选中谭雅时按钮显示 "1/1"，造完 1 个后按钮灰显并提示 "已达到建造上限"；Nod 玩家的 Sidebar 中不出现 GDI 专属建筑图标。
+- **状态**：[ ] `done`
+
+### Task 136: 游戏速度与大厅选项系统 🟡 P1
+- **目标**：支持多档游戏速度（慢速/正常/快速）和遭遇战大厅选项（短兵相接、科技等级、起始资金）。
+- **文件**：`src/game/rules/GameSpeeds.ts`, `src/game/rules/LobbyOptions.ts`, `src/ui/shell/SkirmishSetup.ts`
+- **OpenRA 对标**：`mod.yaml` 中的 `GameSpeeds` + `MapOptions` Trait + `ScriptLobbyDropdown`
+- **关键变更**：
+  - `GameSpeeds`：定义 `slowest` / `slower` / `normal` / `fast` / `fastest` 五档，每档包含 `timestep`（ms/tick）和 `orderLatency`
+  - `LobbyOptions`：大厅配置结构（`shortGame`、`techLevel`、`gameSpeed`、`startingCash`、`crates`、`buildOffAlly` 等布尔/枚举选项）
+  - `GameLoop` 适配：根据 `gameSpeed.timestep` 调整 Tick 间隔（当前固定 60FPS → 可变步长）
+  - `Ruleset` 适配：`techLevel` 变化时动态过滤 Sidebar 中不可建造的单位
+  - `SkirmishSetup` UI：复选框 + 下拉框绑定 `LobbyOptions`
+- **依赖**：Task 32（GameLoop Tick 系统）、Task 134（TechTree 动态过滤）
+- **验收**：遭遇战设置中游戏速度选 "Fast"，进入游戏后单位移动和建造速度明显加快；科技等级选 "Low"，Sidebar 中只显示 T1 单位。
+- **状态**：[ ] `done`
+
+### Task 137: 条件 Trait 系统（GrantConditionOnPrerequisite）🟢 P2
+- **目标**：让 Trait 可以根据前提条件动态启用/禁用，实现"低电量时雷达失效"、"拥有科技中心后坦克射速提升"等规则。
+- **文件**：`src/game/traits/ConditionalTrait.ts`, `src/game/traits/GrantConditionOnPrerequisite.ts`
+- **OpenRA 对标**：`ConditionalTrait<T>` 基类 + `GrantConditionOnPrerequisite` + `RequiresCondition`
+- **关键变更**：
+  - `ConditionalTrait` 基类：所有需要条件控制的 Trait 继承此类，暴露 `enabled` 布尔状态
+  - `GrantConditionOnPrerequisite`：当玩家 TechTree 满足指定令牌时，向目标 Actor 注入一个 `Condition` 标记
+  - `PauseOnCondition` / `RequiresCondition`：子类化条件 Trait，实现"无电停工"、"前提满足才生效"
+  - 与 `TechTree` 联动：建筑建造/销毁导致条件变化 → 触发所有监听该条件的 Trait 状态切换
+  - 典型用例：
+    - `Radar` Trait 绑定 `RequiresCondition: hasPower` → 低电量时地图黑雾恢复
+    - `Armament` Trait 绑定 `GrantConditionOnPrerequisite: stek` → 拥有科技中心后主炮射速 +20%
+- **依赖**：Task 96（Trait 系统）、Task 134（TechTree 令牌）
+- **验收**：玩家电力不足时，所有 Radar 建筑的小地图立即变黑；电力恢复后小地图重新点亮，无需重新探索。
+- **状态**：[ ] `done`
+
+### Task 138: 序列系统（Sequences）⚪ P3
+- **目标**：为每个 Actor 定义精灵图序列（idle、move、attack、die、prone 等），替代当前的 Dummy 几何体，实现 OpenRA 级别的逐帧动画。
+- **文件**：`src/game/rules/SequenceProvider.ts`, `src/renderer/sprites/SequenceRenderer.ts`, `public/rules/sequences.yaml`
+- **OpenRA 对标**：`SequenceProvider.cs` + `mods/*/sequences/*.yaml`
+- **关键变更**：
+  - `SequenceProvider`：从 YAML 加载每个 Actor 的序列定义（`start` 帧、`length` 长度、`tick` 每帧时长、`facings` 朝向数、`transpose` 偏移）
+  - `SequenceRenderer`：根据 Actor 当前状态（idle/moving/attacking）和朝向选择正确的序列帧，从 atlas 中采样 UV
+  - 与 `DamageTypes` 联动：`FireDeath` 触发 `die-fire` 序列而非默认 `die` 序列
+  - 与 `Weapon` 联动：`Armament` Trait 开火时触发 `attack` 序列，播放完成后切回 `idle`
+  - Dummy 阶段：序列使用纯色方块序列（不同颜色代表不同动作），保持框架可运行
+- **依赖**：Task 10.4（Sprite Atlas 系统）、Task 96（Trait 系统，用于 `WithInfantryBody` 等渲染 Trait）
+- **验收**：步枪兵移动时播放 6 帧行走动画（循环），停下时切回 idle 第 1 帧；被火焰击杀时播放 8 帧火焰死亡序列（不循环）。
+- **状态**：[ ] `done`
+
+---
+
 ## Phase 8: 游戏循环与发布（Loop & Release）
 
 ### Task 32: 游戏主循环与 Tick 系统
@@ -1706,6 +1796,7 @@
 | Phase 6.5 架构升级 | 5 | 0 | 95 YAML、96 Trait、97 规则继承、100 House 拆分、101 科技树 Watcher |
 | Phase 7 战斗经济 | 6 | 0 | 含 98 Weapon 规则（Task 28 前置）；30.5 经济双轨化（P0） |
 | Phase 7.5 Mod 支持 | 1 | 0 | 99 地图级规则覆盖 |
+| Phase 7.6 Rules 补充 | 6 | 0 | 133 DamageTypes、134 TechTree令牌、135 阵营/建造限制、136 游戏速度/大厅、137 条件Trait、138 序列 |
 | Phase 8 循环发布 | 4 | 0 | |
 | Phase 9 UI Shell | 7 | 0 | 主菜单、战役、遭遇战、多人、设置、加载 |
 | Phase 10 交互增强 | 10 | 0 | 光标、Sidebar、Shift队列、攻击移动、编组；51.5 立场着色 |
@@ -1716,7 +1807,7 @@
 | Phase 15 AI高级 | 7 | 0 | Bot、超级武器、空军、桥梁 |
 | Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
 | Phase 17 发布平台 | 3 | 0 | 桌面打包、移动端、Steam |
-| **总计** | **143** | **47** | |
+| **总计** | **149** | **47** | |
 
 ---
 
