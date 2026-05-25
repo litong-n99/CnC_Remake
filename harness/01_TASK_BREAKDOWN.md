@@ -1131,10 +1131,10 @@
 ### Task 30: 采矿与经济系统
 - **目标**：矿车自动寻找矿场（Tiberium/ Ore），采矿后返回矿厂卸货，资金增长。
 - **参考 C++**：`UNIT.CPP` 中矿车 AI 与 `BUILDING.CPP` 中矿厂逻辑。
-- **文件**：`src/game/economy/HarvesterAI.ts`, `src/game/economy/EconomyManager.ts`
+- **文件**：`src/game/economy/HarvesterAI.ts`
 - **Dummy 资源**：矿场用绿色/金色发光 `Ground` 贴片表示；矿车用黄色 Box。
 - **验收**：矿车自动往返于矿场与矿厂，资金数字随卸货增长。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 30.5: 经济双轨化（Cash + Resources）🔴 P0
 - **目标**：当前只有单轨 `credits`，矿石直接变现金，矿厂"存储容量"机制形同虚设。拆分为 Cash（可花费资金）+ Resources（矿石储量，受容量限制），与 OpenRA `PlayerResources` 对齐。
@@ -1910,15 +1910,15 @@
 
 ### 深度 0：根基层（无显式前置依赖）
 
-**已完成 50 个**：Task 0、Task 0.1、Task 0.2、Task 0.3、Task 0.4、Task 0.5、Task 1、Task 2、Task 3、Task 4、Task 5、Task 6、Task 7、Task 8、Task 9、Task 11、Task 12、Task 13、Task 14、Task 15、Task 16、Task 17、Task 18、Task 19、Task 20、Task 21、Task 22、Task 23、Task 24、Task 25、Task 26、Task 27、Task 28、Task 29、Task 102、Task 103、Task 104、Task 105、Task 106、Task 107、Task 108、Task 109、Task 110、Task 112、Task 114、Task 115、Task 116、Task 117、Task 120、Task 121、Task 139、Task 140、Task 141
+**已完成 51 个**：Task 0、Task 0.1、Task 0.2、Task 0.3、Task 0.4、Task 0.5、Task 1、Task 2、Task 3、Task 4、Task 5、Task 6、Task 7、Task 8、Task 9、Task 11、Task 12、Task 13、Task 14、Task 15、Task 16、Task 17、Task 18、Task 19、Task 20、Task 21、Task 22、Task 23、Task 24、Task 25、Task 26、Task 27、Task 28、Task 29、Task 30、Task 102、Task 103、Task 104、Task 105、Task 106、Task 107、Task 108、Task 109、Task 110、Task 112、Task 114、Task 115、Task 116、Task 117、Task 120、Task 121、Task 139、Task 140、Task 141
 
-**待完成 76 个**：
+**待完成 75 个**：
 - [x] **Task 25**：选择系统（单选、框选、编队）
 - [x] **Task 26**：命令分发器（Move / Attack / Guard / Stop）
 - [x] **Task 27**：HUD / UI 覆盖层（资源、小地图、单位信息）
 - [x] **Task 28**：武器与弹道系统（翻译 WEAPON.CPP / BULLET.CPP）
 - [x] **Task 29**：伤害计算与装甲系统
-- [ ] **Task 30**：采矿与经济系统
+- [x] **Task 30**：采矿与经济系统
 - [ ] **Task 31**：战争迷雾（Fog of War）
 - [ ] **Task 32**：游戏主循环与 Tick 系统 🟡 P1
 - [ ] **Task 33**：存档 / 读档系统

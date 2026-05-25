@@ -14,6 +14,7 @@ export enum UnitState {
   Idle = 'IDLE',
   Moving = 'MOVING',
   Attacking = 'ATTACKING',
+  Harvesting = 'HARVESTING',
   Dying = 'DYING',
   TurretTracking = 'TURRET_TRACKING',
 }
@@ -29,10 +30,29 @@ export class UnitStateMachine {
   private previous: UnitState = UnitState.Idle;
 
   private static readonly transitions: Readonly<Record<UnitState, readonly UnitState[]>> = {
-    [UnitState.Idle]: [UnitState.Moving, UnitState.Attacking, UnitState.Dying, UnitState.TurretTracking],
-    [UnitState.Moving]: [UnitState.Idle, UnitState.Attacking, UnitState.Dying],
-    [UnitState.Attacking]: [UnitState.Idle, UnitState.Moving, UnitState.Dying, UnitState.TurretTracking],
-    [UnitState.TurretTracking]: [UnitState.Idle, UnitState.Attacking, UnitState.Moving, UnitState.Dying],
+    [UnitState.Idle]: [
+      UnitState.Moving,
+      UnitState.Attacking,
+      UnitState.Harvesting,
+      UnitState.Dying,
+      UnitState.TurretTracking,
+    ],
+    [UnitState.Moving]: [UnitState.Idle, UnitState.Attacking, UnitState.Harvesting, UnitState.Dying],
+    [UnitState.Attacking]: [
+      UnitState.Idle,
+      UnitState.Moving,
+      UnitState.Harvesting,
+      UnitState.Dying,
+      UnitState.TurretTracking,
+    ],
+    [UnitState.Harvesting]: [UnitState.Idle, UnitState.Moving, UnitState.Attacking, UnitState.Dying],
+    [UnitState.TurretTracking]: [
+      UnitState.Idle,
+      UnitState.Attacking,
+      UnitState.Moving,
+      UnitState.Harvesting,
+      UnitState.Dying,
+    ],
     [UnitState.Dying]: [],
   };
 

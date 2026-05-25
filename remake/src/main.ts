@@ -27,6 +27,7 @@ import { MoveHandler, StopHandler, AttackHandler, GuardHandler } from './game/or
 import { BulletManager } from './game/weapon/Bullet';
 import { WEAPON_DEFINITIONS } from './game/weapon/Weapon';
 import { DamageCalculator, WarheadType } from './game/combat/DamageCalculator';
+import { ResourceLayer } from './game/economy/ResourceLayer';
 import { GameLoop } from './game/GameLoop';
 import { loadYamlRulesWithFallback } from './game/rules/YamlLoader';
 
@@ -445,8 +446,14 @@ const bootstrap = async (): Promise<void> => {
     }
   );
 
+  // ── Task 30: Resource Layer ──
+  const resourceLayer = new ResourceLayer(terrain.getWidth(), terrain.getHeight(), [
+    { name: 'Tiberium', terrainType: 'clear', maxDensity: 255, growthRate: 0.05, spreadRate: 0.02, value: 25 },
+    { name: 'Ore', terrainType: 'clear', maxDensity: 200, growthRate: 0.03, spreadRate: 0.01, value: 50 },
+  ]);
+
   // ── Debug Console ──
-  const gameConsole = new GameConsole(scene, lighting, rtsCamera, terrain, placer, pathfinder);
+  const gameConsole = new GameConsole(scene, lighting, rtsCamera, terrain, placer, pathfinder, resourceLayer);
   gameConsole.install();
 
   // ── Task 140: OrderDispatcher 初始化 ──
@@ -542,6 +549,8 @@ const bootstrap = async (): Promise<void> => {
   w._scene = scene;
   w._selectionManager = selectionManager;
   w._goManager = GameObjectManager.getInstance();
+  w._houseManager = HouseManager.getInstance();
+  w._goFactory = GameObjectFactory;
   w._worldToScreen = (worldX: number, worldY: number, worldZ: number) => {
     return inputManager.worldToScreen(new Vector3(worldX, worldY, worldZ));
   };
@@ -554,6 +563,7 @@ const bootstrap = async (): Promise<void> => {
   w.DamageCalculator = DamageCalculator;
   w.WarheadType = WarheadType;
   w.ArmorType = ArmorType;
+  w._resourceLayer = resourceLayer;
 
   // ── Verification ──
   const goManager = GameObjectManager.getInstance();

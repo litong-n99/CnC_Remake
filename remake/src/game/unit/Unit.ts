@@ -14,6 +14,8 @@ import type { WeaponDef } from '../weapon/Weapon';
 import { WEAPON_DEFINITIONS } from '../weapon/Weapon';
 import { BulletManager } from '../weapon/Bullet';
 import { DamageCalculator, WarheadType } from '../combat/DamageCalculator';
+import { HarvesterAI } from '../economy/HarvesterAI';
+import type { ResourceLayer } from '../economy/ResourceLayer';
 import type { Scene } from '@babylonjs/core';
 
 /**
@@ -87,6 +89,9 @@ export class UnitController {
 
   // ── Task 28: 武器系统 ──
   primaryWeapon?: WeaponDef;
+
+  // ── Task 30: 矿车 AI ──
+  harvesterAI?: HarvesterAI;
 
   // ── 坐标（与 GameObject.x/y 双向同步）──
   x = 0;
@@ -325,6 +330,11 @@ export class UnitController {
       case UnitState.Attacking:
         this.tickAttacking();
         break;
+      case UnitState.Harvesting:
+        // Task 30: Harvesting 状态下仍需推进移动（矿车往返资源点与矿厂）
+        this.tickMoving(deltaTime);
+        this.tickHarvesting();
+        break;
       case UnitState.Dying:
         this.tickDying();
         break;
@@ -353,6 +363,11 @@ export class UnitController {
       this.isNudging = false;
     }
 
+    // Task 30: 矿车 AI 在 Idle 状态下自动推进
+    if (this.harvesterAI?.isActive()) {
+      this.harvesterAI.tick();
+    }
+
     // Task 23.18: Follow — 目标移动后重新定位
     if (this.followTargetId && this.followPathfinder) {
       const target = GameObjectManager.getInstance().get(this.followTargetId);
@@ -378,6 +393,18 @@ export class UnitController {
 
   private tickAttacking(): void {
     // TODO: Phase 4+ — Firing_AI() 目标选择、开火判定
+  }
+
+  private tickHarvesting(): void {
+    // Task 30: 矿车 AI 驱动
+    this.harvesterAI?.tick();
+  }
+
+  /** 初始化矿车 AI — Task 30。 */
+  initHarvesterAI(resourceLayer: ResourceLayer, pathfinder: Pathfinder): void {
+    if (this.definition.id === 'UNIT_HARVESTER') {
+      this.harvesterAI = new HarvesterAI(this, resourceLayer, pathfinder);
+    }
   }
 
   /** 向目标开火 — Task 28。 */

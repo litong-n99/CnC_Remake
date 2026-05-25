@@ -32,6 +32,7 @@ import { groundOrder, actorOrder, selfOrder, type GameOrder } from '../game/orde
 import { OrderGeneratorManager } from '../game/order/OrderGenerator';
 import { TestOrderGenerator } from '../game/order/generators/TestOrderGenerator';
 import { GameLoop } from '../game/GameLoop';
+import { UnitState } from '../game/unit/UnitState';
 
 /**
  * Debug console — exposes `window.cnc` commands for runtime spawning,
@@ -62,14 +63,22 @@ export class GameConsole {
     private readonly rtsCamera: RTSCamera,
     private readonly terrain: TerrainGrid,
     private readonly placer: BuildingPlacer,
-    private readonly pathfinder?: Pathfinder
+    private readonly pathfinder?: Pathfinder,
+    resourceLayer?: ResourceLayer
   ) {
-    // Create default resource layer (Tiberium)
-    this.resourceLayer = new ResourceLayer(terrain.getWidth(), terrain.getHeight(), [
-      { name: 'Tiberium', terrainType: 'clear', maxDensity: 255, growthRate: 0.05, spreadRate: 0.02, value: 25 },
-      { name: 'Ore', terrainType: 'clear', maxDensity: 200, growthRate: 0.03, spreadRate: 0.01, value: 50 },
-    ]);
+    // Create default resource layer (Tiberium) if not provided
+    this.resourceLayer =
+      resourceLayer ??
+      new ResourceLayer(terrain.getWidth(), terrain.getHeight(), [
+        { name: 'Tiberium', terrainType: 'clear', maxDensity: 255, growthRate: 0.05, spreadRate: 0.02, value: 25 },
+        { name: 'Ore', terrainType: 'clear', maxDensity: 200, growthRate: 0.03, spreadRate: 0.01, value: 50 },
+      ]);
     this.mapEditor = new MapEditor(terrain, this.resourceLayer, terrain.getTileSet());
+  }
+
+  /** Get the resource layer instance. */
+  getResourceLayer(): ResourceLayer | null {
+    return this.resourceLayer;
   }
 
   /** Register all commands on `window.cnc`. */
@@ -147,6 +156,7 @@ export class GameConsole {
       editorRedo: this.editorRedo.bind(this),
       editorExport: this.editorExport.bind(this),
       attack: this.attack.bind(this),
+      harvestUnit: this.harvestUnit.bind(this),
       help: this.help.bind(this),
     };
     // eslint-disable-next-line no-console
@@ -205,6 +215,12 @@ export class GameConsole {
       this.lighting.addShadowCaster(unit.mesh);
       this.lighting.enableShadowsOnMesh(unit.mesh);
     }
+
+    // Task 30: initialize harvester AI for harvester units
+    if (unit.definition.id === 'UNIT_HARVESTER' && this.resourceLayer && this.pathfinder) {
+      unit.logic.initHarvesterAI(this.resourceLayer, this.pathfinder);
+    }
+
     // eslint-disable-next-line no-console
     console.info(`Created ${unit.definition.name} at (${spawnX}, ${spawnY}) for ${house.name}`);
     return unit;
@@ -1646,5 +1662,39 @@ export class GameConsole {
         ? `${unit.definition.name} fired at (${targetX}, ${targetY})`
         : `${unit.definition.name} cannot fire (out of range or reloading)`,
     };
+  }
+
+  /**
+   * 命令指定矿车开始采矿循环。
+   * @param unitId — 矿车单位 ID
+   */
+  private harvestUnit(unitId: string): { success: boolean; message: string } {
+    const manager = GameObjectManager.getInstance();
+    const obj = manager.get(unitId);
+    if (!obj || !obj.isAlive()) {
+      return { success: false, message: `Unit "${unitId}" not found or dead` };
+    }
+    if (obj.type !== GameObjectType.Unit) {
+      return { success: false, message: `"${unitId}" is not a unit` };
+    }
+
+    const unit = obj as Unit;
+    if (unit.definition.id !== 'UNIT_HARVESTER') {
+      return { success: false, message: `"${unitId}" is not a harvester` };
+    }
+
+    if (!unit.logic.harvesterAI) {
+      if (this.resourceLayer && this.pathfinder) {
+        unit.logic.initHarvesterAI(this.resourceLayer, this.pathfinder);
+      } else {
+        return { success: false, message: 'ResourceLayer or Pathfinder not available' };
+      }
+    }
+
+    if (unit.logic.harvesterAI) {
+      unit.logic.harvesterAI.start();
+    }
+    unit.logic.stateMachine.transition(UnitState.Harvesting);
+    return { success: true, message: `${unit.definition.name} started harvesting` };
   }
 }
