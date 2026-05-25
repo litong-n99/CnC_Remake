@@ -272,7 +272,7 @@
   - `landTypeToSplat` 映射表扩展至全部 `LandType` 枚举
 - **依赖**：Task 9.4（基础 splat shader 已就位）
 - **验收**：64×64 地图中同时出现草地、道路、水域、岩石、沙滩五种地形，Water 格子有可见波纹动画
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 #### Task 10.2: Splat Map 渐变过渡
 - **目标**：消除当前硬切边界。相邻不同 `LandType` 的格子之间应在 splat map 上产生 2–4 格的双线性权重渐变，使 shader 混合出自然过渡带。
@@ -283,7 +283,7 @@
   - 保留悬崖/墙壁等需要硬边界的类型（通过 `TerrainTileInfo.rampType` 或 `LandType` 白名单控制）
 - **依赖**：Task 10.1（8 层 splat 先就位）
 - **验收**：草地→道路、道路→水域的交界处呈现 2–4 格的柔和渐变，无锯齿硬边
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 #### Task 10.3: Splat 更新合并优化
 - **目标**：当前 `updateSplatCell` 每格变更立即调用 `DynamicTexture.update()`，在 `ResourceLayer.tickResources()` 高频变更或大地图（256×256）场景下会造成 CPU→GPU 带宽 stall。
@@ -294,7 +294,7 @@
   - 研究 Babylon.js `DynamicTexture` 局部更新 API（如 `update()` 是否支持 dirty rect），或降级为 `RawTexture` + `updateRGBDAsync`
 - **依赖**：Task 9.4（splat map 更新链路已存在）
 - **验收**：连续 100 次 `setCellLandType` 调用在 1 帧内完成，仅触发 1 次 GPU texture upload
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 #### Task 10.4: TileSet 真实 Sprite 加载（OpenRA 美术资源接入）
 - **目标**：让 `DefaultTileCache` 从 OpenRA 原始的 `.shp`/`.tmp` 文件解析真实图像，替代 Canvas 2D 程序化纹理。这是与 OpenRA 生态兼容的核心步骤。
@@ -306,7 +306,7 @@
   - 回退机制：若真实图像缺失，继续使用 procedural texture
 - **依赖**：Task 9.2（TileSet YAML 解析已就位）
 - **验收**：加载 `temperat.yaml` + 对应 `.shp`/`.tmp` 后，`TerrainGrid` 显示真实 C&C 地形 sprite，不再是纯色方块
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 #### Task 10.5: Macro Tile Decal 层
 - **目标**：在 Texture Splatting 之上增加贴花（decal）层，用真实 sprite 精确覆盖关键地形特征（建筑地基、特殊悬崖、桥梁、道路标记）。实现"底层 shader 自然过渡 + 上层 sprite 精确还原"的混合视觉。
@@ -318,7 +318,7 @@
   - 非关键 cell（大面积草地/水域）不生成 decal，由 splat shader 负责，减少 draw call
 - **依赖**：Task 10.4（真实 sprite 加载先就位）
 - **验收**：同屏显示 100 个 decal tile，fps 不低于 55；悬崖边缘呈现原版像素精确形状，底部仍由 splat 草地自然过渡
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 #### Task 10.6: Palette 索引 Shader 支持
 - **目标**：C&C 原版大量 sprite 使用 Indexed（1-channel）+ Palette 查找。为 100% 还原原版视觉效果，shader 需支持 1-channel texture + 256-entry palette uniform。
@@ -330,7 +330,7 @@
   - 与 `SpriteRenderer.SheetCount` 限制对齐：单 draw call 最多 8 个 atlas texture
 - **依赖**：Task 10.4（真实 sprite 加载先就位）
 - **验收**：同一个 atlas texture 的 R/G/B/A 四个通道分别映射到四个不同 palette 的 sprite，shader 正确渲染出四种不同颜色方案的地形
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ---
 
