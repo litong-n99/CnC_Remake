@@ -1910,9 +1910,9 @@
 
 ### 深度 0：根基层（无显式前置依赖）
 
-**已完成 46 个**：Task 0、Task 0.1、Task 0.2、Task 0.3、Task 0.4、Task 0.5、Task 1、Task 2、Task 3、Task 4、Task 5、Task 6、Task 7、Task 8、Task 9、Task 11、Task 12、Task 13、Task 14、Task 15、Task 16、Task 17、Task 18、Task 19、Task 20、Task 21、Task 22、Task 23、Task 24、Task 102、Task 103、Task 104、Task 105、Task 106、Task 107、Task 108、Task 109、Task 110、Task 112、Task 114、Task 115、Task 116、Task 117、Task 120、Task 139、Task 140
+**已完成 48 个**：Task 0、Task 0.1、Task 0.2、Task 0.3、Task 0.4、Task 0.5、Task 1、Task 2、Task 3、Task 4、Task 5、Task 6、Task 7、Task 8、Task 9、Task 11、Task 12、Task 13、Task 14、Task 15、Task 16、Task 17、Task 18、Task 19、Task 20、Task 21、Task 22、Task 23、Task 24、Task 102、Task 103、Task 104、Task 105、Task 106、Task 107、Task 108、Task 109、Task 110、Task 112、Task 114、Task 115、Task 116、Task 117、Task 120、Task 121、Task 139、Task 140、Task 141
 
-**待完成 80 个**：
+**待完成 78 个**：
 - [ ] **Task 25**：选择系统（单选、框选、编队）
 - [ ] **Task 26**：命令分发器（Move / Attack / Guard / Stop）
 - [ ] **Task 27**：HUD / UI 覆盖层（资源、小地图、单位信息）
@@ -2049,7 +2049,7 @@
 以下仅列出标记为 **P0**（最高优先级）的待完成任务，按拓扑深度排序，可作为近期 Sprint 的候选池：
 
  1. [深度0] **Task 95** — YAML 规则解析基础设施 🔴 P0
- 2. [深度0] **Task 121** — A* 优先队列（Binary Heap）
+ 2. [深度0] **Task 121** — A* 优先队列（Binary Heap）✅
  3. [深度1] **Task 27.5** — 外交关系系统 🔴 P0
  4. [深度1] **Task 30.5** — 经济双轨化（Cash + Resources）🔴 P0
  5. [深度1] **Task 98** — Weapon 规则系统（WeaponInfo + Projectile + Warheads）🔴 P0
