@@ -966,7 +966,8 @@
 - **状态**：[ ] `done`
 
 ### Task 26: 命令分发器（Move / Attack / Guard / Stop）
-- **目标**：翻译 C++ 中的 `Mission` 分配逻辑。根据鼠标点击目标（地面/敌人/友方）分发不同命令。
+- **OpenRA 对标**：`OpenRA.Game/Network/Order.cs`, `OpenRA.Mods.Common/Orders/`
+- **目标**：翻译 C++ 中的 `Mission` 分配逻辑。根据鼠标点击目标（地面/敌人/友方）分发不同命令。建议基于 Task 140（GameOrder）实现。
 - **文件**：`src/game/CommandDispatcher.ts`
 - **验收**：右键空地 = 移动；右键敌人 = 攻击移动；右键友方 = 跟随/保护。
 - **状态**：[ ] `done`
@@ -1111,7 +1112,8 @@
 - **状态**：[ ] `done`
 
 ### Task 28: 武器与弹道系统（翻译 WEAPON.CPP / BULLET.CPP）
-- **目标**：武器定义（射程、射速、伤害、弹道类型），子弹飞行逻辑。
+- **OpenRA 对标**：`mods/cnc/weapons/*.yaml`, `OpenRA.Mods.Common/Traits/Armament.cs`, `OpenRA.Mods.Common/Projectiles/`
+- **目标**：武器定义（射程、射速、伤害、弹道类型），子弹飞行逻辑。先实现硬编码版本，Task 95（YAML 规则）+ Task 98（Weapon 规则系统）完成后迁移到配置化定义。
 - **弹道类型**：即时命中（步枪） vs 抛射体（炮弹、火箭）。
 - **文件**：`src/game/weapon/Weapon.ts`, `src/game/weapon/Bullet.ts`, `src/game/weapon/BallisticArc.ts`
 - **Dummy 资源**：子弹用细长 `Cylinder` + 发光材质；火箭用 `Box` + 粒子尾焰（简易版）。
@@ -1119,7 +1121,8 @@
 - **状态**：[ ] `done`
 
 ### Task 29: 伤害计算与装甲系统
-- **目标**：完全沿用 C++ 伤害公式：`Damage = Weapon.Damage * (1 - ArmorModifier)`，支持穿甲/高爆/火焰等不同弹头类型对轻/中/重装甲的修正。
+- **OpenRA 对标**：`OpenRA.Mods.Common/Warheads/`, `OpenRA.Mods.Common/Traits/Armor.cs`
+- **目标**：完全沿用 C++ 伤害公式：`Damage = Weapon.Damage * (1 - ArmorModifier)`，支持穿甲/高爆/火焰等不同弹头类型对轻/中/重装甲的修正。预留 `DamageModifiers` 扩展点，为 Task 133（DamageTypes）做准备。
 - **参考 C++**：`UNIT.CPP` / `BUILDING.CPP` 中的 `Take_Damage()`。
 - **文件**：`src/game/combat/DamageCalculator.ts`
 - **验收**：中型坦克（重甲）被火箭筒攻击时伤害低于被步枪攻击（符合 C++ 设定）。
@@ -1270,8 +1273,9 @@
 
 ## Phase 8: 游戏循环与发布（Loop & Release）
 
-### Task 32: 游戏主循环与 Tick 系统
-- **目标**：固定 60FPS 游戏步长（Lock-step），每 Tick 更新所有 Unit / Building / Bullet 状态。
+### Task 32: 游戏主循环与 Tick 系统 🟡 P1
+- **OpenRA 对标**：`OpenRA.Game/Game.cs`（`LogicTick` vs `RenderTick`）
+- **目标**：固定 60FPS 游戏步长（Lock-step），每 Tick 更新所有 Unit / Building / Bullet 状态。建议参考 Task 141（逻辑帧与渲染帧分离），预留固定逻辑帧接口，为 Task 65（Lockstep）做准备。
 - **参考 C++**：主消息循环中的 `AI()` 调用链。
 - **文件**：`src/game/GameLoop.ts`
 - **验收**：100 个单位同时移动 + 10 个建筑建造 + 20 发子弹飞行，帧率稳定 60FPS。
@@ -1283,8 +1287,9 @@
 - **验收**：点击"保存"下载 `.cncsave` 文件；刷新页面后"加载"恢复完全相同的战场状态。
 - **状态**：[ ] `done`
 
-### Task 34: 音效事件系统（Dummy 音频占位）
-- **目标**：架构预留音频通道，所有游戏事件（选中、移动、开火、建造完成）触发事件，但播放 Dummy 音效（Web Audio API 生成的蜂鸣声）。
+### Task 34: 音效事件系统（Dummy 音频占位）🟡 P1
+- **OpenRA 对标**：`OpenRA.Game/Sound/Sound.cs`, `ISoundEngine`, `ISoundLoader`
+- **目标**：架构预留音频通道，所有游戏事件（选中、移动、开火、建造完成）触发事件，但播放 Dummy 音效（Web Audio API 生成的蜂鸣声）。建议参考 Task 142（AudioManager）设计 `SoundCategory` 枚举（UnitVoice, Notification, Weapon, Music, Ambient），为 Task 72-73 预留接口。
 - **文件**：`src/core/AudioManager.ts`
 - **Dummy 资源**：不同事件用不同频率的 `OscillatorNode` 蜂鸣代替。
 - **验收**：选中单位时听到短蜂鸣，开火时听到长蜂鸣。
@@ -1459,7 +1464,7 @@
 - **验收**：文字逐字显示，语音同步播放，点击 Skip 跳过。
 - **状态**：[ ] `done`
 
-### Task 55: 脚本运行时集成（Lua 或 JS）
+### Task 55: 脚本运行时集成（Lua 或 JS）🟡 P1
 - **目标**：集成脚本引擎。推荐 `fengari-web`（Lua 5.3 的 WASM 实现），或自建轻量 JS 脚本系统。
 - **参考 OpenRA**：`ScriptContext.cs` + `MemoryConstrainedLuaRuntime`
 - **文件**：`src/game/scripting/ScriptRuntime.ts`
@@ -1508,7 +1513,8 @@
 > 我们的方案：WebSocket（客户端↔服务器）+ 确定性模拟 + SyncHash。
 
 ### Task 61: 网络架构设计与协议定义
-- **目标**：设计客户端-服务器协议：Handshake、RoomState、GameStart、OrderFrame、SyncHash、Chat、Disconnect。
+- **OpenRA 对标**：`OpenRA.Game/Network/OrderManager.cs`, `OpenRA.Game/Network/UnitOrders.cs`
+- **目标**：设计客户端-服务器协议：Handshake、RoomState、GameStart、OrderFrame、SyncHash、Chat、Disconnect。建议采用 **客户端-服务器 Relay** 架构（WebSocket Star 拓扑），而非 OpenRA 的 P2P，更适合 Web 平台的 NAT 和连接数限制。
 - **文件**：`docs/NETWORK_PROTOCOL.md`, `src/network/NetworkProtocol.ts`
 - **验收**：文档包含完整的消息格式（TypeScript interface + 二进制序列化方案）。
 - **状态**：[ ] `done`
@@ -1644,13 +1650,13 @@
 - **验收**：相机 zoom 到 100 时，地形 mesh 顶点数减少 50% 以上，视觉无明显差异。
 - **状态**：[ ] `done`
 
-### Task 77: 单位实例化渲染（InstancedMesh）
+### Task 77: 单位实例化渲染（InstancedMesh）🟡 P1
 - **目标**：相同模型（如大量步兵、坦克）使用 `InstancedMesh` 批量渲染，减少 draw call。
 - **文件**：`src/renderer/InstancedUnitRenderer.ts`
 - **验收**：200 辆相同坦克的 draw call 从 200 降至 1，帧率提升 > 30%。
 - **状态**：[ ] `done`
 
-### Task 78: 视锥剔除（Frustum Culling）
+### Task 78: 视锥剔除（Frustum Culling）🟡 P1
 - **目标**：Babylon.js 自动视锥剔除已启用，但自定义逻辑（如 UI 元素、特效）需手动剔除。确保屏幕外单位不更新逻辑（可选）。
 - **文件**：`src/core/PerformanceManager.ts`
 - **验收**：相机只显示地图 1/4 区域时，剩余 3/4 单位的逻辑更新可跳过（如果不影响网络同步）。
@@ -1771,6 +1777,70 @@
 
 ---
 
+## 补充任务（深度 0 OpenRA 差距填补）
+
+> 以下任务来源于 `harness/07_DEPTH0_OPENRA_GAP_ANALYSIS.md` 的对比分析，用于填补 C&C Remake 与 OpenRA 在基础架构上的差距。所有任务均为深度 0（无显式前置依赖），可立即启动。
+
+### Task 139: 统一 OrderGenerator 框架
+- **目标**：为建筑放置（Task 45）、Sell/Repair/Power 工具（Task 51）、攻击移动（Task 47）等提供统一的命令生成器抽象。
+- **OpenRA 对标**：`OpenRA.Mods.Common/Orders/OrderGenerator.cs`
+- **设计要点**：
+  - `abstract OrderGenerator`：处理鼠标移动/点击/取消事件，生成 `GameOrder`
+  - `PlaceBuildingOrderGenerator`：Task 45 使用
+  - `SellToolOrderGenerator` / `RepairToolOrderGenerator` / `PowerToolOrderGenerator`：Task 51 使用
+  - `AttackMoveOrderGenerator`：Task 47 使用
+- **优先级**：🟡 P1
+- **依赖**：无（深度 0）
+- **状态**：[ ] `pending`
+- **验收**：`cnc.building()` 控制台命令通过 `PlaceBuildingOrderGenerator` 实现。
+
+### Task 140: GameOrder 命令抽象与队列
+- **目标**：定义统一的 `GameOrder` 接口，所有玩家输入（移动、攻击、建造、出售）都封装为 Order，支持本地执行和网络序列化。
+- **OpenRA 对标**：`OpenRA.Game/Network/Order.cs`
+- **设计要点**：
+  ```typescript
+  interface GameOrder {
+    readonly orderString: string;  // "Move", "Attack", "Build", "Sell"
+    readonly subjectId: string;     // 发出命令的单位/玩家 ID
+    readonly target: OrderTarget;   // 目标（地面位置 / 单位 / 建筑）
+    readonly queued: boolean;       // Shift 队列
+  }
+  ```
+- **优先级**：🔴 P0
+- **依赖**：无（深度 0）
+- **状态**：[ ] `pending`
+- **验收**：Task 26（命令分发器）基于 `GameOrder` 实现；Task 46（Shift 队列）基于 `GameOrder.queued` 实现。
+- **关联**：Task 139（OrderGenerator 生成 GameOrder）、Task 62（Order 序列化，深度 1）、Task 68（回放录制 Order 数组，深度 1）。
+
+### Task 141: 逻辑帧与渲染帧分离架构
+- **目标**：将游戏模拟从渲染循环中分离，固定 25 FPS 逻辑帧 + 可变渲染帧插值。
+- **OpenRA 对标**：`OpenRA.Game/Game.cs`（`LogicTick` vs `RenderTick`）
+- **设计要点**：
+  - `GameLoop.ts` 维护独立的 `logicTickCount`（每 40ms +1）
+  - 渲染帧根据 `logicTickCount` 和 `logicTickProgress`（0.0–1.0）插值单位位置
+  - 所有游戏逻辑（移动、攻击、建造）只在逻辑帧中执行
+- **优先级**：🟡 P1
+- **依赖**：无（深度 0）
+- **状态**：[ ] `pending`
+- **验收**：浏览器 60 FPS 渲染时，单位移动平滑；降低至 30 FPS 时，游戏逻辑仍保持 25 FPS，不慢放。
+- **关联**：Task 32（游戏主循环）、Task 65（Lockstep，深度 1）。
+
+### Task 142: 音频分类管理器（AudioManager）
+- **目标**：封装 Web Audio API，支持分类播放、3D 定位、播放列表。
+- **OpenRA 对标**：`OpenRA.Game/Sound/Sound.cs`
+- **设计要点**：
+  - `AudioManager` 单例
+  - `SoundCategory` 枚举：UnitVoice, Notification, Weapon, Music, Ambient
+  - 每类独立音量控制
+  - 3D 定位：根据相机距离调整音量和声相
+- **优先级**：🟡 P1
+- **依赖**：无（深度 0）
+- **状态**：[ ] `pending`
+- **验收**：`cnc.unit('MediumTank')` 时播放创建音效，相机远离时音量衰减。
+- **关联**：Task 34（音效系统）、Task 72（语音）、Task 73（音乐）。
+
+---
+
 ## 附录 A：预留模块（WIP）
 
 > 以下模块不在 35 个核心 Task 之内，但已在代码结构中预留入口，Phase 8 后视需求开发。
@@ -1819,7 +1889,8 @@
 | Phase 15 AI高级 | 7 | 0 | Bot、超级武器、空军、桥梁 |
 | Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
 | Phase 17 发布平台 | 3 | 0 | 桌面打包、移动端、Steam |
-| **总计** | **149** | **47** | |
+| 补充任务（OpenRA 差距填补） | 4 | 0 | 139 OrderGenerator、140 GameOrder、141 逻辑帧分离、142 AudioManager |
+| **总计** | **153** | **47** | |
 
 ---
 
@@ -1833,7 +1904,7 @@
 
 | 深度 | 任务数 | 已完成 | 待完成 | 说明 |
 |------|--------|--------|--------|------|
-| 0 | 120 | 44 | 76 | 无显式前置依赖 |
+| 0 | 124 | 44 | 80 | 无显式前置依赖 |
 | 1 | 36 | 11 | 25 | 依赖深度 0 |
 | 2 | 1 | 0 | 1 | 依赖深度 1 |
 
@@ -1841,7 +1912,7 @@
 
 **已完成 44 个**：Task 0、Task 0.1、Task 0.2、Task 0.3、Task 0.4、Task 0.5、Task 1、Task 2、Task 3、Task 4、Task 5、Task 6、Task 7、Task 8、Task 9、Task 11、Task 12、Task 13、Task 14、Task 15、Task 16、Task 17、Task 18、Task 19、Task 20、Task 21、Task 22、Task 23、Task 24、Task 102、Task 103、Task 104、Task 105、Task 106、Task 107、Task 108、Task 109、Task 110、Task 112、Task 114、Task 115、Task 116、Task 117、Task 120
 
-**待完成 76 个**：
+**待完成 80 个**：
 - [ ] **Task 25**：选择系统（单选、框选、编队）
 - [ ] **Task 26**：命令分发器（Move / Attack / Guard / Stop）
 - [ ] **Task 27**：HUD / UI 覆盖层（资源、小地图、单位信息）
@@ -1849,9 +1920,9 @@
 - [ ] **Task 29**：伤害计算与装甲系统
 - [ ] **Task 30**：采矿与经济系统
 - [ ] **Task 31**：战争迷雾（Fog of War）
-- [ ] **Task 32**：游戏主循环与 Tick 系统
+- [ ] **Task 32**：游戏主循环与 Tick 系统 🟡 P1
 - [ ] **Task 33**：存档 / 读档系统
-- [ ] **Task 34**：音效事件系统（Dummy 音频占位）
+- [ ] **Task 34**：音效事件系统（Dummy 音频占位）🟡 P1
 - [ ] **Task 35**：性能优化与发布检查
 - [ ] **Task 36**：主菜单页面（Main Menu）
 - [ ] **Task 37**：页面路由与过渡动画
@@ -1872,7 +1943,7 @@
 - [ ] **Task 52**：战役数据层
 - [ ] **Task 53**：战役进度保存
 - [ ] **Task 54**：任务简报页面
-- [ ] **Task 55**：脚本运行时集成（Lua 或 JS）
+- [ ] **Task 55**：脚本运行时集成（Lua 或 JS）🟡 P1
 - [ ] **Task 56**：脚本全局 API（ScriptGlobals）
 - [ ] **Task 57**：触发器系统（Triggers）
 - [ ] **Task 58**：任务目标系统（Objectives）
@@ -1894,8 +1965,8 @@
 - [ ] **Task 74**：视频播放（VQA 或 WebM）
 - [ ] **Task 75**：本地化系统（i18n）
 - [ ] **Task 76**：地形 LOD 与动态细分
-- [ ] **Task 77**：单位实例化渲染（InstancedMesh）
-- [ ] **Task 78**：视锥剔除（Frustum Culling）
+- [ ] **Task 77**：单位实例化渲染（InstancedMesh）🟡 P1
+- [ ] **Task 78**：视锥剔除（Frustum Culling）🟡 P1
 - [ ] **Task 79**：对象池（Object Pool）
 - [ ] **Task 80**：特效合批与 GPU 粒子
 - [ ] **Task 81**：纹理图集（Texture Atlas）
@@ -1918,6 +1989,10 @@
 - [ ] **Task 128**：Path Cache / CellInfoLayerPool — 搜索层对象池 🟢 P2
 - [ ] **Task 131**：ActorMap Bin 划分 + 触发器系统 ⚪ P3
 - [ ] **Task 132**：启发式权重可调 — 次优路径换性能 ⚪ P3
+- [ ] **Task 139**：统一 OrderGenerator 框架
+- [ ] **Task 140**：GameOrder 命令抽象与队列
+- [ ] **Task 141**：逻辑帧与渲染帧分离架构
+- [ ] **Task 142**：音频分类管理器（AudioManager）
 
 ### 深度 1：依赖深度 0
 
@@ -1983,3 +2058,7 @@
  8. [深度1] **Task 133** — DamageTypes 伤害类型标签系统 🔴 P0
  9. [深度1] **Task 134** — 前提条件令牌与动态 TechTree 🔴 P0
 
+
+---
+
+*本文档随开发进度更新，新增任务或调整顺序时直接在此文件修改。*
