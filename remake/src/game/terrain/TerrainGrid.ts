@@ -94,6 +94,14 @@ export class TerrainGrid {
     this.updateCellColor(x, y);
   }
 
+  /** Directly set the full {@link CellData} for a cell (editor undo support). */
+  setCellData(x: number, y: number, data: CellData): void {
+    if (!this.cellLayer.contains(x, y)) return;
+    this.cellLayer.set(x, y, data);
+    this.updateCellColor(x, y);
+    this.markSplatDirty(x, y);
+  }
+
   /** Read the TerrainTile for a cell (undefined if not set). */
   getTerrainTile(x: number, y: number): TerrainTile | undefined {
     return this.cellLayer.get(x, y).terrainTile;

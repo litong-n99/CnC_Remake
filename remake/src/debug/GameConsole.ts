@@ -16,6 +16,7 @@ import { TerrainGrid, LandType } from '../game/terrain/TerrainGrid';
 import { loadTileSetFromUrl } from '../game/terrain/TileSet';
 import { OpenRAMapLoader } from '../game/terrain/OpenRAMapLoader';
 import { ResourceLayer } from '../game/economy/ResourceLayer';
+import { MapEditor } from '../editor/MapEditor';
 import { UnitCollision } from '../game/unit/UnitCollision';
 import { BlockedByActor } from '../game/unit/BlockedByActor';
 import { ActorMap } from '../game/world/ActorMap';
@@ -48,6 +49,8 @@ export class GameConsole {
     rttCam: import('@babylonjs/core').ArcRotateCamera;
   } | null = null;
 
+  private mapEditor: MapEditor;
+
   constructor(
     private readonly scene: Scene,
     private readonly lighting: Lighting,
@@ -61,6 +64,7 @@ export class GameConsole {
       { name: 'Tiberium', terrainType: 'clear', maxDensity: 255, growthRate: 0.05, spreadRate: 0.02, value: 25 },
       { name: 'Ore', terrainType: 'clear', maxDensity: 200, growthRate: 0.03, spreadRate: 0.01, value: 50 },
     ]);
+    this.mapEditor = new MapEditor(terrain, this.resourceLayer, terrain.getTileSet());
   }
 
   /** Register all commands on `window.cnc`. */
@@ -122,6 +126,13 @@ export class GameConsole {
       readIndexedPixels: this.readIndexedPixels.bind(this),
       clearIndexedTest: this.clearIndexedTest.bind(this),
       openraMap: this.openraMap.bind(this),
+      editorLoadTileSet: this.editorLoadTileSet.bind(this),
+      editorSelectBrush: this.editorSelectBrush.bind(this),
+      editorPaint: this.editorPaint.bind(this),
+      editorFloodFill: this.editorFloodFill.bind(this),
+      editorUndo: this.editorUndo.bind(this),
+      editorRedo: this.editorRedo.bind(this),
+      editorExport: this.editorExport.bind(this),
       help: this.help.bind(this),
     };
     // eslint-disable-next-line no-console
@@ -1127,6 +1138,81 @@ export class GameConsole {
       console.warn('Failed to load OpenRA map:', err);
       return { error: String(err) };
     }
+  }
+
+  // ── Map Editor (Task 9.8) ──
+
+  /** Load a TileSet and attach it to the editor. */
+  private async editorLoadTileSet(url: string): Promise<Record<string, unknown>> {
+    try {
+      const base = (import.meta.env.BASE_URL as string) ?? '/';
+      let resolvedUrl = url;
+      if (url.startsWith('/') && base !== '/' && !url.startsWith(base)) {
+        resolvedUrl = `${base}${url}`.replace(/\/+/g, '/');
+      }
+      const tileSet = await loadTileSetFromUrl(resolvedUrl);
+      await this.terrain.loadTileSet(tileSet);
+      this.mapEditor.setTileSet(tileSet);
+      return {
+        name: tileSet.name,
+        templateCount: tileSet.templates.size,
+        terrainTypeCount: tileSet.terrainTypes.length,
+      };
+    } catch (err) {
+      console.warn('Failed to load tileset for editor:', err);
+      return { error: String(err) };
+    }
+  }
+
+  /** Select the current editor brush. */
+  private editorSelectBrush(tool: 'tile' | 'resource', templateId?: number): Record<string, unknown> {
+    if (tool === 'tile') {
+      if (templateId === undefined) {
+        return { error: 'templateId required for tile brush' };
+      }
+      const ok = this.mapEditor.selectTileBrush(templateId);
+      return { tool, templateId, selected: ok };
+    }
+    this.mapEditor.selectResourceBrush(templateId ?? 1);
+    return { tool, resourceType: templateId ?? 1 };
+  }
+
+  /** Paint the current brush at a cell. */
+  private editorPaint(x: number, y: number): Record<string, unknown> {
+    const ok = this.mapEditor.paintCell({ x, y });
+    return { x, y, painted: ok };
+  }
+
+  /** Flood-fill the current tile brush from a cell. */
+  private editorFloodFill(x: number, y: number): Record<string, unknown> {
+    const ok = this.mapEditor.floodFill({ x, y });
+    return { x, y, filled: ok };
+  }
+
+  /** Undo the last editor action. */
+  private editorUndo(): Record<string, unknown> {
+    const ok = this.mapEditor.undo();
+    return { undone: ok, canUndo: this.mapEditor.canUndo(), canRedo: this.mapEditor.canRedo() };
+  }
+
+  /** Redo the last undone editor action. */
+  private editorRedo(): Record<string, unknown> {
+    const ok = this.mapEditor.redo();
+    return { redone: ok, canUndo: this.mapEditor.canUndo(), canRedo: this.mapEditor.canRedo() };
+  }
+
+  /** Export the current map to OpenRA format. */
+  private editorExport(): Record<string, unknown> {
+    const { mapYaml, mapBin } = this.mapEditor.exportToOpenRA();
+    return {
+      title: mapYaml.Title,
+      tileset: mapYaml.Tileset,
+      width: mapYaml.MapSize.width,
+      height: mapYaml.MapSize.height,
+      binHeader: mapBin.header,
+      tileCount: mapBin.tiles.length,
+      resourceCount: mapBin.resources.filter((r) => r.density > 0).length,
+    };
   }
 
   /** Load a TileSet from URL and attach it to the TerrainGrid. */

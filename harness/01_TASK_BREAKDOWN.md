@@ -242,18 +242,26 @@
 
 ### Task 9.8: 编辑器地形刷系统 (Tile Brush + FloodFill + Undo) ⚪ P3
 - **目标**：实现 OpenRA 风格的地图编辑器地形刷：模板绘制（左键点刷/拖拽绘制）、`PickAny` 随机变体、Shift+FloodFill（相同地形类型区域填充）、Undo/Redo 操作栈。
-- **文件**：`src/editor/brushes/EditorTileBrush.ts`, `src/editor/brushes/EditorResourceBrush.ts`, `src/editor/actions/EditorAction.ts`, `src/editor/MapEditor.ts`
+- **文件**：`src/editor/brushes/EditorTileBrush.ts`, `src/editor/brushes/EditorResourceBrush.ts`, `src/editor/actions/EditorAction.ts`, `src/editor/MapEditor.ts`, `src/game/terrain/TerrainGrid.ts`
 - **OpenRA 对标**：`EditorTileBrush.cs` + `EditorResourceBrush.cs` + `FloodFillEditorAction.cs` + `EditorDefaultBrush.cs`
 - **关键变更**：
-  - `EditorTileBrush`：持有 `TerrainTemplateInfo`，鼠标位置通过 `Viewport.ViewToWorld` 转为 `CPos`；`PaintCell` 将模板内所有非空 tile 写入对应格子
-  - `PickAny`：随机选取模板内索引，实现自然的地表随机变体
-  - `FloodFillEditorAction`：Shift+点击触发 BFS 填充，填充相同 `TerrainTile.Type` 的区域，按模板尺寸步进
-  - `EditorResourceBrush`：左键点击增加资源密度，Shift+拖动批量添加；`AddResourcesEditorAction` 记录修改的 `CellResource` 列表
-  - `Undo/Redo` 栈：`EditorAction` 基类定义 `Do()` / `Undo()`；`EditorTileAction` 记录 `(CPos, oldTerrainTile, oldHeight, newTerrainTile, newHeight)`；`EditorResourceAction` 记录 `(CPos, oldResourceCell, newResourceCell)`
-  - `MapEditor`：管理刷子状态、工具切换（地形刷/资源刷/Actor 刷）、Undo/Redo 栈、导出 `map.yaml` + `map.bin`
+  - `TerrainGrid.setCellData()`：新增方法，支持编辑器精确恢复旧状态（含 terrainTile）
+  - `EditorAction` 抽象基类：`do()` / `undo()` / `merge()`；`EditorTileAction` 批量记录 `oldData→newData`；`EditorResourceAction` 批量记录资源变化
+  - `EditorTileBrush`：持有 `TerrainTemplateInfo`，`paintCell(cpos)` 放置完整模板 footprint（支持 1×1 和 2×2）；`floodFill(cpos)` BFS 填充相同 terrain type 的连通区域；`pickAny` 随机化 index
+  - `EditorResourceBrush`：`paintCell(cpos)` 调用 `ResourceLayer.addDensity()`
+  - `MapEditor`：管理 `tileBrush` / `resourceBrush`、Undo/Redo 双栈、工具切换、OpenRA 格式导出（`MapYaml` + `MapBinData`）；支持 canvas 鼠标事件（mousedown/mousemove/mouseup/shift+click）
+  - `GameConsole` 命令：`editorLoadTileSet` / `editorSelectBrush` / `editorPaint` / `editorFloodFill` / `editorUndo` / `editorRedo` / `editorExport`
 - **依赖**：Task 9.2（TileSet 提供模板数据），Task 9.3（ResourceLayer 提供资源数据），Task 9.5（Viewport 提供精确坐标转换）
-- **验收**：编辑器中选中 2×2 悬崖模板，在画布上拖拽绘制；Shift+点击草地触发 FloodFill 填充整片区域；Ctrl+Z 撤销最后一次绘制；导出后 `map.bin` 可被 `OpenRAMapLoader` 正确加载
-- **状态**：[ ] `done`
+- **验收**：
+  - [x] 加载 temperat.json 后选中 Clear01 模板，在 (30,30) 绘制，getTerrainTile 返回 `{type:1, index:0}`
+  - [x] 选中 2×2 CliffNE (id=100) 模板，在 (30,30) 绘制，4 个格子分别获得正确 index (0,1,2,3)
+  - [x] pickAny 模板绘制时 index 在有效范围内
+  - [x] FloodFill：3×3 Clear 区域被 Water 模板 flood fill 后全部变为 Water
+  - [x] Undo 恢复绘制前状态（terrainTile 被清除）
+  - [x] Redo 重新应用被撤销的操作
+  - [x] 导出 OpenRA 格式：64×64 地图，binHeader format=11，tileCount=4096
+  - [x] 全部 124 个 e2e 测试通过（123 稳定通过，1 个 flaky 为已有 Task 23.4 时序问题，与本次改动无关）
+- **状态**：[x] `done`
 
 > **📋 地形系统演进路线汇总**
 >

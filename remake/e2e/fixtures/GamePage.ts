@@ -207,6 +207,83 @@ export class GamePage {
     );
   }
 
+  // ── Map Editor helpers (Task 9.8) ──
+
+  async editorLoadTileSet(url: string): Promise<Record<string, unknown>> {
+    return await this.page.evaluate(
+      ({ u }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (
+          (cnc.editorLoadTileSet?.(u) as Record<string, unknown> | undefined) ?? {
+            error: 'editorLoadTileSet not available',
+          }
+        );
+      },
+      { u: url }
+    );
+  }
+
+  async editorSelectBrush(tool: 'tile' | 'resource', templateId?: number): Promise<Record<string, unknown>> {
+    return await this.page.evaluate(
+      ({ t, id }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (
+          (cnc.editorSelectBrush?.(t, id) as Record<string, unknown> | undefined) ?? {
+            error: 'editorSelectBrush not available',
+          }
+        );
+      },
+      { t: tool, id: templateId }
+    );
+  }
+
+  async editorPaint(x: number, y: number): Promise<Record<string, unknown>> {
+    return await this.page.evaluate(
+      ({ cx, cy }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (
+          (cnc.editorPaint?.(cx, cy) as Record<string, unknown> | undefined) ?? { error: 'editorPaint not available' }
+        );
+      },
+      { cx: x, cy: y }
+    );
+  }
+
+  async editorFloodFill(x: number, y: number): Promise<Record<string, unknown>> {
+    return await this.page.evaluate(
+      ({ cx, cy }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (
+          (cnc.editorFloodFill?.(cx, cy) as Record<string, unknown> | undefined) ?? {
+            error: 'editorFloodFill not available',
+          }
+        );
+      },
+      { cx: x, cy: y }
+    );
+  }
+
+  async editorUndo(): Promise<Record<string, unknown>> {
+    return await this.page.evaluate(() => {
+      const cnc = (window as unknown as Record<string, (() => unknown) | undefined>).cnc;
+      return (cnc.editorUndo?.() as Record<string, unknown> | undefined) ?? { error: 'editorUndo not available' };
+    });
+  }
+
+  async editorRedo(): Promise<Record<string, unknown>> {
+    return await this.page.evaluate(() => {
+      const cnc = (window as unknown as Record<string, (() => unknown) | undefined>).cnc;
+      return (cnc.editorRedo?.() as Record<string, unknown> | undefined) ?? { error: 'editorRedo not available' };
+    });
+  }
+
+  async editorExport(): Promise<Record<string, unknown>> {
+    return await this.page.evaluate(() => {
+      const cnc = (window as unknown as Record<string, (() => unknown) | undefined>).cnc;
+      return (cnc.editorExport?.() as Record<string, unknown> | undefined) ?? { error: 'editorExport not available' };
+    });
+  }
+
   /** Get debug state for all units. */
   async debugState(): Promise<
     Array<{

@@ -1,147 +1,304 @@
-/**
- * CnCTDRAMapEditor Web 版入口
- *
- * Source: origin/CnCTDRAMapEditor/ (C# Map Editor)
- * Status: WIP (Work In Progress) — Phase 8 后开发
- *
- * 设计目标：
- * 1. 将 C# 地图编辑器的核心功能（地形绘制、单位/建筑放置、触发器编辑）迁移至 Web。
- * 2. 地图数据导出为 JSON 格式，供 GameMap / TerrainGrid 直接加载。
- * 3. 保留与原始编辑器一致的格子坐标系 (Cell X, Y) 和地形类型枚举。
- *
- * JSON 导出格式预留：
- * {
- *   "version": "1.0",
- *   "width": 64,
- *   "height": 64,
- *   "theater": "TEMPERATE",
- *   "cells": [
- *     { "x": 0, "y": 0, "template": 0, "icon": 0, "overlay": null },
- *     ...
- *   ],
- *   "units": [
- *     { "type": "MTANK", "house": "GDI", "x": 10, "y": 20, "facing": 0 },
- *     ...
- *   ],
- *   "buildings": [
- *     { "type": "FACTORY", "house": "GDI", "x": 15, "y": 15, "health": 100 },
- *     ...
- *   ],
- *   "infantry": [...],
- *   "terrain": [...],
- *   "waypoints": [...],
- *   "triggers": [...]
- * }
- */
+import type { TerrainGrid, CellData } from '../game/terrain/TerrainGrid';
+import type { ResourceLayer } from '../game/economy/ResourceLayer';
+import type { TileSet, TerrainTemplateInfo } from '../game/terrain/TileSet';
+import type { Viewport } from '../game/terrain/Viewport';
+import type { CPos } from '../game/terrain/Coordinates';
+import type { MapYaml, MapBinData, MapTile, MapResourceCell } from '../game/terrain/MapFormat';
+import { EditorAction } from './actions/EditorAction';
+import { EditorTileBrush } from './brushes/EditorTileBrush';
+import { EditorResourceBrush } from './brushes/EditorResourceBrush';
+import { LandType } from '../game/terrain/TerrainGrid';
 
-export interface MapEditorJsonExport {
-  version: string;
-  width: number;
-  height: number;
-  theater: string;
-  cells: CellData[];
-  units: UnitPlacement[];
-  buildings: BuildingPlacement[];
-  infantry: InfantryPlacement[];
-  terrain: TerrainPlacement[];
-  waypoints: WaypointData[];
-  triggers: TriggerData[];
-}
-
-export interface CellData {
-  x: number;
-  y: number;
-  template: number;
-  icon: number;
-  overlay: string | null;
-}
-
-export interface UnitPlacement {
-  type: string;
-  house: string;
-  x: number;
-  y: number;
-  facing: number;
-}
-
-export interface BuildingPlacement {
-  type: string;
-  house: string;
-  x: number;
-  y: number;
-  health: number;
-}
-
-export interface InfantryPlacement {
-  type: string;
-  house: string;
-  x: number;
-  y: number;
-  subCell: number;
-}
-
-export interface TerrainPlacement {
-  type: string;
-  x: number;
-  y: number;
-}
-
-export interface WaypointData {
-  id: number;
-  x: number;
-  y: number;
-}
-
-export interface TriggerData {
-  name: string;
-  event: string;
-  action: string;
-}
+export type EditorTool = 'tile' | 'resource';
 
 /**
- * 地图编辑器主类（WIP 占位）
+ * Map Editor — manages brushes, undo/redo, and OpenRA map export.
+ *
+ * Replaces the previous WIP stub with a functional implementation.
+ *
+ * Source: OpenRA.Mods.Common/EditorBrushes/EditorDefaultBrush.cs
  */
 export class MapEditor {
-  private readonly _wipMessage = '[CnCTDRAMapEditor] Work In Progress — 地图编辑器将在 Phase 8 后开发';
+  private readonly tileBrush: EditorTileBrush;
+  private readonly resourceBrush: EditorResourceBrush;
+  private undoStack: EditorAction[] = [];
+  private redoStack: EditorAction[] = [];
+  private currentTool: EditorTool = 'tile';
+  private isPainting = false;
+  private lastPaintedCell = '';
+  private boundHandlers: {
+    mousedown: (e: MouseEvent) => void;
+    mousemove: (e: MouseEvent) => void;
+    mouseup: () => void;
+  } | null = null;
 
-  constructor() {
-    console.warn(this._wipMessage);
+  constructor(
+    private readonly terrainGrid: TerrainGrid,
+    private readonly resourceLayer: ResourceLayer,
+    private tileSet: TileSet | null,
+    private readonly viewport: Viewport | null = null
+  ) {
+    this.tileBrush = new EditorTileBrush(terrainGrid, tileSet, null);
+    this.resourceBrush = new EditorResourceBrush(resourceLayer);
   }
 
-  /**
-   * 导出当前地图为 JSON 格式
-   * TODO: Phase 8 实现完整导出逻辑
-   */
-  public exportToJson(): MapEditorJsonExport {
-    // WIP: 返回空地图结构占位
-    return {
-      version: '1.0-wip',
-      width: 64,
-      height: 64,
-      theater: 'TEMPERATE',
-      cells: [],
-      units: [],
-      buildings: [],
-      infantry: [],
-      terrain: [],
-      waypoints: [],
-      triggers: [],
+  // ── TileSet management ──
+
+  setTileSet(tileSet: TileSet | null): void {
+    this.tileSet = tileSet;
+    this.tileBrush.setTileSet(tileSet);
+    this.tileBrush.selectTemplate(null);
+  }
+
+  getTileSet(): TileSet | null {
+    return this.tileSet;
+  }
+
+  // ── Tool selection ──
+
+  selectTool(tool: EditorTool): void {
+    this.currentTool = tool;
+  }
+
+  getCurrentTool(): EditorTool {
+    return this.currentTool;
+  }
+
+  selectTileBrush(templateId: number): boolean {
+    if (!this.tileSet) return false;
+    const template = this.tileSet.templates.get(templateId) ?? null;
+    this.tileBrush.selectTemplate(template);
+    this.currentTool = 'tile';
+    return template !== null;
+  }
+
+  getSelectedTemplate(): TerrainTemplateInfo | null {
+    return this.tileBrush.getTemplate();
+  }
+
+  selectResourceBrush(resourceType: number): void {
+    this.resourceBrush.selectResourceType(resourceType);
+    this.currentTool = 'resource';
+  }
+
+  // ── Painting (programmatic entry-point) ──
+
+  paintCell(cpos: CPos): boolean {
+    const action = this.currentTool === 'tile' ? this.tileBrush.paintCell(cpos) : this.resourceBrush.paintCell(cpos);
+    if (!action) return false;
+    this.pushAction(action);
+    return true;
+  }
+
+  floodFill(cpos: CPos): boolean {
+    const action = this.tileBrush.floodFill(cpos);
+    if (!action) return false;
+    this.pushAction(action);
+    return true;
+  }
+
+  // ── Undo / Redo ──
+
+  undo(): boolean {
+    const action = this.undoStack.pop();
+    if (!action) return false;
+    action.undo();
+    this.redoStack.push(action);
+    return true;
+  }
+
+  redo(): boolean {
+    const action = this.redoStack.pop();
+    if (!action) return false;
+    action.do();
+    this.undoStack.push(action);
+    return true;
+  }
+
+  canUndo(): boolean {
+    return this.undoStack.length > 0;
+  }
+
+  canRedo(): boolean {
+    return this.redoStack.length > 0;
+  }
+
+  getUndoDescription(): string | null {
+    const action = this.undoStack[this.undoStack.length - 1];
+    return action?.getDescription() ?? null;
+  }
+
+  // ── Mouse interaction (optional, for future UI) ──
+
+  attachToCanvas(canvas: HTMLCanvasElement): void {
+    this.detach();
+
+    const mousedown = (e: MouseEvent) => {
+      if (e.button !== 0) return; // left button only
+      const cpos = this.viewport?.viewToCell(e.clientX, e.clientY);
+      if (!cpos) return;
+
+      if (e.shiftKey) {
+        this.floodFill(cpos);
+        return;
+      }
+
+      this.isPainting = true;
+      this.lastPaintedCell = `${cpos.x},${cpos.y}`;
+      this.paintCell(cpos);
     };
+
+    const mousemove = (e: MouseEvent) => {
+      if (!this.isPainting) return;
+      const cpos = this.viewport?.viewToCell(e.clientX, e.clientY);
+      if (!cpos) return;
+      const key = `${cpos.x},${cpos.y}`;
+      if (key === this.lastPaintedCell) return;
+      this.lastPaintedCell = key;
+      this.paintCell(cpos);
+    };
+
+    const mouseup = () => {
+      this.isPainting = false;
+      this.lastPaintedCell = '';
+    };
+
+    canvas.addEventListener('mousedown', mousedown);
+    canvas.addEventListener('mousemove', mousemove);
+    window.addEventListener('mouseup', mouseup);
+
+    this.boundHandlers = { mousedown, mousemove, mouseup };
   }
 
-  /**
-   * 从 JSON 导入地图
-   * TODO: Phase 8 实现完整导入逻辑
-   */
-  public importFromJson(_data: MapEditorJsonExport): void {
-    // WIP: 仅打印提示
-    console.warn('[CnCTDRAMapEditor] importFromJson() is not implemented yet.');
+  detach(): void {
+    if (!this.boundHandlers) return;
+    const canvas = this.viewport ? document.getElementById('app') : null;
+    if (canvas) {
+      canvas.removeEventListener('mousedown', this.boundHandlers.mousedown);
+      canvas.removeEventListener('mousemove', this.boundHandlers.mousemove);
+    }
+    window.removeEventListener('mouseup', this.boundHandlers.mouseup);
+    this.boundHandlers = null;
   }
 
+  // ── Export to OpenRA format ──
+
   /**
-   * 获取 WIP 提示文案
+   * Export the current map state as OpenRA `MapYaml` + `MapBinData`.
    */
-  public getWipNotice(): string {
-    return this._wipMessage;
+  exportToOpenRA(): { mapYaml: MapYaml; mapBin: MapBinData } {
+    const w = this.terrainGrid.getWidth();
+    const h = this.terrainGrid.getHeight();
+
+    const tiles: MapTile[] = [];
+    const heights: number[] = [];
+    const resources: MapResourceCell[] = [];
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const cell = this.terrainGrid.getCellLayer().get(x, y);
+        const tile = this.cellDataToMapTile(cell);
+        tiles.push(tile);
+
+        // Height: read from terrainTile info if available, else 0
+        let height = 0;
+        if (cell.terrainTile && this.tileSet) {
+          const template = this.tileSet.templates.get(cell.terrainTile.type);
+          const info = template?.tiles[cell.terrainTile.index];
+          if (info) height = info.height;
+        }
+        heights.push(height);
+
+        const res = this.resourceLayer.get(x, y);
+        resources.push({ type: res.type, density: res.density });
+      }
+    }
+
+    const cellCount = w * h;
+    const header = {
+      format: 11,
+      width: w,
+      height: h,
+      tilesOffset: 17,
+      heightsOffset: 17 + cellCount * 3,
+      resourcesOffset: 17 + cellCount * 4,
+    };
+
+    const mapBin: MapBinData = { header, tiles, heights, resources };
+
+    const mapYaml: MapYaml = {
+      MapFormat: 11,
+      RequiresMod: 'ra',
+      Title: 'CnC Remake Export',
+      Author: 'MapEditor',
+      Tileset: this.tileSet?.name ?? 'TEMPERAT',
+      MapSize: { width: w, height: h },
+      Bounds: { x: 0, y: 0, width: w, height: h },
+      Visibility: 'Lobby',
+      Categories: ['Conquest'],
+      Players: [
+        {
+          id: 'Neutral',
+          name: 'Neutral',
+          ownsWorld: true,
+          nonCombatant: true,
+          playable: false,
+          faction: 'Random',
+        },
+      ],
+      Actors: [],
+    };
+
+    return { mapYaml, mapBin };
+  }
+
+  // ── Internal helpers ──
+
+  private pushAction(action: EditorAction): void {
+    // Try to merge with the last action (for drag painting)
+    const last = this.undoStack[this.undoStack.length - 1];
+    if (last) {
+      const merged = last.merge(action);
+      if (merged) {
+        this.undoStack[this.undoStack.length - 1] = merged;
+        return;
+      }
+    }
+    this.undoStack.push(action);
+    this.redoStack = []; // clear redo on new action
+  }
+
+  /** Convert a CellData to the nearest MapTile for export. */
+  private cellDataToMapTile(cell: CellData): MapTile {
+    if (cell.terrainTile) {
+      return { type: cell.terrainTile.type, index: cell.terrainTile.index };
+    }
+    // Fallback: landType → default tile type
+    return { type: this.landTypeToDefaultType(cell.landType), index: 0 };
+  }
+
+  private landTypeToDefaultType(lt: LandType): number {
+    switch (lt) {
+      case LandType.Clear:
+        return 1;
+      case LandType.Water:
+        return 0;
+      case LandType.Rock:
+        return 2;
+      case LandType.Road:
+        return 3;
+      case LandType.Tiberium:
+        return 5;
+      case LandType.Beach:
+        return 6;
+      case LandType.Rough:
+        return 7;
+      case LandType.River:
+        return 8;
+      case LandType.Wall:
+        return 4;
+      default:
+        return 1;
+    }
   }
 }
