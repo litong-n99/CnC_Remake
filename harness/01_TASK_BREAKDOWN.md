@@ -138,7 +138,7 @@
   - 现有 `TerrainGrid.cells` 迁移为 `CellLayer<CellData>`，保持 `getCellLandType` / `setCellLandType` API 向后兼容
 - **依赖**：Task 13（MapLoader 需适配新数据结构）
 - **验收**：`terrainGrid.cells[10][20].landType = Water` 触发 `CellEntryChanged` 事件，`TerrainRenderer` 和 `HierarchicalPathfinder` 自动收到通知并更新对应格子；128×128 地图内存占用与原始二维数组相当或更优
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 9.2: TileSet / Template 地形模板系统 — C&C 地图核心 🔴 P0
 - **目标**：实现 OpenRA 风格的 `TileSet`（剧场定义）+ `TerrainTemplate`（多格组合模板）系统。每个地形格子不再存储单一 `LandType`，而是存储 `TerrainTile(templateId, index)`，引用外部 `tileset.yaml` 中定义的模板。支持 `PickAny` 随机变体、局部高度偏移、斜坡类型。
@@ -153,7 +153,7 @@
   - `DefaultTileCache`：解析 `Images` → Sprite Frame → 通过 `SheetBuilder` 打包到 Texture Atlas；`TileSprite(tile)` 根据 type 找模板、index 取 sprite、随机选 variant
 - **依赖**：Task 9.1（CellLayer 提供事件驱动的基础数据层）
 - **验收**：加载 `temperat.yaml` 后，64×64 地图每个格子引用正确的模板和子索引；`PickAny=true` 的草地模板每次加载随机选取变体；悬崖模板（2×2 或更大）在地图上正确拼合
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 9.3: 资源层 (ResourceLayer) — Tiberium/Ore 密度与生长 🟡 P1
 - **目标**：实现独立的资源层，管理地图上可采集资源（Tiberium 晶体、Ore 矿石）的分布与密度。支持密度 0-255、生长扩散、枯竭再生。为采矿经济系统（Task 30）提供数据基础。
@@ -167,7 +167,7 @@
   - 与 `HarvesterAI`（Task 30）对接：`ResourceLayer.getHarvestableCells()` 返回地图上所有含可采集资源的格子
 - **依赖**：Task 9.1（CellLayer 事件驱动）
 - **验收**：地图上 10 个种子资源点经过 100 tick 后自然扩散成一片资源区；矿车调用 `ResourceLayer.harvest(cell)` 后该格密度下降，视觉上从高密度 sprite 切换到低密度 sprite
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 9.4: TerrainSpriteLayer + Texture Splatting Shader — 真实地形渲染 🟡 P1
 - **目标**：从纯色顶点色地形升级为真实纹理渲染。实现 OpenRA 风格的 `TerrainSpriteLayer`（GPU 顶点数组管理 + 脏行增量更新），并在此基础上实现 Babylon.js 自定义 Shader 的 **Texture Splatting**（草地/道路/水域/悬崖多纹理混合）。
@@ -182,7 +182,7 @@
   - 地形过渡：相邻不同地形类型之间通过 splat 权重渐变实现自然混合（替代当前的硬边界）
 - **依赖**：Task 9.1（CellLayer 事件触发渲染更新），Task 9.2（TileSet 提供纹理来源）
 - **验收**：64×64 地图显示真实纹理（草地、道路、水域），相邻地形间有过渡混合；Water 格子有动态波纹动画；相机 zoom 到 100 时远处地形 LOD 降低
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 9.5: 多坐标系统重构 (CPos/MPos/PPos/WPos) — 等轴测与高度投影 🟡 P1
 - **目标**：将当前简单的 `Cell(x,y) ↔ Vector3` 重构为 OpenRA 风格的多层坐标系统：`CPos`(逻辑+层) → `MPos`(数组坐标) → `PPos`(投影坐标) → `WPos`(3D世界)。支持等轴测网格和高度投影，为精确命中测试和斜坡移动提供基础。
@@ -198,7 +198,7 @@
   - `MapGrid`：定义 `Type`（`Rectangular` / `RectangularIsometric`）、`TileSize`、`SubCellOffsets`、`Ramps`
 - **依赖**：Task 9.1（CellLayer 支持 CPos 索引），Task 23.29（高度系统提供 Z 坐标来源）
 - **验收**：等轴测模式下，Cell (10,20) 的世界坐标与屏幕坐标双向转换误差 < 0.5 像素；`Viewport.ViewToWorld(mouseX, mouseY)` 在斜坡边缘精确命中正确的 Cell；高度差 ≥2 的悬崖不可通行
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 9.6: 地图格式兼容 (OpenRA map.yaml + map.bin) — 生态兼容 🟢 P2
 - **目标**：支持加载 OpenRA 原生地图格式（文件夹：`map.yaml` + `map.bin` + `map.png`），使项目可直接使用 OpenRA 地图生态和真实 C&C 地图数据。
