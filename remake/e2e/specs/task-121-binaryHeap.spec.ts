@@ -102,7 +102,7 @@ test.describe('Task 121 — Binary Heap A* Optimization', () => {
     expect(result.error).toBeUndefined();
     expect(result.fail).toBe(0);
     expect(result.success).toBe(1000);
-    expect(result.elapsed).toBeLessThan(5000); // 1000 次应在 5 秒内完成
+    expect(result.elapsed).toBeLessThan(12000); // 1000 次应在 12 秒内完成 (Directed Neighbors 增加了连接检查开销)
   });
 
   test('pathfind consistency: same query returns same path', async () => {

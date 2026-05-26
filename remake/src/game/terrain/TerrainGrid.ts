@@ -27,10 +27,13 @@ export enum LandType {
 }
 
 /** Per-cell data.  landType is kept for backward compatibility;
- * terrainTile references the TileSet template system (Task 9.2). */
+ * terrainTile references the TileSet template system (Task 9.2).
+ * height: cell elevation (0 = ground level). Adjacent cells with |diff| > 1
+ * are impassable cliffs; |diff| == 1 are ramps (passable with visual tilt). */
 export interface CellData {
   landType: LandType;
   terrainTile?: import('./TileSet').TerrainTile;
+  height?: number;
 }
 
 /**
@@ -61,8 +64,11 @@ export class TerrainGrid {
   private splatFlushPending = false;
   private decalLayer: TerrainDecalLayer | null = null;
 
+  /** World-unit height per elevation level (Task 130). */
+  static readonly HEIGHT_SCALE = 0.5;
+
   constructor(scene: Scene, width = 64, height = 64) {
-    this.cellLayer = new CellLayer<CellData>(width, height, { landType: LandType.Clear });
+    this.cellLayer = new CellLayer<CellData>(width, height, { landType: LandType.Clear, height: 0 });
     this.mapGrid = new MapGrid();
     this.terrainMaterial = new TerrainMaterial(scene);
 
@@ -90,15 +96,17 @@ export class TerrainGrid {
     if (!this.cellLayer.contains(x, y)) return;
     const old = this.cellLayer.get(x, y);
     const landType = this.tileCache?.getLandTypeFallback(tile) ?? old.landType;
-    this.cellLayer.set(x, y, { landType, terrainTile: tile });
+    this.cellLayer.set(x, y, { landType, terrainTile: tile, height: old.height ?? 0 });
     this.updateCellColor(x, y);
   }
 
   /** Directly set the full {@link CellData} for a cell (editor undo support). */
   setCellData(x: number, y: number, data: CellData): void {
     if (!this.cellLayer.contains(x, y)) return;
-    this.cellLayer.set(x, y, data);
+    const merged: CellData = { height: 0, ...data };
+    this.cellLayer.set(x, y, merged);
     this.updateCellColor(x, y);
+    this.updateCellGeometry(x, y);
     this.markSplatDirty(x, y);
   }
 
@@ -144,19 +152,22 @@ export class TerrainGrid {
 
         const baseIndex = positions.length / 3;
 
+        const h = this.cellLayer.get(x, y).height ?? 0;
+        const yPos = h * TerrainGrid.HEIGHT_SCALE;
+
         // 4 independent vertices per cell (no sharing → sharp colour boundaries)
         positions.push(
           x0,
-          0,
+          yPos,
           z0, // bottom-left
           x1,
-          0,
+          yPos,
           z0, // bottom-right
           x1,
-          0,
+          yPos,
           z1, // top-right
           x0,
-          0,
+          yPos,
           z1 // top-left
         );
 
@@ -244,9 +255,23 @@ export class TerrainGrid {
   /** Change the terrain type of a cell and update its vertex colour. */
   setCellLandType(x: number, y: number, landType: LandType): void {
     if (!this.cellLayer.contains(x, y)) return;
-    this.cellLayer.set(x, y, { landType });
+    const existing = this.cellLayer.get(x, y);
+    this.cellLayer.set(x, y, { landType, height: existing.height ?? 0 });
     this.updateCellColor(x, y);
     this.markSplatDirty(x, y);
+  }
+
+  /** Set the height of a cell (0 = ground level). Triggers mesh update. */
+  setCellHeight(x: number, y: number, height: number): void {
+    if (!this.cellLayer.contains(x, y)) return;
+    const existing = this.cellLayer.get(x, y);
+    this.cellLayer.set(x, y, { ...existing, height });
+    this.updateCellGeometry(x, y);
+  }
+
+  /** Read the height of a cell (default 0). */
+  getCellHeight(x: number, y: number): number {
+    return this.cellLayer.get(x, y).height ?? 0;
   }
 
   /** Read the terrain type of a cell. */
@@ -277,6 +302,7 @@ export class TerrainGrid {
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         let type = LandType.Clear;
+        const h = 0;
 
         if (x < cx && y < cy) {
           type = LandType.Water;
@@ -294,7 +320,8 @@ export class TerrainGrid {
           type = LandType.Clear;
         }
 
-        this.setCellLandType(x, y, type);
+        this.cellLayer.set(x, y, { landType: type, height: h });
+        this.updateCellColor(x, y);
       }
     }
   }
@@ -318,6 +345,27 @@ export class TerrainGrid {
     }
 
     this.terrainMesh.updateVerticesData(VertexBuffer.ColorKind, colors);
+  }
+
+  /** Update the Y position of a cell's 4 vertices when height changes (Task 130). */
+  private updateCellGeometry(x: number, y: number): void {
+    if (!this.terrainMesh) return;
+
+    const positions = this.terrainMesh.getVerticesData(VertexBuffer.PositionKind);
+    if (!positions) return;
+
+    const width = this.cellLayer.getWidth();
+    const h = this.cellLayer.get(x, y).height ?? 0;
+    const yPos = h * TerrainGrid.HEIGHT_SCALE;
+    const baseIndex = (y * width + x) * 4 * 3; // 4 verts × 3 components
+
+    // Update Y component (index 1, 4, 7, 10 within the 4-vertex block)
+    for (let i = 0; i < 4; i++) {
+      positions[baseIndex + i * 3 + 1] = yPos;
+    }
+
+    this.terrainMesh.updateVerticesData(VertexBuffer.PositionKind, positions);
+    this.terrainMesh.createNormals(true);
   }
 
   // ── Lifecycle ──

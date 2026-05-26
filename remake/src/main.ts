@@ -242,7 +242,8 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
       return type !== LandType.Water;
     },
     getBuildingBlockedCells,
-    (x, y) => terrain.getCellLandType(x, y)
+    (x, y) => terrain.getCellLandType(x, y),
+    (x, y) => terrain.getCellHeight(x, y)
   );
 
   // Task 23.13: 地形修改后重建 HierarchicalPathfinder domain

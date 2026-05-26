@@ -19,6 +19,14 @@ export interface PathGraphContext {
   readonly check?: BlockedByActor;
   readonly getTerrainCost?: (x: number, y: number) => number;
   readonly biasSeed?: number;
+  /** 父节点坐标 — Task 127 Directed Neighbors 裁剪用 */
+  readonly parentNode?: PathNode;
+  /** 是否启用 Lane Bias — Task 127 */
+  readonly laneBias?: boolean;
+  /** Lane Bias 成本偏移量（默认 1）— Task 127 */
+  readonly laneBiasCost?: number;
+  /** 反向搜索标志 — Task 127 Lane Bias 反向模式 */
+  readonly inReverse?: boolean;
 }
 
 /**

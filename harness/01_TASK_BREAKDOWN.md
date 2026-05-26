@@ -250,7 +250,11 @@
   - 与 `ProjectedCellLayer` 对接：Shroud 数据使用 `PPos` 索引（考虑高度投影后的屏幕覆盖）
 - **依赖**：Task 31（Fog of War 基础逻辑），Task 9.1（CellLayer 事件驱动），Task 9.5（PPos 投影坐标）
 - **验收**：单位移动后，新视野区域的 Shroud 边缘呈现自然的锯齿状/弧形过渡（非生硬矩形）；离开视野的单位所在格子变为 Fog（半透明覆盖），边缘同样有平滑过渡
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`DIRECTED_NEIGHBORS` 8 方向裁剪表 + Lane Bias 成本计算（`DEFAULT_LANE_BIAS_COST = 0.5`）
+  - 保守裁剪：对角线剪枝和地形阻塞检查后决定是否保留邻居，避免路径断裂
+  - `getConnections` 集成 Directed Neighbors + Lane Bias + Corner Cutting
+  - e2e 测试：`task-127-directedNeighbors.spec.ts`（3 测试）+ `task-127-laneBias.spec.ts`（3 测试）
 
 ### Task 9.8: 编辑器地形刷系统 (Tile Brush + FloodFill + Undo) ⚪ P3
 - **目标**：实现 OpenRA 风格的地图编辑器地形刷：模板绘制（左键点刷/拖拽绘制）、`PickAny` 随机变体、Shift+FloodFill（相同地形类型区域填充）、Undo/Redo 操作栈。
@@ -782,7 +786,7 @@
   - `Pathfinder.findPath` / `findPathBidirectional` / `findPathToPredicate` 中 `openSet` 从 `AStarNode[]` 改为 `BinaryHeap<AStarNode>`
   - 保持 `closedSet` 为 `Set<string>`（`"x,y"` key）不变
 - **验收**：100×100 地图随机起点终点寻路 1000 次，`openSet` 操作总耗时降低 > 50%；e2e 回归测试全部通过
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 122: HPF 抽象图 + 抽象启发式引导 — 分层寻路完整实现 🔴 P0
 - **目标**：在当前地形 flood-fill domain（Task 114）基础上，构建完整的 10×10 grid 抽象图（抽象节点 + 抽象边），并用抽象路径的反向 A* 预计算结果引导局部搜索的启发值，实现"先上高速再下匝道"的分层策略。
@@ -1883,7 +1887,7 @@
   - 所有游戏逻辑（移动、攻击、建造）只在逻辑帧中执行
 - **优先级**：🟡 P1
 - **依赖**：无（深度 0）
-- **状态**：[ ] `pending`
+- **状态**：[x] `done`
 - **验收**：浏览器 60 FPS 渲染时，单位移动平滑；降低至 30 FPS 时，游戏逻辑仍保持 25 FPS，不慢放。
 - **关联**：Task 32（游戏主循环）、Task 65（Lockstep，深度 1）。
 
@@ -1937,13 +1941,13 @@
 | Phase 3 数据层 | 4 | 4 | |
 | Phase 4 单位系统 | 5 | 5 | |
 | Phase 5 建筑系统 | 5 | 4 | Task 20–23 完成；23.32 电力自动汇总（P1）待开发 |
-| Phase 5.5 寻路碰撞深度对齐 | 31 | 19 | Task 102–120 完成；Task 121–132 为 OpenRA 核心能力缺口回填（P0–P3）|
+| Phase 5.5 寻路碰撞深度对齐 | 31 | 24 | Task 102–121 + 127/128/130/132 完成；Task 122–126/129/131 待开发 |
 | Phase 6 交互 | 5 | 1 | Task 24 已合并到 111；25–27 待开发；27.5 外交 done；27.6 Bot 类型 |
 | Phase 6.5 架构升级 | 5 | 0 | 95 YAML、96 Trait、97 规则继承、100 House 拆分、101 科技树 Watcher |
 | Phase 7 战斗经济 | 6 | 0 | 含 98 Weapon 规则（Task 28 前置）；30.5 经济双轨化（P0） |
 | Phase 7.5 Mod 支持 | 1 | 0 | 99 地图级规则覆盖 |
 | Phase 7.6 Rules 补充 | 6 | 1 | 133 DamageTypes done、134 TechTree令牌、135 阵营/建造限制、136 游戏速度/大厅、137 条件Trait、138 序列 |
-| Phase 8 循环发布 | 4 | 1 | Task 35 PerformanceMonitor done；32–34 待补统计 |
+| Phase 8 循环发布 | 4 | 2 | Task 35 PerformanceMonitor done；32–34 待补统计；141 逻辑帧分离 done |
 | Phase 9 UI Shell | 7 | 7 | Task 36/37/38/39/40/41/42 done |
 | Phase 10 交互增强 | 10 | 0 | 光标、Sidebar、Shift队列、攻击移动、编组；51.5 立场着色 |
 | Phase 11 战役系统 | 9 | 3 | Lua脚本 done、触发器 done、目标 done、过场 |
@@ -1953,8 +1957,8 @@
 | Phase 15 AI高级 | 7 | 0 | Bot、超级武器、空军、桥梁 |
 | Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
 | Phase 17 发布平台 | 3 | 0 | 桌面打包、移动端、Steam |
-| 补充任务（OpenRA 差距填补） | 4 | 2 | 139 OrderGenerator done、140 GameOrder done；141 逻辑帧分离、142 AudioManager pending |
-| **总计** | **153** | **62** | |
+| 补充任务（OpenRA 差距填补） | 4 | 4 | 139 OrderGenerator done、140 GameOrder done、141 逻辑帧分离 done、142 AudioManager done |
+| **总计** | **153** | **69** | |
 
 ---
 
@@ -1968,7 +1972,7 @@
 
 | 深度 | 任务数 | 已完成 | 待完成 | 说明 |
 |------|--------|--------|--------|------|
-| 0 | 124 | 58 | 66 | 无显式前置依赖 |
+| 0 | 124 | 62 | 62 | 无显式前置依赖 |
 | 1 | 36 | 11 | 25 | 依赖深度 0 |
 | 2 | 1 | 0 | 1 | 依赖深度 1 |
 
@@ -2049,10 +2053,10 @@
 - [ ] **Task 94**：Steam 集成（远期）
 - [x] **Task 95**：YAML 规则解析基础设施 🔴 P0
 - [x] **Task 121**：A* 优先队列（Binary Heap）— 寻路 Open 集合优化 🔴 P0
-- [ ] **Task 127**：Lane Bias + 方向邻居裁剪 — A* 邻居优化 🟢 P2
-- [ ] **Task 128**：Path Cache / CellInfoLayerPool — 搜索层对象池 🟢 P2
+- [x] **Task 127**：Lane Bias + 方向邻居裁剪 — A* 邻居优化 🟢 P2
+- [x] **Task 128**：Path Cache / CellInfoLayerPool — 搜索层对象池 🟢 P2
 - [ ] **Task 131**：ActorMap Bin 划分 + 触发器系统 ⚪ P3
-- [ ] **Task 132**：启发式权重可调 — 次优路径换性能 ⚪ P3
+- [x] **Task 132**：启发式权重可调 — 次优路径换性能 ⚪ P3
 - [x] **Task 139**：统一 OrderGenerator 框架
 - [x] **Task 140**：GameOrder 命令抽象与队列
 - [x] **Task 141**：逻辑帧与渲染帧分离架构

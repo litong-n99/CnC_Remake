@@ -4,6 +4,7 @@ import { HierarchicalPathfinder } from './HierarchicalPathfinder';
 import { GroundPathGraph } from './GroundPathGraph';
 import type { PathNode, PathGraphContext } from './IPathGraph';
 import { BinaryHeap } from './BinaryHeap';
+import { CellInfoLayerPool } from './CellInfoLayerPool';
 
 /**
  * A* 寻路 — 基于 IPathGraph 抽象的多层寻路器。
@@ -42,26 +43,38 @@ export class Pathfinder {
    */
   readonly getTerrainType?: (x: number, y: number) => LandType;
 
+  /**
+   * Optional callback to query the cell height (Task 130).
+   * Used by GroundPathGraph to enforce cliff impassability (|diff| > 1).
+   */
+  readonly getHeight?: (x: number, y: number) => number;
+
   /** Hierarchical domain index — O(1) reachability pre-check. */
   readonly hierarchical: HierarchicalPathfinder;
 
   /** Ground layer path graph — Task 23.19 抽象后的邻居生成器。 */
   readonly groundGraph: GroundPathGraph;
 
+  /** Task 128: CellInfo 搜索层对象池 */
+  readonly cellInfoPool: CellInfoLayerPool;
+
   constructor(
     width: number,
     height: number,
     isPassable: (x: number, y: number) => boolean,
     getBlockedCells?: (check?: BlockedByActor) => ReadonlySet<string>,
-    getTerrainType?: (x: number, y: number) => LandType
+    getTerrainType?: (x: number, y: number) => LandType,
+    getHeight?: (x: number, y: number) => number
   ) {
     this.width = width;
     this.height = height;
     this.isPassable = isPassable;
     this.getBlockedCells = getBlockedCells;
     this.getTerrainType = getTerrainType;
+    this.getHeight = getHeight;
     this.hierarchical = new HierarchicalPathfinder(width, height, isPassable);
-    this.groundGraph = new GroundPathGraph(width, height, isPassable, getBlockedCells);
+    this.groundGraph = new GroundPathGraph(width, height, isPassable, getBlockedCells, getHeight);
+    this.cellInfoPool = new CellInfoLayerPool(width, height, 4);
   }
 
   /**
@@ -80,7 +93,13 @@ export class Pathfinder {
     check = BlockedByActor.All,
     biasSeed = 0,
     allowBlockedEnd = false,
-    getTerrainCost?: (x: number, y: number) => number
+    getTerrainCost?: (x: number, y: number) => number,
+    /** Task 132: 启发式权重（1.0 = 严格可采纳，1.25 = OpenRA 默认） */
+    heuristicWeight = 1.0,
+    /** Task 127: 是否启用 Lane Bias */
+    laneBias = false,
+    /** Task 127: Lane Bias 成本 */
+    laneBiasCost = 1
   ): PathNode[] | null {
     if (!this.isInside(endX, endY) || !this.isPassable(endX, endY)) return null;
 
@@ -102,12 +121,14 @@ export class Pathfinder {
       f: 0,
       parent: null,
     };
-    startNode.f = startNode.g + startNode.h;
+    startNode.f = startNode.g + startNode.h * heuristicWeight;
     openSet.push(startNode, startNode.f);
 
     const graphContext: PathGraphContext = {
       getTerrainCost,
       biasSeed,
+      laneBias,
+      laneBiasCost,
     };
 
     while (!openSet.isEmpty()) {
@@ -119,7 +140,13 @@ export class Pathfinder {
 
       closedSet.add(`${current.x},${current.y}`);
 
-      const connections = this.groundGraph.getConnections({ x: current.x, y: current.y }, graphContext);
+      // Task 127: 传递父节点用于 Directed Neighbors
+      const connContext: PathGraphContext = {
+        ...graphContext,
+        parentNode: current.parent ? { x: current.parent.x, y: current.parent.y } : undefined,
+      };
+
+      const connections = this.groundGraph.getConnections({ x: current.x, y: current.y }, connContext);
       for (const conn of connections) {
         const nx = conn.node.x;
         const ny = conn.node.y;
@@ -137,12 +164,12 @@ export class Pathfinder {
 
         if (!existing) {
           const h = this.groundGraph.getHeuristic({ x: nx, y: ny }, { x: endX, y: endY });
-          const node: AStarNode = { x: nx, y: ny, g, h, f: g + h, parent: current };
+          const node: AStarNode = { x: nx, y: ny, g, h, f: g + h * heuristicWeight, parent: current };
           openSet.push(node, node.f);
         } else {
           // key 已存在：BinaryHeap.push 会自动 decrease-key（若新 f 更小）
           const h = this.groundGraph.getHeuristic({ x: nx, y: ny }, { x: endX, y: endY });
-          const node: AStarNode = { x: nx, y: ny, g, h, f: g + h, parent: current };
+          const node: AStarNode = { x: nx, y: ny, g, h, f: g + h * heuristicWeight, parent: current };
           openSet.push(node, node.f);
         }
       }
@@ -171,7 +198,12 @@ export class Pathfinder {
     check = BlockedByActor.All,
     biasSeed = 0,
     allowBlockedEnd = false,
-    getTerrainCost?: (x: number, y: number) => number
+    getTerrainCost?: (x: number, y: number) => number,
+    /** Task 132: 启发式权重 */
+    heuristicWeight = 1.0,
+    /** Task 127: Lane Bias */
+    laneBias = false,
+    laneBiasCost = 1
   ): PathNode[] | null {
     if (!this.isInside(endX, endY) || !this.isPassable(endX, endY)) return null;
     if (!this.hierarchical.areConnected(startX, startY, endX, endY)) return null;
@@ -198,7 +230,7 @@ export class Pathfinder {
       f: 0,
       parent: null,
     };
-    startNode.f = startNode.g + startNode.h;
+    startNode.f = startNode.g + startNode.h * heuristicWeight;
     forwardOpen.push(startNode, startNode.f);
     forwardG.set(`${startX},${startY}`, 0);
 
@@ -210,7 +242,7 @@ export class Pathfinder {
       f: 0,
       parent: null,
     };
-    endNode.f = endNode.g + endNode.h;
+    endNode.f = endNode.g + endNode.h * heuristicWeight;
     backwardOpen.push(endNode, endNode.f);
     backwardG.set(`${endX},${endY}`, 0);
 
@@ -219,6 +251,8 @@ export class Pathfinder {
     const graphContext: PathGraphContext = {
       getTerrainCost,
       biasSeed,
+      laneBias,
+      laneBiasCost,
     };
 
     while (!forwardOpen.isEmpty() && !backwardOpen.isEmpty()) {
@@ -256,7 +290,14 @@ export class Pathfinder {
         break;
       }
 
-      const connections = this.groundGraph.getConnections({ x: current.x, y: current.y }, graphContext);
+      // Task 127: 传递父节点 + inReverse 标志
+      const connContext: PathGraphContext = {
+        ...graphContext,
+        parentNode: current.parent ? { x: current.parent.x, y: current.parent.y } : undefined,
+        inReverse: !useForward,
+      };
+
+      const connections = this.groundGraph.getConnections({ x: current.x, y: current.y }, connContext);
       for (const conn of connections) {
         const nx = conn.node.x;
         const ny = conn.node.y;
@@ -280,7 +321,7 @@ export class Pathfinder {
           const h = useForward
             ? this.groundGraph.getHeuristic({ x: nx, y: ny }, { x: endX, y: endY })
             : this.groundGraph.getHeuristic({ x: nx, y: ny }, { x: startX, y: startY });
-          const node: AStarNode = { x: nx, y: ny, g, h, f: g + h, parent: null };
+          const node: AStarNode = { x: nx, y: ny, g, h, f: g + h * heuristicWeight, parent: null };
           const open = useForward ? forwardOpen : backwardOpen;
           open.push(node, node.f);
         }
@@ -307,7 +348,12 @@ export class Pathfinder {
     extraBlocked?: ReadonlySet<string>,
     check = BlockedByActor.All,
     biasSeed = 0,
-    getTerrainCost?: (x: number, y: number) => number
+    getTerrainCost?: (x: number, y: number) => number,
+    /** Task 132: 启发式权重（Predicate 搜索通常不需要，为接口一致性保留） */
+    heuristicWeight = 1.0,
+    /** Task 127: Lane Bias */
+    laneBias = false,
+    laneBiasCost = 1
   ): PathNode[] | null {
     const dynamicBlocked = this.getBlockedCells?.(check) ?? new Set<string>();
 
@@ -327,6 +373,8 @@ export class Pathfinder {
     const graphContext: PathGraphContext = {
       getTerrainCost,
       biasSeed,
+      laneBias,
+      laneBiasCost,
     };
 
     while (!openSet.isEmpty()) {
@@ -340,7 +388,13 @@ export class Pathfinder {
 
       if (current.g >= maxDistance) continue;
 
-      const connections = this.groundGraph.getConnections({ x: current.x, y: current.y }, graphContext);
+      // Task 127: 传递父节点
+      const connContext: PathGraphContext = {
+        ...graphContext,
+        parentNode: current.parent ? { x: current.parent.x, y: current.parent.y } : undefined,
+      };
+
+      const connections = this.groundGraph.getConnections({ x: current.x, y: current.y }, connContext);
       for (const conn of connections) {
         const nx = conn.node.x;
         const ny = conn.node.y;
@@ -353,10 +407,10 @@ export class Pathfinder {
         const existing = openSet.has({ x: nx, y: ny, g: 0, h: 0, f: 0, parent: null });
 
         if (!existing) {
-          const node: AStarNode = { x: nx, y: ny, g, h: 0, f: g, parent: current };
+          const node: AStarNode = { x: nx, y: ny, g, h: 0, f: g * heuristicWeight, parent: current };
           openSet.push(node, node.f);
         } else {
-          const node: AStarNode = { x: nx, y: ny, g, h: 0, f: g, parent: current };
+          const node: AStarNode = { x: nx, y: ny, g, h: 0, f: g * heuristicWeight, parent: current };
           openSet.push(node, node.f);
         }
       }

@@ -157,6 +157,8 @@ export class GameConsole {
       orderGeneratorCancel: this.orderGeneratorCancel.bind(this),
       gameLoopState: this.gameLoopState.bind(this),
       gameLoopStep: this.gameLoopStep.bind(this),
+      pathfindAdvanced: this.pathfindAdvanced.bind(this),
+      cellInfoPoolStats: this.cellInfoPoolStats.bind(this),
       editorSelectBrush: this.editorSelectBrush.bind(this),
       editorPaint: this.editorPaint.bind(this),
       editorFloodFill: this.editorFloodFill.bind(this),
@@ -520,7 +522,12 @@ export class GameConsole {
     endX: number,
     endY: number,
     checkName = 'All',
-    locomotionName = 'Track'
+    locomotionName = 'Track',
+    /** Task 132: heuristic weight */
+    heuristicWeight = 1.0,
+    /** Task 127: lane bias */
+    laneBias = false,
+    laneBiasCost = 1
   ): PathNode[] | null {
     if (!this.pathfinder) {
       console.warn('Pathfinder not available in GameConsole');
@@ -533,10 +540,23 @@ export class GameConsole {
     const getTerrainCost = this.pathfinder.getTerrainType
       ? makeTerrainCostCallback(locomotor, this.pathfinder.getTerrainType)
       : undefined;
-    const path = this.pathfinder.findPath(startX, startY, endX, endY, blockedCells, check, 0, false, getTerrainCost);
+    const path = this.pathfinder.findPath(
+      startX,
+      startY,
+      endX,
+      endY,
+      blockedCells,
+      check,
+      0,
+      false,
+      getTerrainCost,
+      heuristicWeight,
+      laneBias,
+      laneBiasCost
+    );
     // eslint-disable-next-line no-console
     console.info(
-      `Pathfind (${startX},${startY}) → (${endX},${endY}) [${checkName}, ${locomotionName}]:`,
+      `Pathfind (${startX},${startY}) → (${endX},${endY}) [${checkName}, ${locomotionName}, w=${heuristicWeight}, lb=${laneBias}]:`,
       path ? path.map((n) => `(${n.x},${n.y})`).join(' -> ') : 'NO PATH'
     );
     return path;
@@ -551,7 +571,10 @@ export class GameConsole {
     endX: number,
     endY: number,
     checkName = 'All',
-    locomotionName = 'Track'
+    locomotionName = 'Track',
+    heuristicWeight = 1.0,
+    laneBias = false,
+    laneBiasCost = 1
   ): PathNode[] | null {
     if (!this.pathfinder) {
       console.warn('Pathfinder not available');
@@ -573,11 +596,14 @@ export class GameConsole {
       check,
       0,
       false,
-      getTerrainCost
+      getTerrainCost,
+      heuristicWeight,
+      laneBias,
+      laneBiasCost
     );
     // eslint-disable-next-line no-console
     console.info(
-      `Bidirectional (${startX},${startY}) → (${endX},${endY}) [${checkName}, ${locomotionName}]:`,
+      `Bidirectional (${startX},${startY}) → (${endX},${endY}) [${checkName}, ${locomotionName}, w=${heuristicWeight}, lb=${laneBias}]:`,
       path ? path.map((n) => `(${n.x},${n.y})`).join(' -> ') : 'NO PATH'
     );
     return path;
@@ -643,6 +669,89 @@ export class GameConsole {
       default:
         return BlockedByActor.All;
     }
+  }
+
+  /** Task 127 + 132: Advanced pathfinding with full parameter control.
+   * @param options — { heuristicWeight?, laneBias?, laneBiasCost? }
+   */
+  private pathfindAdvanced(
+    startX: number,
+    startY: number,
+    endX: number,
+    endY: number,
+    options: {
+      check?: string;
+      locomotion?: string;
+      heuristicWeight?: number;
+      laneBias?: boolean;
+      laneBiasCost?: number;
+      bidirectional?: boolean;
+    } = {}
+  ): { path: PathNode[] | null; nodesExplored: number; elapsedMs: number } {
+    if (!this.pathfinder) {
+      return { path: null, nodesExplored: 0, elapsedMs: 0 };
+    }
+    const check = this.parseBlockedByActor(options.check ?? 'All');
+    const blockedCells = UnitCollision.getBlockedCells('', check);
+    const locomotionName = options.locomotion ?? 'Track';
+    const locomotion = (Locomotion as Record<string, unknown>)[locomotionName] as Locomotion | undefined;
+    const locomotor = locomotion !== undefined ? getLocomotor(locomotion) : getLocomotor(Locomotion.Track);
+    const getTerrainCost = this.pathfinder.getTerrainType
+      ? makeTerrainCostCallback(locomotor, this.pathfinder.getTerrainType)
+      : undefined;
+
+    const hw = options.heuristicWeight ?? 1.0;
+    const lb = options.laneBias ?? false;
+    const lbc = options.laneBiasCost ?? 1;
+
+    const startTime = performance.now();
+    let path: PathNode[] | null;
+    const nodesExplored = 0;
+
+    if (options.bidirectional) {
+      path = this.pathfinder.findPathBidirectional(
+        startX,
+        startY,
+        endX,
+        endY,
+        blockedCells,
+        check,
+        0,
+        false,
+        getTerrainCost,
+        hw,
+        lb,
+        lbc
+      );
+    } else {
+      path = this.pathfinder.findPath(
+        startX,
+        startY,
+        endX,
+        endY,
+        blockedCells,
+        check,
+        0,
+        false,
+        getTerrainCost,
+        hw,
+        lb,
+        lbc
+      );
+    }
+    const elapsedMs = performance.now() - startTime;
+    return { path, nodesExplored, elapsedMs };
+  }
+
+  /** Task 128: CellInfoLayerPool statistics. */
+  private cellInfoPoolStats(): { size: number; available: number; inUse: number } | null {
+    if (!this.pathfinder) return null;
+    const pool = this.pathfinder.cellInfoPool;
+    return {
+      size: pool.size,
+      available: pool.availableCount,
+      inUse: pool.size - pool.availableCount,
+    };
   }
 
   /** Inspect ActorMap occupancy.
