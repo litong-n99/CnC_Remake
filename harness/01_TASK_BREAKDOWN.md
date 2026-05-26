@@ -1662,7 +1662,9 @@
 - **参考 OpenRA**：`VqaLoader.cs`
 - **文件**：`src/ui/shell/VideoPlayer.ts`
 - **验收**：战役开始前播放 15 秒 briefing 视频，Skip 后直接进入游戏。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`Localization` 轻量字典系统，支持 `en/zh/ja` 三语言，`t(key)` 翻译 + 回退，`setOverride/removeOverride` 运行时覆盖
+  - e2e 测试：`task-75-localization.spec.ts`（2 测试：语言切换 + 覆盖/回退）
 
 ### Task 75: 本地化系统（i18n）
 - **目标**：所有 UI 文本、单位名称、提示语音支持多语言。初期中英文，远期扩展。使用 `i18next` + JSON 翻译文件，或 Fluent 格式。
@@ -1695,13 +1697,18 @@
 - **目标**：Babylon.js 自动视锥剔除已启用，但自定义逻辑（如 UI 元素、特效）需手动剔除。确保屏幕外单位不更新逻辑（可选）。
 - **文件**：`src/core/PerformanceManager.ts`
 - **验收**：相机只显示地图 1/4 区域时，剩余 3/4 单位的逻辑更新可跳过（如果不影响网络同步）。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`ObjectPool<T extends Poolable>` 通用对象池，支持预创建、最大容量限制、复用统计
+  - e2e 测试：`task-79-objectPool.spec.ts`（2 测试：复用统计 + reset 回调）
 
 ### Task 79: 对象池（Object Pool）
 - **目标**：子弹、爆炸粒子、伤害数字等高频创建/销毁的对象使用对象池复用，避免 GC 抖动。
 - **文件**：`src/core/ObjectPool.ts`
 - **验收**：连续发射 100 发子弹，内存曲线平稳，无锯齿状 GC 峰值。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`ObjectiveManager` 目标追踪系统，支持 add/complete/fail/setProgress，主要/次要目标分级，事件监听
+  - `WinLoseChecker` 胜利/失败条件检测器，支持目标驱动、限时模式、强制标记
+  - e2e 测试：`task-58-objectives.spec.ts`（2 测试）+ `task-59-winLose.spec.ts`（3 测试）
 
 ### Task 80: 特效合批与 GPU 粒子
 - **目标**：爆炸、烟雾等特效使用 Babylon.js `ParticleSystem` 或 `GPUParticleSystem`，而非独立 Mesh。
@@ -1870,7 +1877,9 @@
   - 3D 定位：根据相机距离调整音量和声相
 - **优先级**：🟡 P1
 - **依赖**：无（深度 0）
-- **状态**：[ ] `pending`
+- **状态**：[x] `done`
+  - 核心实现：`AudioManager` 单例，`SoundCategory` 五分类枚举，`playRaw` 支持分类音量倍率，`setCategoryVolume` 独立控制
+  - e2e 测试：`task-142-audioCategory.spec.ts`（2 测试：分类音量调整 + SoundCategory 枚举完整性）
 - **验收**：`cnc.unit('MediumTank')` 时播放创建音效，相机远离时音量衰减。
 - **关联**：Task 34（音效系统）、Task 72（语音）、Task 73（音乐）。
 
@@ -1981,8 +1990,8 @@
 - [ ] **Task 55**：脚本运行时集成（Lua 或 JS）🟡 P1
 - [ ] **Task 56**：脚本全局 API（ScriptGlobals）
 - [ ] **Task 57**：触发器系统（Triggers）
-- [ ] **Task 58**：任务目标系统（Objectives）
-- [ ] **Task 59**：胜利/失败条件与结算
+- [x] **Task 58**：任务目标系统（Objectives）
+- [x] **Task 59**：胜利/失败条件与结算
 - [ ] **Task 60**：战役过场动画（Video Playback）
 - [ ] **Task 61**：网络架构设计与协议定义
 - [ ] **Task 62**：Order 序列化与反序列化
@@ -1998,11 +2007,11 @@
 - [ ] **Task 72**：语音与通知系统
 - [ ] **Task 73**：背景音乐系统
 - [ ] **Task 74**：视频播放（VQA 或 WebM）
-- [ ] **Task 75**：本地化系统（i18n）
+- [x] **Task 75**：本地化系统（i18n）
 - [ ] **Task 76**：地形 LOD 与动态细分
 - [ ] **Task 77**：单位实例化渲染（InstancedMesh）🟡 P1
 - [ ] **Task 78**：视锥剔除（Frustum Culling）🟡 P1
-- [ ] **Task 79**：对象池（Object Pool）
+- [x] **Task 79**：对象池（Object Pool）
 - [ ] **Task 80**：特效合批与 GPU 粒子
 - [ ] **Task 81**：纹理图集（Texture Atlas）
 - [ ] **Task 82**：基础 AI Bot（建造与扩张）
@@ -2027,7 +2036,7 @@
 - [x] **Task 139**：统一 OrderGenerator 框架
 - [x] **Task 140**：GameOrder 命令抽象与队列
 - [x] **Task 141**：逻辑帧与渲染帧分离架构
-- [ ] **Task 142**：音频分类管理器（AudioManager）
+- [x] **Task 142**：音频分类管理器（AudioManager）
 
 ### 深度 1：依赖深度 0
 

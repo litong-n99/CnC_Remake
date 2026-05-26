@@ -34,6 +34,10 @@ import { ResourceLayer } from './game/economy/ResourceLayer';
 import { GameLoop } from './game/GameLoop';
 import { FogOfWar } from './renderer/effects/FogOfWar';
 import { AudioManager } from './core/AudioManager';
+import { getLocalization } from './core/Localization';
+import { ObjectPool } from './core/ObjectPool';
+import { ObjectiveManager } from './game/objectives/ObjectiveManager';
+import { WinLoseChecker } from './game/objectives/WinLoseChecker';
 import { CursorManager } from './core/CursorManager';
 import { SaveManager } from './save/SaveManager';
 import { BuildingTools } from './game/building/BuildingTools';
@@ -631,6 +635,10 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._saveManager = saveManager;
   w._buildingTools = buildingTools;
   w._placer = placer;
+  w._localization = getLocalization();
+  w._ObjectPool = ObjectPool;
+  w._objectiveManager = new ObjectiveManager();
+  w._WinLoseChecker = WinLoseChecker;
 
   // ── Verification ──
   const goManager = GameObjectManager.getInstance();
