@@ -1919,7 +1919,7 @@
 - [x] **Task 28**：武器与弹道系统（翻译 WEAPON.CPP / BULLET.CPP）
 - [x] **Task 29**：伤害计算与装甲系统
 - [x] **Task 30**：采矿与经济系统
-- [ ] **Task 31**：战争迷雾（Fog of War）
+- [x] **Task 31**：战争迷雾（Fog of War）
 - [ ] **Task 32**：游戏主循环与 Tick 系统 🟡 P1
 - [ ] **Task 33**：存档 / 读档系统
 - [ ] **Task 34**：音效事件系统（Dummy 音频占位）🟡 P1
