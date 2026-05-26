@@ -33,6 +33,9 @@ export class InputManager {
 
   private isShiftDown = false;
   private isCtrlDown = false;
+  private lastSquadKey = -1;
+  private lastSquadKeyTime = 0;
+  private readonly squadDoubleClickMs = 800;
 
   constructor(
     rtsCamera: RTSCamera,
@@ -59,7 +62,7 @@ export class InputManager {
       if (e.key === 'Shift') this.isShiftDown = true;
       if (e.key === 'Control') this.isCtrlDown = true;
 
-      // Squad hotkeys: 0-9
+      // Squad hotkeys: 0-9 (Task 49)
       if (/^[0-9]$/.test(e.key)) {
         const index = parseInt(e.key, 10);
         if (this.isCtrlDown) {
@@ -67,6 +70,13 @@ export class InputManager {
           console.warn(`Squad ${index} saved (${this.selectionManager.getSelected().length} units)`);
         } else {
           this.selectionManager.restoreSquad(index, this.scene);
+          const now = performance.now();
+          const isDoubleClick = this.lastSquadKey === index && now - this.lastSquadKeyTime < this.squadDoubleClickMs;
+          this.lastSquadKey = index;
+          this.lastSquadKeyTime = now;
+          if (isDoubleClick) {
+            this.jumpToSquadCenter(index);
+          }
           console.warn(`Squad ${index} restored`);
         }
       }
@@ -75,6 +85,24 @@ export class InputManager {
       if (e.key === 'Shift') this.isShiftDown = false;
       if (e.key === 'Control') this.isCtrlDown = false;
     });
+  }
+
+  /** 将视角跳转到指定编组的中心（Task 49 双击编组键）。 */
+  private jumpToSquadCenter(index: number): void {
+    const squad = this.selectionManager.getSquad(index);
+    const alive = squad.filter((u) => u.isAlive());
+    if (alive.length === 0) return;
+    let cx = 0;
+    let cz = 0;
+    for (const u of alive) {
+      const p = u.getPosition();
+      cx += p.x;
+      cz += p.z;
+    }
+    cx /= alive.length;
+    cz /= alive.length;
+    this.rtsCamera.setTarget(new Vector3(cx, 0, cz));
+    console.warn(`Camera jumped to squad ${index} center`);
   }
 
   // ── Camera callback wiring ──
@@ -184,11 +212,35 @@ export class InputManager {
   private handleLeftDoubleClick(screenX: number, screenY: number): void {
     const unit = this.pickUnitAt(screenX, screenY);
     if (unit) {
-      this.selectionManager.selectSameType(unit, this.scene);
-      console.warn(
-        `Double-click selected all ${unit.definition.name} (${this.selectionManager.getSelected().length} units)`
-      );
+      // Task 50: select only visible same-type units on screen
+      const visibleSameType = this.getVisibleSameTypeUnits(unit);
+      if (visibleSameType.length > 0) {
+        this.selectionManager.selectMultiple(visibleSameType, this.scene);
+        console.warn(`Double-click selected ${visibleSameType.length} visible ${unit.definition.name}`);
+      }
     }
+  }
+
+  /** 获取与指定单位同类型且当前在屏幕内的可见单位（Task 50）。 */
+  private getVisibleSameTypeUnits(reference: Unit): Unit[] {
+    const targetId = reference.definition.id;
+    const camera = this.rtsCamera.getCamera();
+    const canvas = camera.getEngine().getRenderingCanvas();
+    if (!canvas) return [];
+    const cssWidth = canvas.getBoundingClientRect().width;
+    const cssHeight = canvas.getBoundingClientRect().height;
+    const result: Unit[] = [];
+    for (const obj of GameObjectManager.getInstance().getUnits()) {
+      if (obj.type !== GameObjectType.Unit) continue;
+      const u = obj as Unit;
+      if (u.definition.id !== targetId || !u.isAlive()) continue;
+      const screenPos = this.worldToScreen(u.getPosition());
+      if (!screenPos) continue;
+      if (screenPos.x >= 0 && screenPos.x <= cssWidth && screenPos.y >= 0 && screenPos.y <= cssHeight) {
+        result.push(u);
+      }
+    }
+    return result;
   }
 
   // ── Left drag: box select ──

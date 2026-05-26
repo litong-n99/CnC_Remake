@@ -67,7 +67,9 @@ export class RTSCamera {
   private lastClickTime = 0;
   private lastClickX = 0;
   private lastClickY = 0;
-  private readonly doubleClickThresholdMs = 300;
+  private readonly doubleClickThresholdMs = 600;
+  private lastDoubleClickTime = 0;
+  private readonly doubleClickDedupMs = 100;
   private readonly doubleClickThresholdPx = 10;
   private isRotatingLeft = false;
   private isRotatingRight = false;
@@ -105,6 +107,7 @@ export class RTSCamera {
   private boundPointerLockError: () => void;
   private boundKeyDown: (e: KeyboardEvent) => void;
   private boundKeyUp: (e: KeyboardEvent) => void;
+  private boundDblClick: (e: MouseEvent) => void;
 
   private cursorDiv: HTMLDivElement | null = null;
 
@@ -158,6 +161,7 @@ export class RTSCamera {
     this.boundPointerLockError = this.handlePointerLockError.bind(this);
     this.boundKeyDown = this.handleKeyDown.bind(this);
     this.boundKeyUp = this.handleKeyUp.bind(this);
+    this.boundDblClick = this.handleDblClick.bind(this);
 
     this.renderCallback = this.update.bind(this);
 
@@ -218,6 +222,7 @@ export class RTSCamera {
     window.addEventListener('blur', this.boundWindowBlur);
     canvas.addEventListener('contextmenu', this.boundContextMenu);
     canvas.addEventListener('click', this.boundClick);
+    canvas.addEventListener('dblclick', this.boundDblClick);
     canvas.addEventListener('wheel', this.boundWheel, { passive: false });
     document.addEventListener('pointerlockchange', this.boundPointerLockChange);
     document.addEventListener('pointerlockerror', this.boundPointerLockError);
@@ -371,6 +376,7 @@ export class RTSCamera {
         Math.abs(dy) < this.doubleClickThresholdPx;
 
       if (isDoubleClick && this.onLeftDoubleClick) {
+        this.lastDoubleClickTime = now;
         this.onLeftDoubleClick(this.mouseX, this.mouseY);
       } else if (this.onLeftClick) {
         this.onLeftClick(this.mouseX, this.mouseY);
@@ -409,6 +415,16 @@ export class RTSCamera {
     // In pointer-lock mode we rely on handleMouseUp for right-click detection.
     if (!this.isPointerLocked && this.onRightClick) {
       this.onRightClick(this.mouseX, this.mouseY);
+    }
+  }
+
+  private handleDblClick(e: MouseEvent): void {
+    if (e.button !== 0) return;
+    this.updateMousePositionFromEvent(e);
+    const now = performance.now();
+    if (now - this.lastDoubleClickTime > this.doubleClickDedupMs && this.onLeftDoubleClick) {
+      this.lastDoubleClickTime = now;
+      this.onLeftDoubleClick(this.mouseX, this.mouseY);
     }
   }
 
@@ -651,9 +667,20 @@ export class RTSCamera {
     return this.camera.target;
   }
 
+  /** Current look-at target as a plain object (e2e-friendly). */
+  getTargetCoords(): { x: number; y: number; z: number } {
+    const t = this.camera.target;
+    return { x: t.x, y: t.y, z: t.z };
+  }
+
   /** Teleport the look-at target. */
   setTarget(target: Vector3): void {
     this.camera.target.copyFrom(target);
+  }
+
+  /** Teleport the look-at target from raw coordinates. */
+  setTargetCoords(x: number, y: number, z: number): void {
+    this.camera.target.set(x, y, z);
   }
 
   /** Release event listeners, render-loop callback and camera resources. */

@@ -734,6 +734,8 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
       (window as any)._performanceMonitor = performanceMonitor;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (window as any)._skirmishSetup = skirmishSetup;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any)._rtsCamera = rtsCamera;
     }
   }
 
