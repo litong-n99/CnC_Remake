@@ -1482,15 +1482,15 @@
 
 ### Task 52: 战役数据层
 - **目标**：定义 `CampaignData`（战役列表）和 `MissionData`（单个任务：地图、简报、目标、脚本路径、解锁条件）。
-- **文件**：`src/game/campaign/CampaignData.ts`, `src/game/campaign/MissionData.ts`
+- **文件**：`src/game/campaign/CampaignData.ts`
 - **验收**：JSON 配置加载后，CampaignMenu 正确显示任务列表和完成状态。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 53: 战役进度保存
 - **目标**：localStorage 保存每个战役的完成状态、最佳时间、困难度通关标记。
 - **文件**：`src/game/campaign/CampaignProgress.ts`
 - **验收**：通关第一个任务后刷新页面，该任务显示"已完成"，下一个任务解锁。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 54: 任务简报页面
 - **目标**：进入战役前显示简报：背景图、任务描述文字（打字机效果）、语音旁白、目标列表。
@@ -1536,9 +1536,9 @@
 ### Task 60: 战役过场动画（Video Playback）
 - **目标**：支持播放战役开场/结尾视频。优先 WebM/MP4（HTML5 `<video>`），远期支持 VQA 解码。
 - **参考 OpenRA**：`VqaLoader.cs`
-- **文件**：`src/ui/shell/VideoPlayer.ts`
+- **文件**：`src/core/VideoPlayer.ts`
 - **验收**：简报前自动播放 10 秒测试视频，可 Skip。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ---
 
@@ -1994,15 +1994,15 @@
 - [x] **Task 49**：单位编组（Ctrl+Number）
 - [x] **Task 50**：双击选中同类单位 + 框选优化
 - [x] **Task 51**：Sell / Repair / Power 工具按钮
-- [ ] **Task 52**：战役数据层
-- [ ] **Task 53**：战役进度保存
+- [x] **Task 52**：战役数据层
+- [x] **Task 53**：战役进度保存
 - [ ] **Task 54**：任务简报页面
 - [ ] **Task 55**：脚本运行时集成（Lua 或 JS）🟡 P1
 - [ ] **Task 56**：脚本全局 API（ScriptGlobals）
 - [ ] **Task 57**：触发器系统（Triggers）
 - [x] **Task 58**：任务目标系统（Objectives）
 - [x] **Task 59**：胜利/失败条件与结算
-- [ ] **Task 60**：战役过场动画（Video Playback）
+- [x] **Task 60**：战役过场动画（Video Playback）
 - [ ] **Task 61**：网络架构设计与协议定义
 - [ ] **Task 62**：Order 序列化与反序列化
 - [ ] **Task 63**：本地服务器（Headless Relay Server）

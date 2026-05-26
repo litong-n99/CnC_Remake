@@ -49,6 +49,21 @@ import { DesktopAdapter } from './core/DesktopAdapter';
 import { TouchInputManager } from './core/TouchInputManager';
 import { MusicPlayer } from './core/MusicPlayer';
 import { VideoPlayer } from './core/VideoPlayer';
+import {
+  getAllCampaigns,
+  getCampaignById,
+  getMissions,
+  getMissionById,
+  registerCampaign,
+} from './game/campaign/CampaignData';
+import {
+  loadCampaignProgress,
+  saveCampaignProgress,
+  markMissionCompleted,
+  isMissionUnlocked,
+  clearAllCampaignProgress,
+  getSavedCampaignIds,
+} from './game/campaign/CampaignProgress';
 import { CursorManager } from './core/CursorManager';
 import { SaveManager } from './save/SaveManager';
 import { BuildingTools } from './game/building/BuildingTools';
@@ -661,6 +676,21 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._TouchInputManager = TouchInputManager;
   w._musicPlayer = new MusicPlayer();
   w._videoPlayer = new VideoPlayer();
+  w._CampaignData = {
+    getAllCampaigns,
+    getCampaignById,
+    getMissions,
+    getMissionById,
+    registerCampaign,
+  };
+  w._CampaignProgress = {
+    loadCampaignProgress,
+    saveCampaignProgress,
+    markMissionCompleted,
+    isMissionUnlocked,
+    clearAllCampaignProgress,
+    getSavedCampaignIds,
+  };
 
   // ── Verification ──
   const goManager = GameObjectManager.getInstance();
