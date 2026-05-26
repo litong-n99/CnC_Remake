@@ -47,6 +47,8 @@ import { ActorPlacer } from './editor/ActorPlacer';
 import { SandboxMode } from './game/sandbox/SandboxMode';
 import { DesktopAdapter } from './core/DesktopAdapter';
 import { TouchInputManager } from './core/TouchInputManager';
+import { MusicPlayer } from './core/MusicPlayer';
+import { VideoPlayer } from './core/VideoPlayer';
 import { CursorManager } from './core/CursorManager';
 import { SaveManager } from './save/SaveManager';
 import { BuildingTools } from './game/building/BuildingTools';
@@ -657,6 +659,8 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._SandboxMode = SandboxMode;
   w._DesktopAdapter = DesktopAdapter;
   w._TouchInputManager = TouchInputManager;
+  w._musicPlayer = new MusicPlayer();
+  w._videoPlayer = new VideoPlayer();
 
   // ── Verification ──
   const goManager = GameObjectManager.getInstance();

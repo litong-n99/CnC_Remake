@@ -2015,12 +2015,12 @@
 - [ ] **Task 70**：精灵序列系统（SHP 解析与 Sprite Sheet）
 - [x] **Task 71**：调色板系统（Palette & Remap）
 - [x] **Task 72**：语音与通知系统
-- [ ] **Task 73**：背景音乐系统
-- [ ] **Task 74**：视频播放（VQA 或 WebM）
+- [x] **Task 73**：背景音乐系统
+- [x] **Task 74**：视频播放（VQA 或 WebM）
 - [x] **Task 75**：本地化系统（i18n）
 - [ ] **Task 76**：地形 LOD 与动态细分
 - [ ] **Task 77**：单位实例化渲染（InstancedMesh）🟡 P1
-- [ ] **Task 78**：视锥剔除（Frustum Culling）🟡 P1
+- [x] **Task 78**：视锥剔除（Frustum Culling）🟡 P1
 - [x] **Task 79**：对象池（Object Pool）
 - [ ] **Task 80**：特效合批与 GPU 粒子
 - [x] **Task 81**：纹理图集（Texture Atlas）
