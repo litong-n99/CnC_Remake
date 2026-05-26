@@ -157,6 +157,12 @@ export class GameConsole {
       editorExport: this.editorExport.bind(this),
       attack: this.attack.bind(this),
       harvestUnit: this.harvestUnit.bind(this),
+      save: this.save.bind(this),
+      load: this.load.bind(this),
+      peekSave: this.peekSave.bind(this),
+      sell: this.sell.bind(this),
+      repair: this.repair.bind(this),
+      queueLength: this.queueLength.bind(this),
       help: this.help.bind(this),
     };
     // eslint-disable-next-line no-console
@@ -1696,5 +1702,80 @@ export class GameConsole {
     }
     unit.logic.stateMachine.transition(UnitState.Harvesting);
     return { success: true, message: `${unit.definition.name} started harvesting` };
+  }
+
+  // ── Task 33: Save / Load ──
+
+  private save(): { success: boolean; filename?: string; message: string } {
+    const saveManager = (window as unknown as Record<string, unknown>)._saveManager as
+      | { save: () => { filename: string; url: string } | null }
+      | undefined;
+    if (!saveManager) {
+      return { success: false, message: 'SaveManager not available' };
+    }
+    const result = saveManager.save();
+    if (result) {
+      return { success: true, filename: result.filename, message: `Saved to ${result.filename}` };
+    }
+    return { success: false, message: 'Save failed' };
+  }
+
+  private async load(file?: File): Promise<{ success: boolean; message: string }> {
+    const saveManager = (window as unknown as Record<string, unknown>)._saveManager as
+      | { load: (f: File) => Promise<boolean> }
+      | undefined;
+    if (!saveManager) {
+      return { success: false, message: 'SaveManager not available' };
+    }
+    if (!file) {
+      return { success: false, message: 'No file provided. Use file input element.' };
+    }
+    const ok = await saveManager.load(file);
+    return { success: ok, message: ok ? 'Load successful' : 'Load failed' };
+  }
+
+  private peekSave(): Record<string, unknown> {
+    const saveManager = (window as unknown as Record<string, unknown>)._saveManager as
+      | { peek: () => Record<string, unknown> }
+      | undefined;
+    if (!saveManager) {
+      return { error: 'SaveManager not available' };
+    }
+    return saveManager.peek();
+  }
+
+  // ── Task 51: Sell / Repair ──
+
+  private sell(buildingId: string): { success: boolean; refund?: number; message: string } {
+    const tools = (window as unknown as Record<string, unknown>)._buildingTools as
+      | { sellBuilding: (id: string) => { success: boolean; refund: number; message: string } }
+      | undefined;
+    if (!tools) {
+      return { success: false, message: 'BuildingTools not available' };
+    }
+    return tools.sellBuilding(buildingId);
+  }
+
+  private repair(buildingId: string): { success: boolean; cost?: number; message: string } {
+    const tools = (window as unknown as Record<string, unknown>)._buildingTools as
+      | { repairBuilding: (id: string) => { success: boolean; cost: number; message: string } }
+      | undefined;
+    if (!tools) {
+      return { success: false, message: 'BuildingTools not available' };
+    }
+    return tools.repairBuilding(buildingId);
+  }
+
+  // ── Task 46: Command Queue ──
+
+  private queueLength(unitId: string): number {
+    const manager = GameObjectManager.getInstance();
+    const obj = manager.get(unitId);
+    if (!obj || obj.type !== GameObjectType.Unit) {
+      console.warn(`Unit not found: ${unitId}`);
+      return -1;
+    }
+    const unit = obj as Unit;
+    return unit.logic.getCommandQueueLength();
   }
 }

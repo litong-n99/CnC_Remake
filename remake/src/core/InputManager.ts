@@ -153,6 +153,19 @@ export class InputManager {
   // ── Left click: single select / toggle ──
 
   private handleLeftClick(screenX: number, screenY: number): void {
+    // 放置模式下左键 = 确认放置
+    if (this.placer.isPlacing()) {
+      this.placer.updateFromScreen(screenX, screenY);
+      const cell = this.placer.confirmPlacement();
+      if (cell && this.gameConsole) {
+        const building = this.gameConsole.tryPlaceBuilding(cell.x, cell.y, this.scene);
+        if (building) {
+          console.warn(`Placed ${building.definition.name} at (${cell.x}, ${cell.y})`);
+        }
+      }
+      return;
+    }
+
     const unit = this.pickUnitAt(screenX, screenY);
     if (unit) {
       if (this.isShiftDown) {

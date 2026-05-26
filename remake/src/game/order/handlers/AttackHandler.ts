@@ -39,6 +39,14 @@ export class AttackHandler implements OrderHandler {
     const u = subject as Unit;
     const t = targetObj as Unit;
 
+    if (order.queued) {
+      u.logic.enqueueCommand('attack', { x: t.x, y: t.y });
+      return {
+        success: true,
+        message: `Queued attack: ${u.definition.name} → ${t.definition.name}`,
+      };
+    }
+
     // Set attack target (will be used by combat logic in future Tasks)
     u.logic.attackTarget = { x: t.x, y: t.y };
     if (u.definition.hasTurret) {

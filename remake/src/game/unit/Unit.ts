@@ -128,6 +128,10 @@ export class UnitController {
   private patrolIndex = 0;
   private patrolPathfinder?: Pathfinder;
 
+  // ── Task 46: Command Queue ──
+  private commandQueue: Array<{ type: 'move' | 'attack' | 'guard'; target: UnitTarget; actorId?: string }> = [];
+  private cmdPathfinder?: Pathfinder;
+
   /** 运行时唯一 ID（用于碰撞排除自身）。 */
   readonly unitId: string;
 
@@ -335,6 +339,53 @@ export class UnitController {
     this.patrolPathfinder = undefined;
   }
 
+  // ── Task 46: Command Queue ──
+
+  /** 将命令追加到队列末尾。 */
+  enqueueCommand(type: 'move' | 'attack' | 'guard', target: UnitTarget, actorId?: string): void {
+    this.commandQueue.push({ type, target, actorId });
+  }
+
+  /** 清空命令队列。 */
+  clearCommandQueue(): void {
+    this.commandQueue = [];
+  }
+
+  /** 获取当前队列长度（用于 e2e 测试）。 */
+  getCommandQueueLength(): number {
+    return this.commandQueue.length;
+  }
+
+  /** 绑定 pathfinder 供队列执行使用。 */
+  setCommandQueuePathfinder(pathfinder: Pathfinder): void {
+    this.cmdPathfinder = pathfinder;
+  }
+
+  /** 执行队列中的下一个命令。 */
+  private processNextCommand(): void {
+    if (this.commandQueue.length === 0 || !this.cmdPathfinder) return;
+    const cmd = this.commandQueue.shift();
+    if (!cmd) return;
+
+    switch (cmd.type) {
+      case 'move':
+        this.moveTo(cmd.target.x, cmd.target.y, this.cmdPathfinder);
+        this.stateMachine.transition(UnitState.Moving);
+        break;
+      case 'attack':
+        this.attackTarget = cmd.target;
+        if (this.definition.hasTurret) {
+          this.stateMachine.transition(UnitState.TurretTracking);
+        }
+        break;
+      case 'guard':
+        if (cmd.actorId) {
+          this.follow(cmd.actorId, 2, this.cmdPathfinder);
+        }
+        break;
+    }
+  }
+
   /**
    * 每 Tick 更新 — 对应 C++ UnitClass::AI() 简化骨架。
    * Source: REDALERT/UNIT.CPP, Line 421
@@ -430,6 +481,11 @@ export class UnitController {
         this.moveTo(nextWp.x, nextWp.y, this.patrolPathfinder);
         this.stateMachine.transition(UnitState.Moving);
       }
+    }
+
+    // Task 46: Shift Queue — Idle 时执行队列中的下一个命令
+    if (this.commandQueue.length > 0 && this.cmdPathfinder) {
+      this.processNextCommand();
     }
   }
 

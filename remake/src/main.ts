@@ -35,6 +35,8 @@ import { GameLoop } from './game/GameLoop';
 import { FogOfWar } from './renderer/effects/FogOfWar';
 import { AudioManager } from './core/AudioManager';
 import { CursorManager } from './core/CursorManager';
+import { SaveManager } from './save/SaveManager';
+import { BuildingTools } from './game/building/BuildingTools';
 import { loadYamlRulesWithFallback } from './game/rules/YamlLoader';
 
 const bootstrap = async (): Promise<void> => {
@@ -486,6 +488,12 @@ const bootstrap = async (): Promise<void> => {
   const canvas = engineManager.getEngine().getRenderingCanvas();
   if (canvas) cursorManager.bind(canvas);
 
+  // ── Task 33: SaveManager ──
+  const saveManager = new SaveManager(terrain, scene);
+
+  // ── Task 51: BuildingTools ──
+  const buildingTools = new BuildingTools();
+
   // ── Task 140: OrderDispatcher 初始化 ──
   const orderDispatcher = OrderDispatcher.getInstance();
   orderDispatcher.register(new MoveHandler(pathfinder));
@@ -610,6 +618,9 @@ const bootstrap = async (): Promise<void> => {
   w.groundOrder = groundOrder;
   w.actorOrder = actorOrder;
   w.selfOrder = selfOrder;
+  w._saveManager = saveManager;
+  w._buildingTools = buildingTools;
+  w._placer = placer;
 
   // ── Verification ──
   const goManager = GameObjectManager.getInstance();

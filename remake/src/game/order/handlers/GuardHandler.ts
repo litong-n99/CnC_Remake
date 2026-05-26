@@ -41,6 +41,15 @@ export class GuardHandler implements OrderHandler {
     const u = subject as Unit;
     const t = targetObj as Unit;
 
+    if (order.queued) {
+      u.logic.setCommandQueuePathfinder(this.pathfinder);
+      u.logic.enqueueCommand('guard', { x: t.x, y: t.y }, t.id);
+      return {
+        success: true,
+        message: `Queued guard: ${u.definition.name} → ${t.definition.name}`,
+      };
+    }
+
     // Simplified Guard: move to target's position (follow)
     // Future: maintain guard distance, attack enemies that approach the guarded unit
     const ok = u.logic.moveTo(t.x, t.y, this.pathfinder);

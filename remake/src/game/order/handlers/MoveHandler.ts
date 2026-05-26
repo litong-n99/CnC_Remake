@@ -30,10 +30,22 @@ export class MoveHandler implements OrderHandler {
     }
 
     const u = unit as Unit;
-    const ok = u.logic.moveTo(Math.round(target.x), Math.round(target.y), this.pathfinder);
+    const tx = Math.round(target.x);
+    const ty = Math.round(target.y);
+
+    if (order.queued) {
+      u.logic.setCommandQueuePathfinder(this.pathfinder);
+      u.logic.enqueueCommand('move', { x: tx, y: ty });
+      return {
+        success: true,
+        message: `Queued move to (${tx}, ${ty})`,
+      };
+    }
+
+    const ok = u.logic.moveTo(tx, ty, this.pathfinder);
     return {
       success: ok,
-      message: ok ? `Moving to (${target.x}, ${target.y})` : `Cannot move to (${target.x}, ${target.y})`,
+      message: ok ? `Moving to (${tx}, ${ty})` : `Cannot move to (${tx}, ${ty})`,
     };
   }
 }
