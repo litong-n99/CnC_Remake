@@ -43,6 +43,10 @@ import { TerrainIndexedMaterial } from './renderer/terrain/TerrainIndexedMateria
 import { NotificationManager } from './core/NotificationManager';
 import { DifficultyScaler } from './game/ai/DifficultyScaler';
 import { SupportPowerManager } from './game/combat/SupportPowers';
+import { ActorPlacer } from './editor/ActorPlacer';
+import { SandboxMode } from './game/sandbox/SandboxMode';
+import { DesktopAdapter } from './core/DesktopAdapter';
+import { TouchInputManager } from './core/TouchInputManager';
 import { CursorManager } from './core/CursorManager';
 import { SaveManager } from './save/SaveManager';
 import { BuildingTools } from './game/building/BuildingTools';
@@ -649,6 +653,10 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._notificationManager = new NotificationManager();
   w._DifficultyScaler = DifficultyScaler;
   w._SupportPowerManager = SupportPowerManager;
+  w._ActorPlacer = ActorPlacer;
+  w._SandboxMode = SandboxMode;
+  w._DesktopAdapter = DesktopAdapter;
+  w._TouchInputManager = TouchInputManager;
 
   // ── Verification ──
   const goManager = GameObjectManager.getInstance();

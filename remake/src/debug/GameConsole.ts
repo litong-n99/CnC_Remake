@@ -17,6 +17,10 @@ import { loadTileSetFromUrl } from '../game/terrain/TileSet';
 import { OpenRAMapLoader } from '../game/terrain/OpenRAMapLoader';
 import { ResourceLayer } from '../game/economy/ResourceLayer';
 import { MapEditor } from '../editor/MapEditor';
+import { ActorPlacer, PlacedActor } from '../editor/ActorPlacer';
+import { SandboxMode, BattleStats } from '../game/sandbox/SandboxMode';
+import { DesktopAdapter } from '../core/DesktopAdapter';
+import { TouchInputManager } from '../core/TouchInputManager';
 import { UnitCollision } from '../game/unit/UnitCollision';
 import { BlockedByActor } from '../game/unit/BlockedByActor';
 import { ActorMap } from '../game/world/ActorMap';
@@ -56,6 +60,10 @@ export class GameConsole {
   } | null = null;
 
   private mapEditor: MapEditor;
+  private actorPlacer = new ActorPlacer();
+  private sandboxMode = new SandboxMode();
+  private desktopAdapter = DesktopAdapter.getInstance();
+  private touchInputManager: TouchInputManager | null = null;
 
   constructor(
     private readonly scene: Scene,
@@ -164,6 +172,23 @@ export class GameConsole {
       repair: this.repair.bind(this),
       queueLength: this.queueLength.bind(this),
       help: this.help.bind(this),
+      // ── Task 90: Actor Placer ──
+      actorPlaceUnit: this.actorPlaceUnit.bind(this),
+      actorPlaceBuilding: this.actorPlaceBuilding.bind(this),
+      actorList: this.actorList.bind(this),
+      actorClear: this.actorClear.bind(this),
+      // ── Task 91: Sandbox Mode ──
+      sandboxSpawn: this.sandboxSpawn.bind(this),
+      sandboxBattle: this.sandboxBattle.bind(this),
+      sandboxStats: this.sandboxStats.bind(this),
+      sandboxClear: this.sandboxClear.bind(this),
+      // ── Task 92: Desktop Adapter ──
+      desktopPlatform: this.desktopPlatform.bind(this),
+      desktopFullscreen: this.desktopFullscreen.bind(this),
+      // ── Task 93: Touch Input ──
+      touchBind: this.touchBind.bind(this),
+      touchUnbind: this.touchUnbind.bind(this),
+      touchDevice: this.touchDevice.bind(this),
     };
     // eslint-disable-next-line no-console
     console.info('GameConsole installed. Type cnc.help() for available commands.');
@@ -1777,5 +1802,128 @@ export class GameConsole {
     }
     const unit = obj as Unit;
     return unit.logic.getCommandQueueLength();
+  }
+
+  // ── Task 90: Actor Placer ──
+
+  private actorPlaceUnit(type: string, house: 'gdi' | 'nod' = 'gdi', x = 30, y = 30): Record<string, unknown> {
+    const allDefs = UNIT_DEFINITIONS as unknown as Record<
+      string,
+      import('../game/rules/UnitDefinitions').UnitDefinition
+    >;
+    const def = allDefs[type];
+    if (!def) return { error: `Unknown unit type: ${type}. Available: ${Object.keys(allDefs).join(', ')}` };
+    const hm = HouseManager.getInstance();
+    const h = house === 'gdi' ? hm.getHouse(HouseType.GDI) : hm.getHouse(HouseType.Nod);
+    if (!h) return { error: `House ${house} not found` };
+    const unit = this.actorPlacer.placeUnit(def, h, x, y, this.scene);
+    return { placed: !!unit, id: unit?.id, type, house, x, y };
+  }
+
+  private actorPlaceBuilding(type: string, house: 'gdi' | 'nod' = 'gdi', x = 30, y = 30): Record<string, unknown> {
+    const allDefs = BUILDING_DEFINITIONS as unknown as Record<
+      string,
+      import('../game/rules/BuildingDefinitions').BuildingDefinition
+    >;
+    const def = allDefs[type];
+    if (!def) return { error: `Unknown building type: ${type}. Available: ${Object.keys(allDefs).join(', ')}` };
+    const hm = HouseManager.getInstance();
+    const h = house === 'gdi' ? hm.getHouse(HouseType.GDI) : hm.getHouse(HouseType.Nod);
+    if (!h) return { error: `House ${house} not found` };
+    const building = this.actorPlacer.placeBuilding(def, h, x, y, this.scene);
+    return { placed: !!building, id: building?.id, type, house, x, y };
+  }
+
+  private actorList(): PlacedActor[] {
+    return this.actorPlacer.getPlacedActors();
+  }
+
+  private actorClear(): { cleared: boolean; count: number } {
+    const count = this.actorPlacer.getPlacedActors().length;
+    this.actorPlacer.clear();
+    return { cleared: true, count };
+  }
+
+  // ── Task 91: Sandbox Mode ──
+
+  private sandboxSpawn(
+    squadId: string,
+    type: string,
+    count: number,
+    house: 'gdi' | 'nod' = 'gdi',
+    x = 20,
+    y = 20,
+    spacing = 2
+  ): Record<string, unknown> {
+    const allDefs = UNIT_DEFINITIONS as unknown as Record<
+      string,
+      import('../game/rules/UnitDefinitions').UnitDefinition
+    >;
+    const def = allDefs[type];
+    if (!def) return { error: `Unknown unit type: ${type}. Available: ${Object.keys(allDefs).join(', ')}` };
+    const hm = HouseManager.getInstance();
+    const h = house === 'gdi' ? hm.getHouse(HouseType.GDI) : hm.getHouse(HouseType.Nod);
+    if (!h) return { error: `House ${house} not found` };
+    this.sandboxMode.spawnSquad(squadId, def, count, h, x, y, spacing, this.scene);
+    return { spawned: true, squadId, type, count, house, x, y };
+  }
+
+  private sandboxBattle(squadAId: string, squadBId: string): { started: boolean; message: string } {
+    const ok = this.sandboxMode.startBattle(squadAId, squadBId);
+    return { started: ok, message: ok ? 'Battle started' : 'One or both squads not found' };
+  }
+
+  private sandboxStats(): BattleStats | Record<string, unknown> {
+    const stats = this.sandboxMode.getStats();
+    if (!stats) return { error: 'No battle stats available' };
+    return stats;
+  }
+
+  private sandboxClear(): { cleared: boolean } {
+    this.sandboxMode.clear();
+    return { cleared: true };
+  }
+
+  // ── Task 92: Desktop Adapter ──
+
+  private desktopPlatform(): { platform: string; isDesktop: boolean } {
+    return { platform: this.desktopAdapter.getPlatform(), isDesktop: this.desktopAdapter.isDesktop() };
+  }
+
+  private desktopFullscreen(enter = true): { success: boolean; message: string } {
+    try {
+      if (enter) {
+        void this.desktopAdapter.requestFullscreen();
+      } else {
+        void this.desktopAdapter.exitFullscreen();
+      }
+      return { success: true, message: enter ? 'Fullscreen requested' : 'Exited fullscreen' };
+    } catch (e) {
+      return { success: false, message: String(e) };
+    }
+  }
+
+  // ── Task 93: Touch Input ──
+
+  private touchBind(): { bound: boolean; message: string } {
+    const canvas = this.scene.getEngine().getRenderingCanvas();
+    if (!canvas) return { bound: false, message: 'Canvas not found' };
+    if (this.touchInputManager) this.touchInputManager.unbind();
+    this.touchInputManager = new TouchInputManager(canvas, this.rtsCamera);
+    this.touchInputManager.bind();
+    return { bound: true, message: 'Touch input bound to canvas' };
+  }
+
+  private touchUnbind(): { unbound: boolean; message: string } {
+    if (this.touchInputManager) {
+      this.touchInputManager.unbind();
+      this.touchInputManager = null;
+      return { unbound: true, message: 'Touch input unbound' };
+    }
+    return { unbound: false, message: 'No touch input manager to unbind' };
+  }
+
+  private touchDevice(): { isTouchDevice: boolean } {
+    return { isTouchDevice: TouchInputManager.isTouchDevice() };
   }
 }

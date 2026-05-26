@@ -1791,19 +1791,19 @@
 - **参考 OpenRA**：`OpenRA.Mods.Common/EditorBrushes/`
 - **文件**：`src/editor/MapEditor.ts`, `src/editor/TileBrush.ts`
 - **验收**：编辑器中绘制 64×64 混合地形地图，导出 JSON 后 `MapLoader` 可直接加载。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 90: 编辑器 Actor 放置与触发器编辑
 - **目标**：在编辑器中放置单位、建筑、资源矿场。可视化编辑触发器（区域框选、目标配置）。
 - **文件**：`src/editor/ActorPlacer.ts`, `src/editor/TriggerEditor.ts`
 - **验收**：放置 5 辆敌方坦克 + 1 个 MCV，设置触发器"MCV 进入区域则胜利"。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 91: 单位测试/平衡工具
 - **目标**：沙盒模式：自由放置任意单位，测试对打，实时显示 DPS、伤害统计。
 - **文件**：`src/game/sandbox/SandboxMode.ts`
 - **验收**：放置 10 辆中坦 vs 10 辆轻坦，自动统计击杀时间和剩余血量。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ---
 
@@ -1813,13 +1813,13 @@
 - **目标**：将 Web 应用打包为 Windows / macOS / Linux 桌面应用。支持全屏、无边框窗口、本地文件读取（直接加载 MIX 资源）。
 - **文件**：`desktop/electron-main.js` 或 `desktop/src-tauri/`
 - **验收**：双击 `.exe` 启动全屏游戏，无需浏览器，可直接读取 `C:\CNC\*.MIX`。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 93: 移动端触控适配
 - **目标**：支持触控操作：单指拖拽平移、双指缩放、点击选择、长按弹出命令菜单、框选手势。
 - **文件**：`src/core/TouchInputManager.ts`
 - **验收**：在 iPad Safari 上流畅运行，所有核心操作可用触控完成。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 94: Steam 集成（远期）
 - **目标**：Steam API 集成：成就、排行榜、云存档、多人匹配（Steam P2P）。
@@ -2031,11 +2031,11 @@
 - [ ] **Task 86**：空军与运输系统
 - [ ] **Task 87**：桥梁系统
 - [ ] **Task 88**：中立单位与野生动物
-- [ ] **Task 89**：内置地图编辑器（Tile Brush）
-- [ ] **Task 90**：编辑器 Actor 放置与触发器编辑
-- [ ] **Task 91**：单位测试/平衡工具
-- [ ] **Task 92**：桌面应用打包（Electron / Tauri）
-- [ ] **Task 93**：移动端触控适配
+- [x] **Task 89**：内置地图编辑器（Tile Brush）
+- [x] **Task 90**：编辑器 Actor 放置与触发器编辑
+- [x] **Task 91**：单位测试/平衡工具
+- [x] **Task 92**：桌面应用打包（Electron / Tauri）
+- [x] **Task 93**：移动端触控适配
 - [ ] **Task 94**：Steam 集成（远期）
 - [x] **Task 95**：YAML 规则解析基础设施 🔴 P0
 - [x] **Task 121**：A* 优先队列（Binary Heap）— 寻路 Open 集合优化 🔴 P0

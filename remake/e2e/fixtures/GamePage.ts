@@ -325,4 +325,151 @@ export class GamePage {
       );
     });
   }
+
+  // ── Task 90: Actor Placer helpers ──
+
+  async actorPlaceUnit(type: string, house: 'gdi' | 'nod' = 'gdi', x = 30, y = 30): Promise<Record<string, unknown>> {
+    return await this.page.evaluate(
+      ({ t, h, cx, cy }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (
+          (cnc.actorPlaceUnit?.(t, h, cx, cy) as Record<string, unknown> | undefined) ?? {
+            error: 'actorPlaceUnit not available',
+          }
+        );
+      },
+      { t: type, h: house, cx: x, cy: y }
+    );
+  }
+
+  async actorPlaceBuilding(
+    type: string,
+    house: 'gdi' | 'nod' = 'gdi',
+    x = 30,
+    y = 30
+  ): Promise<Record<string, unknown>> {
+    return await this.page.evaluate(
+      ({ t, h, cx, cy }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (
+          (cnc.actorPlaceBuilding?.(t, h, cx, cy) as Record<string, unknown> | undefined) ?? {
+            error: 'actorPlaceBuilding not available',
+          }
+        );
+      },
+      { t: type, h: house, cx: x, cy: y }
+    );
+  }
+
+  async actorList(): Promise<Array<Record<string, unknown>>> {
+    return await this.page.evaluate(() => {
+      const cnc = (window as unknown as Record<string, (() => unknown) | undefined>).cnc;
+      return (cnc.actorList?.() as Array<Record<string, unknown>> | undefined) ?? [];
+    });
+  }
+
+  async actorClear(): Promise<Record<string, unknown>> {
+    return await this.page.evaluate(() => {
+      const cnc = (window as unknown as Record<string, (() => unknown) | undefined>).cnc;
+      return (cnc.actorClear?.() as Record<string, unknown> | undefined) ?? { error: 'actorClear not available' };
+    });
+  }
+
+  // ── Task 91: Sandbox Mode helpers ──
+
+  async sandboxSpawn(
+    squadId: string,
+    type: string,
+    count: number,
+    house: 'gdi' | 'nod' = 'gdi',
+    x = 20,
+    y = 20,
+    spacing = 2
+  ): Promise<Record<string, unknown>> {
+    return await this.page.evaluate(
+      ({ sid, t, c, h, cx, cy, s }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (
+          (cnc.sandboxSpawn?.(sid, t, c, h, cx, cy, s) as Record<string, unknown> | undefined) ?? {
+            error: 'sandboxSpawn not available',
+          }
+        );
+      },
+      { sid: squadId, t: type, c: count, h: house, cx: x, cy: y, s: spacing }
+    );
+  }
+
+  async sandboxBattle(squadAId: string, squadBId: string): Promise<Record<string, unknown>> {
+    return await this.page.evaluate(
+      ({ a, b }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (
+          (cnc.sandboxBattle?.(a, b) as Record<string, unknown> | undefined) ?? { error: 'sandboxBattle not available' }
+        );
+      },
+      { a: squadAId, b: squadBId }
+    );
+  }
+
+  async sandboxStats(): Promise<Record<string, unknown>> {
+    return await this.page.evaluate(() => {
+      const cnc = (window as unknown as Record<string, (() => unknown) | undefined>).cnc;
+      return (cnc.sandboxStats?.() as Record<string, unknown> | undefined) ?? { error: 'sandboxStats not available' };
+    });
+  }
+
+  async sandboxClear(): Promise<Record<string, unknown>> {
+    return await this.page.evaluate(() => {
+      const cnc = (window as unknown as Record<string, (() => unknown) | undefined>).cnc;
+      return (cnc.sandboxClear?.() as Record<string, unknown> | undefined) ?? { error: 'sandboxClear not available' };
+    });
+  }
+
+  // ── Task 92: Desktop Adapter helpers ──
+
+  async desktopPlatform(): Promise<Record<string, unknown>> {
+    return await this.page.evaluate(() => {
+      const cnc = (window as unknown as Record<string, (() => unknown) | undefined>).cnc;
+      return (
+        (cnc.desktopPlatform?.() as Record<string, unknown> | undefined) ?? { error: 'desktopPlatform not available' }
+      );
+    });
+  }
+
+  async desktopFullscreen(enter = true): Promise<Record<string, unknown>> {
+    return await this.page.evaluate(
+      ({ e }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (
+          (cnc.desktopFullscreen?.(e) as Record<string, unknown> | undefined) ?? {
+            error: 'desktopFullscreen not available',
+          }
+        );
+      },
+      { e: enter }
+    );
+  }
+
+  // ── Task 93: Touch Input helpers ──
+
+  async touchBind(): Promise<Record<string, unknown>> {
+    return await this.page.evaluate(() => {
+      const cnc = (window as unknown as Record<string, (() => unknown) | undefined>).cnc;
+      return (cnc.touchBind?.() as Record<string, unknown> | undefined) ?? { error: 'touchBind not available' };
+    });
+  }
+
+  async touchUnbind(): Promise<Record<string, unknown>> {
+    return await this.page.evaluate(() => {
+      const cnc = (window as unknown as Record<string, (() => unknown) | undefined>).cnc;
+      return (cnc.touchUnbind?.() as Record<string, unknown> | undefined) ?? { error: 'touchUnbind not available' };
+    });
+  }
+
+  async touchDevice(): Promise<Record<string, unknown>> {
+    return await this.page.evaluate(() => {
+      const cnc = (window as unknown as Record<string, (() => unknown) | undefined>).cnc;
+      return (cnc.touchDevice?.() as Record<string, unknown> | undefined) ?? { error: 'touchDevice not available' };
+    });
+  }
 }

@@ -683,6 +683,18 @@ export class RTSCamera {
     this.camera.target.set(x, y, z);
   }
 
+  /** Pan the camera by world-space delta (used by touch input). */
+  pan(dx: number, dy: number): void {
+    const target = this.camera.target;
+    target.x += dx;
+    target.z += dy;
+  }
+
+  /** Zoom by a relative delta (positive = zoom in, negative = zoom out). */
+  zoom(delta: number): void {
+    this.targetZoom = Math.max(this.options.minZoom, Math.min(this.options.maxZoom, this.targetZoom - delta));
+  }
+
   /** Release event listeners, render-loop callback and camera resources. */
   dispose(): void {
     this.scene.onBeforeRenderObservable.removeCallback(this.renderCallback);
