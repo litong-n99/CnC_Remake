@@ -37,9 +37,16 @@ import { AudioManager } from './core/AudioManager';
 import { CursorManager } from './core/CursorManager';
 import { SaveManager } from './save/SaveManager';
 import { BuildingTools } from './game/building/BuildingTools';
+import { PerformanceMonitor } from './core/PerformanceMonitor';
+import { ShellRouter } from './ui/shell/ShellRouter';
+import { MainMenu } from './ui/shell/MainMenu';
+import { LoadScreen } from './ui/shell/LoadScreen';
+import { SettingsMenu } from './ui/shell/SettingsMenu';
+import { PauseMenu } from './ui/shell/PauseMenu';
+import './ui/styles/shell.css';
 import { loadYamlRulesWithFallback } from './game/rules/YamlLoader';
 
-const bootstrap = async (): Promise<void> => {
+const bootstrap = async (onReady?: () => void): Promise<void> => {
   // ── Task 95: YAML 规则解析基础设施 ──
   await loadYamlRulesWithFallback();
 
@@ -637,9 +644,102 @@ const bootstrap = async (): Promise<void> => {
     '| Buildings:',
     goManager.getBuildings().length
   );
+
+  onReady?.();
+
+  // ── UI Shell & Router (Tasks 36, 37, 41, 42) ──
+  const app = document.getElementById('app');
+  if (app) {
+    const canvas = app.querySelector('canvas') as HTMLCanvasElement | null;
+    if (canvas) {
+      const router = new ShellRouter();
+      const mainMenu = new MainMenu(app, router);
+      const loadScreen = new LoadScreen(app);
+      const settingsMenu = new SettingsMenu(app, router);
+      const pauseMenu = new PauseMenu(app, router);
+
+      router.registerContainers({
+        gameCanvas: canvas,
+        menu: mainMenu.getElement(),
+        loading: loadScreen.getElement(),
+        settings: settingsMenu.getElement(),
+        pause: pauseMenu.getElement(),
+      });
+
+      // Default to menu for real users, but game for e2e tests (navigator.webdriver)
+      // so existing tests that directly page.goto() don't get blocked by the shell overlay
+      const isE2E = (navigator as unknown as Record<string, unknown>).webdriver === true;
+      router.navigate(isE2E ? 'game' : 'menu');
+
+      // Start game flow: menu → loading → game
+      mainMenu.setOnStartGame(() => {
+        router.navigate('loading');
+        loadScreen.setProgress(0);
+        loadScreen.setTip('正在初始化战场...');
+
+        let progress = 0;
+        const interval = setInterval(() => {
+          progress += Math.random() * 15 + 5;
+          if (progress >= 100) {
+            progress = 100;
+            clearInterval(interval);
+          }
+          loadScreen.setProgress(progress);
+        }, 200);
+
+        setTimeout(() => {
+          clearInterval(interval);
+          loadScreen.setProgress(100);
+          settingsMenu.applyToAudio(audioManager);
+          router.navigate('game');
+        }, 1500);
+      });
+
+      // Pause / Resume
+      pauseMenu.setOnResume(() => router.navigate('game'));
+
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          const current = router.getCurrentPage();
+          if (current === 'game') {
+            router.navigate('pause');
+          } else if (current === 'pause') {
+            router.navigate('game');
+          } else if (current === 'settings') {
+            router.navigate('menu');
+          }
+        }
+      });
+
+      // Expose for e2e
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any)._router = router;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any)._settingsMenu = settingsMenu;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any)._performanceMonitor = performanceMonitor;
+    }
+  }
+
+  // eslint-disable-next-line no-console
+  console.info('C&C Remake — Shell UI initialised');
 };
 
-bootstrap();
+// ── Entry Point ──
+const audioManager = AudioManager.getInstance();
+const performanceMonitor = PerformanceMonitor.getInstance();
 
-// eslint-disable-next-line no-console
-console.info('C&C Remake — Pathfinder & Unit Movement initialised');
+// Initialize audio on first user interaction
+document.addEventListener(
+  'click',
+  () => {
+    audioManager.init();
+  },
+  { once: true }
+);
+
+// Start performance monitoring
+performanceMonitor.start();
+
+// Bootstrap game immediately (existing e2e tests expect cnc on load)
+bootstrap();

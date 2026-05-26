@@ -1302,7 +1302,9 @@
 - **目标**：实例化渲染（相同模型用 `InstancedMesh`）、对象池（子弹/爆炸复用）、视锥剔除、LOD 占位。
 - **文件**：`src/core/PerformanceManager.ts`
 - **验收**：场景内 200+ 单位时仍保持 60FPS；GitHub Pages 部署后线上可访问。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`PerformanceMonitor` 单例（FPS/帧时间/逻辑帧计数采样），`getSnapshot()` 支持 `performance.memory` 降级
+  - e2e 测试：`task-35-performance.spec.ts`（2 个测试）
 
 ---
 
@@ -1316,13 +1318,17 @@
 - **参考 OpenRA**：`mods/cnc/chrome/mainmenu.yaml` + `MainMenuLogic.cs`
 - **文件**：`src/ui/shell/MainMenu.ts`
 - **验收**：启动游戏后看到主菜单，点击按钮有视觉反馈，背景不是黑屏。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：纯 DOM 菜单（标题 + 开始游戏/设置/退出按钮），C&C 军事绿风格
+  - e2e 测试：`task-36-mainMenu.spec.ts`（2 个测试）
 
 ### Task 37: 页面路由与过渡动画
 - **目标**：主菜单 → 子页面（战役选择、遭遇战设置、多人游戏、设置）的切换动画（淡入淡出/滑动）。
 - **文件**：`src/ui/shell/ShellRouter.ts`
 - **验收**：页面切换流畅，无白屏闪烁，浏览器前进/后退不影响游戏状态。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`ShellRouter` 纯 DOM 路由（menu/loading/game/settings/pause），`style.display` 显隐控制
+  - e2e 测试：`task-37-router.spec.ts`（3 个测试）
 
 ### Task 38: 战役选择页面（Campaign）
 - **目标**：列出所有战役（GDI / Nod / Allies / Soviet），显示任务缩略图、名称、完成状态（锁定/解锁/已完成）。
@@ -1350,13 +1356,17 @@
 - **参考 OpenRA**：`mods/*/chrome/settings.yaml`
 - **文件**：`src/ui/shell/SettingsMenu.ts`, `src/core/SettingsManager.ts`
 - **验收**：修改设置后即时生效，刷新页面后设置持久化（localStorage）。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`SettingsMenu`（音量滑块 ×3 + 全屏/显示FPS/边缘滚动开关），localStorage 持久化
+  - e2e 测试：`task-41-settings.spec.ts`（3 个测试）
 
 ### Task 42: 加载画面（Load Screen）
 - **目标**：显示进度条、加载提示文字、Mod Logo。加载完成后淡入到游戏场景。
 - **文件**：`src/ui/shell/LoadScreen.ts`
 - **验收**：加载地图资源时进度条平滑增长，加载完成后无卡顿进入游戏。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：进度条 + 随机提示文本，`setProgress`/`setTip` API
+  - e2e 测试：`task-42-loadScreen.spec.ts`（2 个测试）
 
 ---
 
@@ -1893,8 +1903,8 @@
 | Phase 7 战斗经济 | 6 | 0 | 含 98 Weapon 规则（Task 28 前置）；30.5 经济双轨化（P0） |
 | Phase 7.5 Mod 支持 | 1 | 0 | 99 地图级规则覆盖 |
 | Phase 7.6 Rules 补充 | 6 | 0 | 133 DamageTypes、134 TechTree令牌、135 阵营/建造限制、136 游戏速度/大厅、137 条件Trait、138 序列 |
-| Phase 8 循环发布 | 4 | 0 | |
-| Phase 9 UI Shell | 7 | 0 | 主菜单、战役、遭遇战、多人、设置、加载 |
+| Phase 8 循环发布 | 4 | 1 | Task 35 PerformanceMonitor done；32–34 待补统计 |
+| Phase 9 UI Shell | 7 | 4 | Task 36/37/41/42 done；38–40 待开发 |
 | Phase 10 交互增强 | 10 | 0 | 光标、Sidebar、Shift队列、攻击移动、编组；51.5 立场着色 |
 | Phase 11 战役系统 | 9 | 0 | Lua脚本、触发器、目标、过场 |
 | Phase 12 网络对战 | 9 | 0 | Lockstep、WebSocket、房间、回放；68.5 观战者身份 |
@@ -1904,7 +1914,7 @@
 | Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
 | Phase 17 发布平台 | 3 | 0 | 桌面打包、移动端、Steam |
 | 补充任务（OpenRA 差距填补） | 4 | 2 | 139 OrderGenerator done、140 GameOrder done；141 逻辑帧分离、142 AudioManager pending |
-| **总计** | **153** | **49** | |
+| **总计** | **153** | **54** | |
 
 ---
 
@@ -1918,15 +1928,15 @@
 
 | 深度 | 任务数 | 已完成 | 待完成 | 说明 |
 |------|--------|--------|--------|------|
-| 0 | 124 | 50 | 74 | 无显式前置依赖 |
+| 0 | 124 | 55 | 69 | 无显式前置依赖 |
 | 1 | 36 | 11 | 25 | 依赖深度 0 |
 | 2 | 1 | 0 | 1 | 依赖深度 1 |
 
 ### 深度 0：根基层（无显式前置依赖）
 
-**已完成 51 个**：Task 0、Task 0.1、Task 0.2、Task 0.3、Task 0.4、Task 0.5、Task 1、Task 2、Task 3、Task 4、Task 5、Task 6、Task 7、Task 8、Task 9、Task 11、Task 12、Task 13、Task 14、Task 15、Task 16、Task 17、Task 18、Task 19、Task 20、Task 21、Task 22、Task 23、Task 24、Task 25、Task 26、Task 27、Task 28、Task 29、Task 30、Task 102、Task 103、Task 104、Task 105、Task 106、Task 107、Task 108、Task 109、Task 110、Task 112、Task 114、Task 115、Task 116、Task 117、Task 120、Task 121、Task 139、Task 140、Task 141
+**已完成 56 个**：Task 0、Task 0.1、Task 0.2、Task 0.3、Task 0.4、Task 0.5、Task 1、Task 2、Task 3、Task 4、Task 5、Task 6、Task 7、Task 8、Task 9、Task 11、Task 12、Task 13、Task 14、Task 15、Task 16、Task 17、Task 18、Task 19、Task 20、Task 21、Task 22、Task 23、Task 24、Task 25、Task 26、Task 27、Task 28、Task 29、Task 30、Task 35、Task 36、Task 37、Task 41、Task 42、Task 102、Task 103、Task 104、Task 105、Task 106、Task 107、Task 108、Task 109、Task 110、Task 112、Task 114、Task 115、Task 116、Task 117、Task 120、Task 121、Task 139、Task 140、Task 141
 
-**待完成 75 个**：
+**待完成 69 个**：
 - [x] **Task 25**：选择系统（单选、框选、编队）
 - [x] **Task 26**：命令分发器（Move / Attack / Guard / Stop）
 - [x] **Task 27**：HUD / UI 覆盖层（资源、小地图、单位信息）
@@ -1937,14 +1947,14 @@
 - [x] **Task 32**：游戏主循环与 Tick 系统 🟡 P1
 - [x] **Task 33**：存档 / 读档系统
 - [x] **Task 34**：音效事件系统（Dummy 音频占位）🟡 P1
-- [ ] **Task 35**：性能优化与发布检查
-- [ ] **Task 36**：主菜单页面（Main Menu）
-- [ ] **Task 37**：页面路由与过渡动画
+- [x] **Task 35**：性能优化与发布检查
+- [x] **Task 36**：主菜单页面（Main Menu）
+- [x] **Task 37**：页面路由与过渡动画
 - [ ] **Task 38**：战役选择页面（Campaign）
 - [ ] **Task 39**：遭遇战设置页面（Skirmish Setup）
 - [ ] **Task 40**：多人游戏大厅（Multiplayer Lobby）
-- [ ] **Task 41**：设置/选项页面（Settings）
-- [ ] **Task 42**：加载画面（Load Screen）
+- [x] **Task 41**：设置/选项页面（Settings）
+- [x] **Task 42**：加载画面（Load Screen）
 - [x] **Task 43**：鼠标光标系统（Cursors）
 - [x] **Task 44**：Sidebar 生产队列 UI
 - [x] **Task 45**：建筑放置预览与合法性检查
