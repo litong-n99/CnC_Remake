@@ -24,12 +24,17 @@ import { HUD } from './renderer/ui/HUD';
 import { GameConsole } from './debug/GameConsole';
 import { OrderDispatcher } from './game/order/OrderDispatcher';
 import { MoveHandler, StopHandler, AttackHandler, GuardHandler } from './game/order/handlers';
+import { groundOrder, actorOrder, selfOrder } from './game/order/GameOrder';
+import { AttackMoveHandler } from './game/order/handlers/AttackMoveHandler';
+import { PatrolHandler } from './game/order/handlers/PatrolHandler';
 import { BulletManager } from './game/weapon/Bullet';
 import { WEAPON_DEFINITIONS } from './game/weapon/Weapon';
 import { DamageCalculator, WarheadType } from './game/combat/DamageCalculator';
 import { ResourceLayer } from './game/economy/ResourceLayer';
 import { GameLoop } from './game/GameLoop';
 import { FogOfWar } from './renderer/effects/FogOfWar';
+import { AudioManager } from './core/AudioManager';
+import { CursorManager } from './core/CursorManager';
 import { loadYamlRulesWithFallback } from './game/rules/YamlLoader';
 
 const bootstrap = async (): Promise<void> => {
@@ -466,12 +471,29 @@ const bootstrap = async (): Promise<void> => {
   });
   fogOfWar.create(scene);
 
+  // ── Task 34: AudioManager 初始化（用户首次点击后激活）──
+  const audioManager = AudioManager.getInstance();
+  const initAudio = () => {
+    audioManager.init();
+    window.removeEventListener('click', initAudio);
+    window.removeEventListener('keydown', initAudio);
+  };
+  window.addEventListener('click', initAudio);
+  window.addEventListener('keydown', initAudio);
+
+  // ── Task 43: CursorManager 绑定 canvas ──
+  const cursorManager = CursorManager.getInstance();
+  const canvas = engineManager.getEngine().getRenderingCanvas();
+  if (canvas) cursorManager.bind(canvas);
+
   // ── Task 140: OrderDispatcher 初始化 ──
   const orderDispatcher = OrderDispatcher.getInstance();
   orderDispatcher.register(new MoveHandler(pathfinder));
   orderDispatcher.register(new StopHandler());
   orderDispatcher.register(new AttackHandler());
   orderDispatcher.register(new GuardHandler(pathfinder));
+  orderDispatcher.register(new AttackMoveHandler(pathfinder));
+  orderDispatcher.register(new PatrolHandler(pathfinder));
 
   // ── Task 24: InputManager（鼠标输入层）──
   const selectionManager = SelectionManager.getInstance();
@@ -582,6 +604,12 @@ const bootstrap = async (): Promise<void> => {
   w.ArmorType = ArmorType;
   w._resourceLayer = resourceLayer;
   w._fogOfWar = fogOfWar;
+  w._audioManager = audioManager;
+  w._cursorManager = cursorManager;
+  w._orderDispatcher = orderDispatcher;
+  w.groundOrder = groundOrder;
+  w.actorOrder = actorOrder;
+  w.selfOrder = selfOrder;
 
   // ── Verification ──
   const goManager = GameObjectManager.getInstance();

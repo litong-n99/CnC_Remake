@@ -120,6 +120,14 @@ export class UnitController {
   private followRange = 0;
   private followPathfinder?: Pathfinder;
 
+  // ── Task 47: Attack-Move 状态 ──
+  attackMoveTarget?: UnitTarget;
+
+  // ── Task 48: Patrol 状态 ──
+  private patrolWaypoints?: ReadonlyArray<UnitTarget>;
+  private patrolIndex = 0;
+  private patrolPathfinder?: Pathfinder;
+
   /** 运行时唯一 ID（用于碰撞排除自身）。 */
   readonly unitId: string;
 
@@ -309,6 +317,24 @@ export class UnitController {
     this.followPathfinder = undefined;
   }
 
+  /** Task 48: 设置巡逻路径。 */
+  setPatrol(waypoints: ReadonlyArray<UnitTarget>, pathfinder: Pathfinder): void {
+    this.patrolWaypoints = waypoints;
+    this.patrolIndex = 0;
+    this.patrolPathfinder = pathfinder;
+    // 立即开始向第一个路径点移动
+    if (waypoints.length > 0) {
+      this.moveTo(waypoints[0].x, waypoints[0].y, pathfinder);
+    }
+  }
+
+  /** Task 48: 停止巡逻。 */
+  stopPatrol(): void {
+    this.patrolWaypoints = undefined;
+    this.patrolIndex = 0;
+    this.patrolPathfinder = undefined;
+  }
+
   /**
    * 每 Tick 更新 — 对应 C++ UnitClass::AI() 简化骨架。
    * Source: REDALERT/UNIT.CPP, Line 421
@@ -382,6 +408,47 @@ export class UnitController {
         this.stopFollow();
       }
     }
+
+    // Task 47: Attack-Move — Idle 时检测附近敌人并开火
+    if (this.attackMoveTarget) {
+      const enemy = this.findNearestEnemyInRange(5);
+      if (enemy) {
+        // 简化：直接设置攻击目标并尝试开火（需要在 scene 上下文中）
+        this.attackTarget = { x: enemy.x, y: enemy.y };
+      } else if (Math.round(this.x) === this.attackMoveTarget.x && Math.round(this.y) === this.attackMoveTarget.y) {
+        // 到达目标位置，清除 attack-move 状态
+        this.attackMoveTarget = undefined;
+      }
+    }
+
+    // Task 48: Patrol — 到达当前路径点后前往下一个
+    if (this.patrolWaypoints && this.patrolPathfinder) {
+      const wp = this.patrolWaypoints[this.patrolIndex];
+      if (wp && Math.round(this.x) === wp.x && Math.round(this.y) === wp.y) {
+        this.patrolIndex = (this.patrolIndex + 1) % this.patrolWaypoints.length;
+        const nextWp = this.patrolWaypoints[this.patrolIndex];
+        this.moveTo(nextWp.x, nextWp.y, this.patrolPathfinder);
+        this.stateMachine.transition(UnitState.Moving);
+      }
+    }
+  }
+
+  /** Task 47: 寻找最近敌方单位（指定范围内）。 */
+  private findNearestEnemyInRange(range: number): import('../objects/GameObject').GameObject | null {
+    let nearest: import('../objects/GameObject').GameObject | null = null;
+    let nearestDist = Infinity;
+    for (const obj of GameObjectManager.getInstance().getUnits()) {
+      if (!obj.isAlive()) continue;
+      if (obj.house.id === this.owner.id) continue; // 跳过友方
+      const dx = obj.x - this.x;
+      const dy = obj.y - this.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist <= range && dist < nearestDist) {
+        nearest = obj;
+        nearestDist = dist;
+      }
+    }
+    return nearest;
   }
 
   private tickMoving(deltaTime: number): void {

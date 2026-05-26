@@ -108,7 +108,7 @@ test.describe('Task 140: GameOrder command abstraction', () => {
   test('orderDispatch for unregistered order returns error', async ({ page }) => {
     const result = await page.evaluate(() => {
       const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
-      return cnc.orderDispatch?.('Patrol', 'any-id', 'ground', 10, 10) as {
+      return cnc.orderDispatch?.('UnregisteredTestCommand', 'any-id', 'ground', 10, 10) as {
         result?: { success: boolean; message?: string };
       };
     });

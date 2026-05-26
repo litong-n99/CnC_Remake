@@ -1279,7 +1279,7 @@
 - **参考 C++**：主消息循环中的 `AI()` 调用链。
 - **文件**：`src/game/GameLoop.ts`
 - **验收**：100 个单位同时移动 + 10 个建筑建造 + 20 发子弹飞行，帧率稳定 60FPS。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 33: 存档 / 读档系统
 - **目标**：将当前游戏状态（地图、单位、建筑、资金）序列化为 JSON，支持下载与上传恢复。
@@ -1293,7 +1293,7 @@
 - **文件**：`src/core/AudioManager.ts`
 - **Dummy 资源**：不同事件用不同频率的 `OscillatorNode` 蜂鸣代替。
 - **验收**：选中单位时听到短蜂鸣，开火时听到长蜂鸣。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 35: 性能优化与发布检查
 - **目标**：实例化渲染（相同模型用 `InstancedMesh`）、对象池（子弹/爆炸复用）、视锥剔除、LOD 占位。
@@ -1368,7 +1368,7 @@
 - **文件**：`src/core/CursorManager.ts`
 - **Dummy 资源**：CSS `cursor: url(...)` 指向自定义 PNG 光标（32×32）。
 - **验收**：光标在不同目标上正确变化，无系统默认光标闪烁。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 44: Sidebar 生产队列 UI
 - **目标**：右侧/左侧边栏显示可建造的建筑和单位，带图标、价格、冷却遮罩。点击后进入"准备放置"状态（建筑）或立即开始生产（单位）。
@@ -1394,15 +1394,15 @@
 ### Task 47: 攻击移动（Attack-Move）
 - **目标**：A + 左键 或 右键点击敌方单位/地面时，单位向目标移动，途中自动攻击遇到的敌人。
 - **参考 OpenRA**：`AttackMove` Activity
-- **文件**：`src/game/unit/AttackMoveBehavior.ts`
+- **文件**：`src/game/order/handlers/AttackMoveHandler.ts`
 - **验收**：坦克攻击移动到地图另一端，途中遇到敌方步兵会自动停下开火，消灭后继续前进。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 48: 巡逻（Patrol）
 - **目标**：Shift+Z 或右键点击两个点之间来回巡逻，自动攻击遇到的敌人。
-- **文件**：`src/game/unit/PatrolBehavior.ts`
+- **文件**：`src/game/order/handlers/PatrolHandler.ts`
 - **验收**：设置巡逻路径后，单位在两点之间循环移动，遇敌则攻击。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ### Task 49: 单位编组（Ctrl+Number）
 - **目标**：Ctrl+1~0 将选中单位编组，按数字键恢复选中。双击数字键将视角跳到编组中心。
@@ -1920,9 +1920,9 @@
 - [x] **Task 29**：伤害计算与装甲系统
 - [x] **Task 30**：采矿与经济系统
 - [x] **Task 31**：战争迷雾（Fog of War）
-- [ ] **Task 32**：游戏主循环与 Tick 系统 🟡 P1
+- [x] **Task 32**：游戏主循环与 Tick 系统 🟡 P1
 - [ ] **Task 33**：存档 / 读档系统
-- [ ] **Task 34**：音效事件系统（Dummy 音频占位）🟡 P1
+- [x] **Task 34**：音效事件系统（Dummy 音频占位）🟡 P1
 - [ ] **Task 35**：性能优化与发布检查
 - [ ] **Task 36**：主菜单页面（Main Menu）
 - [ ] **Task 37**：页面路由与过渡动画
@@ -1931,12 +1931,12 @@
 - [ ] **Task 40**：多人游戏大厅（Multiplayer Lobby）
 - [ ] **Task 41**：设置/选项页面（Settings）
 - [ ] **Task 42**：加载画面（Load Screen）
-- [ ] **Task 43**：鼠标光标系统（Cursors）
+- [x] **Task 43**：鼠标光标系统（Cursors）
 - [ ] **Task 44**：Sidebar 生产队列 UI
 - [ ] **Task 45**：建筑放置预览与合法性检查
 - [ ] **Task 46**：命令队列（Shift Queue）
-- [ ] **Task 47**：攻击移动（Attack-Move）
-- [ ] **Task 48**：巡逻（Patrol）
+- [x] **Task 47**：攻击移动（Attack-Move）
+- [x] **Task 48**：巡逻（Patrol）
 - [x] **Task 49**：单位编组（Ctrl+Number）
 - [x] **Task 50**：双击选中同类单位 + 框选优化
 - [ ] **Task 51**：Sell / Repair / Power 工具按钮
