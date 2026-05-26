@@ -1946,7 +1946,7 @@
 | Phase 8 循环发布 | 4 | 1 | Task 35 PerformanceMonitor done；32–34 待补统计 |
 | Phase 9 UI Shell | 7 | 7 | Task 36/37/38/39/40/41/42 done |
 | Phase 10 交互增强 | 10 | 0 | 光标、Sidebar、Shift队列、攻击移动、编组；51.5 立场着色 |
-| Phase 11 战役系统 | 9 | 0 | Lua脚本、触发器、目标、过场 |
+| Phase 11 战役系统 | 9 | 3 | Lua脚本 done、触发器 done、目标 done、过场 |
 | Phase 12 网络对战 | 9 | 0 | Lockstep、WebSocket、房间、回放；68.5 观战者身份 |
 | Phase 13 资源内容 | 7 | 0 | MIX/SHP解析、音频、视频、本地化 |
 | Phase 14 性能优化 | 6 | 0 | LOD、实例化、视锥剔除、对象池 |
@@ -1954,7 +1954,7 @@
 | Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
 | Phase 17 发布平台 | 3 | 0 | 桌面打包、移动端、Steam |
 | 补充任务（OpenRA 差距填补） | 4 | 2 | 139 OrderGenerator done、140 GameOrder done；141 逻辑帧分离、142 AudioManager pending |
-| **总计** | **153** | **59** | |
+| **总计** | **153** | **62** | |
 
 ---
 
@@ -2007,9 +2007,9 @@
 - [x] **Task 52**：战役数据层
 - [x] **Task 53**：战役进度保存
 - [x] **Task 54**：任务简报页面
-- [ ] **Task 55**：脚本运行时集成（Lua 或 JS）🟡 P1
-- [ ] **Task 56**：脚本全局 API（ScriptGlobals）
-- [ ] **Task 57**：触发器系统（Triggers）
+- [x] **Task 55**：脚本运行时集成（Lua 或 JS）🟡 P1
+- [x] **Task 56**：脚本全局 API（ScriptGlobals）
+- [x] **Task 57**：触发器系统（Triggers）
 - [x] **Task 58**：任务目标系统（Objectives）
 - [x] **Task 59**：胜利/失败条件与结算
 - [x] **Task 60**：战役过场动画（Video Playback）

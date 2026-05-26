@@ -12,6 +12,9 @@ import { BUILDING_DEFINITIONS, getBuildingFootprint } from './game/rules/Buildin
 import { HouseManager } from './game/house/HouseManager';
 import { HouseRelationship, HouseDiplomacy, getRelationshipColor } from './game/house/HouseRelationship';
 import { DamageType } from './game/combat/DamageTypes';
+import { ScriptRuntime } from './game/scripting/ScriptRuntime';
+import { MapGlobal, PlayerGlobal, ActorGlobal, MediaGlobal, UIGlobal } from './game/scripting/ScriptGlobals';
+import { TriggerSystem, TriggerGlobal } from './game/scripting/TriggerSystem';
 import { HouseType } from './game/house/House';
 import { GameObjectFactory } from './game/objects/GameObjectFactory';
 import { GameObjectManager } from './game/objects/GameObjectManager';
@@ -709,6 +712,15 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._getAlliesOf = (type: HouseType) => HouseManager.getInstance().getAlliesOf(type);
   w._getEnemiesOf = (type: HouseType) => HouseManager.getInstance().getEnemiesOf(type);
   w._getRelationshipBetween = (a: HouseType, b: HouseType) => HouseManager.getInstance().getRelationship(a, b);
+  // ── Task 55/56/57: Scripting & Triggers ──
+  w._ScriptRuntime = ScriptRuntime;
+  w._TriggerSystem = TriggerSystem;
+  w._TriggerGlobal = TriggerGlobal;
+  w._MapGlobal = MapGlobal;
+  w._PlayerGlobal = PlayerGlobal;
+  w._ActorGlobal = ActorGlobal;
+  w._MediaGlobal = MediaGlobal;
+  w._UIGlobal = UIGlobal;
 
   // ── Verification ──
   const goManager = GameObjectManager.getInstance();
