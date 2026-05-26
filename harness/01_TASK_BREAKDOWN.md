@@ -1436,13 +1436,18 @@
 - **参考 OpenRA**：`Selection` Trait 中的编组逻辑
 - **文件**：`src/game/SelectionManager.ts` 扩展
 - **验收**：选中 5 辆坦克按 Ctrl+1，之后按 1 恢复选中；双击 1 视角跳到坦克群。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`SelectionManager.saveSquad/restoreSquad/getSquadCenter`，`InputManager` 编组快捷键（Ctrl+0-9 保存，0-9 恢复，快速双击跳转相机）
+  - RTSCamera 新增 `setTargetCoords` / `getTargetCoords` 解决 Vector3 跨进程序列化问题
+  - e2e 测试：`task-49-squad.spec.ts`（2 测试：编组保存/恢复 + 双击跳转相机）
 
 ### Task 50: 双击选中同类单位 + 框选优化
 - **目标**：双击一个单位选中屏幕上所有可见的同类单位。框选时显示半透明绿色矩形。
 - **文件**：`src/core/InputManager.ts`
 - **验收**：双击一个步枪兵，选中屏幕内所有步枪兵；框选时矩形不闪烁。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`SelectionManager.selectSameType`，`InputManager` 双击检测（click + dblclick 双保险，600ms 阈值 + 100ms 去重）
+  - e2e 测试：`task-50-doubleClick.spec.ts`（1 测试：双击选中所有同类可见单位）
 
 ### Task 51: Sell / Repair / Power 工具按钮
 - **目标**：Sidebar 底部添加 Sell（$ 光标，点击建筑卖出）、Repair（扳手光标，点击建筑维修）、Power（闪电，开关电力）。
