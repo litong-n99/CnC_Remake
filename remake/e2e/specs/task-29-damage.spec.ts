@@ -141,8 +141,9 @@ test.describe('Task 29: Damage Calculator and Armor System', () => {
     // SA vs None (120%) should deal more damage than SA vs Steel (28%)
     expect(infantryDamage).toBeGreaterThan(tankDamage);
     // Approximate: 15 * 1.20 = 18, 15 * 0.28 = 4.2
-    expect(infantryDamage).toBeGreaterThanOrEqual(10);
-    expect(tankDamage).toBeLessThanOrEqual(10);
+    // Task 133: Rifle has Prone50Percent → infantry damage halved to ~9
+    expect(infantryDamage).toBeGreaterThanOrEqual(8);
+    expect(tankDamage).toBeLessThanOrEqual(6);
   });
 
   test('task-29.3: DamageCalculator formula correctness', async ({ page }) => {

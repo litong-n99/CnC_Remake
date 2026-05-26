@@ -14,6 +14,7 @@ import type { WeaponDef } from '../weapon/Weapon';
 import { WEAPON_DEFINITIONS } from '../weapon/Weapon';
 import { BulletManager } from '../weapon/Bullet';
 import { DamageCalculator, WarheadType } from '../combat/DamageCalculator';
+import type { DamageResult } from '../combat/DamageTypes';
 import { HarvesterAI } from '../economy/HarvesterAI';
 import type { ResourceLayer } from '../economy/ResourceLayer';
 import type { Scene } from '@babylonjs/core';
@@ -78,6 +79,12 @@ export class UnitController {
   isDeploying = false;
   isHarvesting = false;
   isTurningInPlace = false;
+
+  // ── Task 133: 伤害类型响应 ──
+  /** 是否处于匍匐姿态（步兵受特定攻击后触发）。 */
+  isProne = false;
+  /** 最后一次受到的死亡动画类型（用于渲染层播放对应死亡动画）。 */
+  lastDeathType: string | null = null;
 
   // ── 采集负载（UnitClass）──
   goldLoad = 0;
@@ -424,8 +431,27 @@ export class UnitController {
   /** 受到伤害 — 对应 C++ TechnoClass::Take_Damage() 简化。
    *
    * Task 29: 传入的伤害值应为 DamageCalculator 计算后的实际伤害。
-   * 装甲修正已在 applyDamageToTargetCell 中处理。 */
-  takeDamage(amount: number): void {
+   * 装甲修正已在 applyDamageToTargetCell 中处理。
+   *
+   * Task 133 重载：支持 DamageResult，处理匍匐与死亡动画类型。 */
+  takeDamage(amount: number): void;
+  takeDamage(result: DamageResult): void;
+  takeDamage(input: number | DamageResult): void {
+    let amount: number;
+    if (typeof input === 'number') {
+      amount = input;
+    } else {
+      amount = input.actualDamage;
+      // 触发匍匐（仅步兵有效）
+      if (input.triggeredProne && this.definition.locomotion === 0) {
+        this.isProne = true;
+      }
+      // 记录死亡动画类型
+      if (input.deathType) {
+        this.lastDeathType = input.deathType;
+      }
+    }
+
     this.currentHealth = Math.max(0, this.currentHealth - amount);
     if (this.currentHealth <= 0) {
       this.stateMachine.transition(UnitState.Dying);
@@ -552,7 +578,7 @@ export class UnitController {
 
     BulletManager.getInstance().spawn(scene, weapon, this.x, this.y, targetX, targetY, (_hx, _hy, damage, warhead) => {
       // 命中伤害（Task 29：使用 DamageCalculator 计算装甲修正）
-      this.applyDamageToTargetCell(targetX, targetY, damage, warhead);
+      this.applyDamageToTargetCell(targetX, targetY, damage, warhead, weapon.damageTypes);
     });
 
     return true;
@@ -577,7 +603,13 @@ export class UnitController {
     return undefined;
   }
 
-  private applyDamageToTargetCell(targetX: number, targetY: number, rawDamage: number, warhead: WarheadType): void {
+  private applyDamageToTargetCell(
+    targetX: number,
+    targetY: number,
+    rawDamage: number,
+    warhead: WarheadType,
+    damageTypes?: readonly import('../combat/DamageTypes').DamageType[]
+  ): void {
     const manager = GameObjectManager.getInstance();
     for (const obj of manager.getAll()) {
       if (!obj.isAlive()) continue;
@@ -585,34 +617,41 @@ export class UnitController {
       const dy = obj.y - targetY;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist < 1.5 && obj.id !== this.unitId) {
-        // Task 29: 使用 DamageCalculator 计算装甲修正后的实际伤害
-        let actualDamage: number;
+        // Task 29 + Task 133: 使用 DamageCalculator 计算装甲修正后的实际伤害
         if (obj.type === GameObjectType.Unit) {
           const unit = obj as import('../objects/Unit').Unit;
-          actualDamage = DamageCalculator.calculateDamage(
-            rawDamage,
-            warhead,
-            unit.definition.armor,
-            this.firepowerBias,
-            unit.logic.armorBias,
-            Math.round(dist)
+          const isInfantry = unit.definition.locomotion === 0;
+          const result = DamageCalculator.calculate(
+            {
+              rawDamage,
+              warhead,
+              firepowerBias: this.firepowerBias,
+              armorBias: unit.logic.armorBias,
+              distanceCells: Math.round(dist),
+              damageTypes,
+              isInfantry,
+            },
+            unit.definition.armor
           );
-          unit.logic.takeDamage(actualDamage);
+          unit.logic.takeDamage(result);
         } else if (obj.type === GameObjectType.Building) {
           const building = obj as import('../objects/Building').Building;
-          actualDamage = DamageCalculator.calculateDamage(
-            rawDamage,
-            warhead,
-            building.definition.armor,
-            this.firepowerBias,
-            1.0, // 建筑暂无 armorBias
-            Math.round(dist)
+          const result = DamageCalculator.calculate(
+            {
+              rawDamage,
+              warhead,
+              firepowerBias: this.firepowerBias,
+              armorBias: 1.0,
+              distanceCells: Math.round(dist),
+              damageTypes,
+              isInfantry: false,
+            },
+            building.definition.armor
           );
-          building.logic.takeDamage(actualDamage);
+          building.logic.takeDamage(result.actualDamage);
         } else {
           // 其他类型（Aircraft/Vessel 等）暂不处理装甲
-          actualDamage = rawDamage;
-          obj.takeDamage(actualDamage);
+          obj.takeDamage(rawDamage);
         }
       }
     }

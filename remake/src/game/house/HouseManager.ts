@@ -1,3 +1,4 @@
+import { HouseRelationship } from './HouseRelationship';
 import { House, HouseType, type HouseOptions } from './House';
 
 /**
@@ -34,7 +35,18 @@ export class HouseManager {
     }
     const house = new House(type, options);
     this.houses.set(type, house);
+    // 新阵营加入后，重新初始化所有阵营的外交关系
+    this.reinitializeAllDiplomacy();
     return house;
+  }
+
+  /** 重新初始化所有已注册阵营的外交关系。 */
+  private reinitializeAllDiplomacy(): void {
+    const all = this.getAllHouses();
+    const snapshot = all.map((h) => ({ type: h.id, team: h.team }));
+    for (const house of all) {
+      house.initializeDiplomacy(snapshot);
+    }
   }
 
   /** 按类型获取已注册的阵营。 */
@@ -62,9 +74,32 @@ export class HouseManager {
     return this.getAllHouses().filter((h) => h.isActive && !h.isDefeated);
   }
 
-  /** 获取所有敌方阵营（相对于指定阵营）。 */
+  /** 获取所有敌方阵营（相对于指定阵营，基于外交关系）。 */
   getEnemiesOf(type: HouseType): House[] {
-    return this.getActiveHouses().filter((h) => h.id !== type);
+    const house = this.houses.get(type);
+    if (!house) return [];
+    return this.getActiveHouses().filter((h) => h.id !== type && house.diplomacy.isEnemyWith(h.id));
+  }
+
+  /** 获取所有盟友阵营（相对于指定阵营，基于外交关系）。 */
+  getAlliesOf(type: HouseType): House[] {
+    const house = this.houses.get(type);
+    if (!house) return [];
+    return this.getActiveHouses().filter((h) => h.id !== type && house.diplomacy.isAlliedWith(h.id));
+  }
+
+  /** 获取与指定阵营中立的所有阵营。 */
+  getNeutralsOf(type: HouseType): House[] {
+    const house = this.houses.get(type);
+    if (!house) return [];
+    return this.getActiveHouses().filter((h) => h.id !== type && house.diplomacy.isNeutralWith(h.id));
+  }
+
+  /** 获取两个阵营之间的外交关系。 */
+  getRelationship(a: HouseType, b: HouseType): HouseRelationship {
+    const houseA = this.houses.get(a);
+    if (!houseA) return HouseRelationship.Enemy;
+    return houseA.diplomacy.getRelationship(b);
   }
 
   /** 检查是否已注册指定阵营。 */

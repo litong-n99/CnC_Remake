@@ -993,7 +993,11 @@
   - 支持运行时变更（任务中临时结盟/背叛）
 - **依赖**：Task 12（House 系统已存在）
 - **验收**：GDI 与 Nod 关系为 Enemy；框选时友方显示绿色光环、敌方显示红色；右键点击盟友单位不会触发攻击。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`HouseRelationship` 枚举 + `HouseDiplomacy` 类（关系映射、Team 初始化、序列化/反序列化）
+  - `House` 集成：`diplomacy` 字段 + `team` + `initializeDiplomacy()` + `getRelationshipWith()`
+  - `HouseManager` 扩展：`getEnemiesOf` / `getAlliesOf` / `getNeutralsOf` / `getRelationship`（基于外交关系而非简单过滤）
+  - e2e 测试：`task-27.5-diplomacy.spec.ts`（7 测试：枚举、默认关系、setRelationship、initializeByTeam、HouseManager 查询、立场颜色、序列化 round-trip）
 
 ### Task 27.6: Bot 类型支持 🟢 P2
 - **目标**：将 `isHuman: boolean` 扩展为 `controller: 'human' | 'bot-rush' | 'bot-normal' | 'bot-defensive'`，预留 AI 逻辑挂载点。
@@ -1196,7 +1200,13 @@
   - 与 `Locomotor` 联动：匍匐后步兵使用 `ProneSpeedModifier`（速度下降、受击面积变化）
 - **依赖**：Task 29（伤害计算器）、Task 96（Trait 系统，用于 `TakeCover` Trait）
 - **验收**：步枪攻击步兵 → 触发匍匐且伤害减半；火焰喷射器击杀步兵 → 播放火焰死亡动画而非普通倒地。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`DamageType` 枚举 + `DamageResult` 接口 + `resolveDamageEffects()` / `resolveDeathType()`
+  - `DamageCalculator` 扩展：`calculate(DamageContext, armor)` 现在处理 `damageTypes` 和 `isInfantry`，应用匍匐减半
+  - `WeaponDef` 扩展：所有武器定义添加 `damageTypes`（Rifle=Prone50Percent, Cannon=ExplosionDeath, Flamethrower=FireDeath, TeslaZap=ElectroDeath）
+  - `UnitController` 扩展：`isProne` 字段 + `lastDeathType`，`takeDamage` 重载支持 `DamageResult`
+  - `applyDamageToTargetCell` 迁移到扩展版 `DamageCalculator.calculate`
+  - e2e 测试：`task-133-damageTypes.spec.ts`（6 测试：枚举、Prone50Percent 步兵减半、非步兵不受影响、FireDeath 死亡类型、Explosion/Electro 死亡类型、武器定义包含 damageTypes）
 
 ### Task 134: 前提条件令牌与动态 TechTree 🔴 P0
 - **目标**：将当前静态的 `UNIT_PREREQUISITES` / `BUILDING_PREREQUISITES` 硬编码映射表升级为 OpenRA 风格的动态令牌图，支持"任一即可"、"阵营专属"、"科技等级"多重门控。
@@ -1928,11 +1938,11 @@
 | Phase 4 单位系统 | 5 | 5 | |
 | Phase 5 建筑系统 | 5 | 4 | Task 20–23 完成；23.32 电力自动汇总（P1）待开发 |
 | Phase 5.5 寻路碰撞深度对齐 | 31 | 19 | Task 102–120 完成；Task 121–132 为 OpenRA 核心能力缺口回填（P0–P3）|
-| Phase 6 交互 | 5 | 0 | Task 24 已合并到 111；25–27 待开发；27.5 外交、27.6 Bot 类型 |
+| Phase 6 交互 | 5 | 1 | Task 24 已合并到 111；25–27 待开发；27.5 外交 done；27.6 Bot 类型 |
 | Phase 6.5 架构升级 | 5 | 0 | 95 YAML、96 Trait、97 规则继承、100 House 拆分、101 科技树 Watcher |
 | Phase 7 战斗经济 | 6 | 0 | 含 98 Weapon 规则（Task 28 前置）；30.5 经济双轨化（P0） |
 | Phase 7.5 Mod 支持 | 1 | 0 | 99 地图级规则覆盖 |
-| Phase 7.6 Rules 补充 | 6 | 0 | 133 DamageTypes、134 TechTree令牌、135 阵营/建造限制、136 游戏速度/大厅、137 条件Trait、138 序列 |
+| Phase 7.6 Rules 补充 | 6 | 1 | 133 DamageTypes done、134 TechTree令牌、135 阵营/建造限制、136 游戏速度/大厅、137 条件Trait、138 序列 |
 | Phase 8 循环发布 | 4 | 1 | Task 35 PerformanceMonitor done；32–34 待补统计 |
 | Phase 9 UI Shell | 7 | 7 | Task 36/37/38/39/40/41/42 done |
 | Phase 10 交互增强 | 10 | 0 | 光标、Sidebar、Shift队列、攻击移动、编组；51.5 立场着色 |
@@ -1944,7 +1954,7 @@
 | Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
 | Phase 17 发布平台 | 3 | 0 | 桌面打包、移动端、Steam |
 | 补充任务（OpenRA 差距填补） | 4 | 2 | 139 OrderGenerator done、140 GameOrder done；141 逻辑帧分离、142 AudioManager pending |
-| **总计** | **153** | **57** | |
+| **总计** | **153** | **59** | |
 
 ---
 
@@ -2055,7 +2065,7 @@
 **待完成 25 个**：
 - [ ] **Task 9.7**：Shroud 边缘贴图渲染系统 — 迷雾视觉精细化 🟢 P2 ← 31（Fog, 9.1（CellLayer, 9.5（PPos
 - [ ] **Task 23.32**：电力系统自动汇总重构 🟡 P1 ← 20–23（建筑系统已稳定）, 20, 21, 22, 23
-- [ ] **Task 27.5**：外交关系系统 🔴 P0 ← 12（House
+- [x] **Task 27.5**：外交关系系统 🔴 P0 ← 12（House
 - [ ] **Task 27.6**：Bot 类型支持 🟢 P2 ← 27.5（外交关系先就位，Bot
 - [ ] **Task 30.5**：经济双轨化（Cash + Resources）🔴 P0 ← 100（HouseEconomy
 - [ ] **Task 51.5**：立场着色（Player Relationship Colors）🟢 P2 ← 27.5（外交关系系统先就位）
@@ -2072,7 +2082,7 @@
 - [ ] **Task 126**：CustomMovementLayer 实现 — 多层移动（隧道/地下/飞行/桥梁）🟡 P1 ← 120（接口预留），Task, 130（高度系统用于判断桥/斜坡过渡）
 - [ ] **Task 129**：MovePart 拆分 + 弧线移动 + 倒车 — 移动表现精细化 🟢 P2 ← 117（TurnSpeed, 125（Activity
 - [ ] **Task 130**：高度系统（Cell Height）— 悬崖与斜坡 🟢 P2 ← 127（Directed
-- [ ] **Task 133**：DamageTypes 伤害类型标签系统 🔴 P0 ← 29（伤害计算器）、Task
+- [x] **Task 133**：DamageTypes 伤害类型标签系统 🔴 P0 ← 29（伤害计算器）、Task
 - [ ] **Task 134**：前提条件令牌与动态 TechTree 🔴 P0 ← 96（Trait
 - [ ] **Task 135**：阵营限制与建造限制 🟡 P1 ← 134（动态
 - [ ] **Task 136**：游戏速度与大厅选项系统 🟡 P1 ← 32（GameLoop, 134（TechTree
@@ -2104,12 +2114,12 @@
 
  1. [深度0] **Task 95** — YAML 规则解析基础设施 ✅
  2. [深度0] **Task 121** — A* 优先队列（Binary Heap）✅
- 3. [深度1] **Task 27.5** — 外交关系系统 🔴 P0
+ 3. [深度1] **Task 27.5** — 外交关系系统 🔴 P0 ✅
  4. [深度1] **Task 30.5** — 经济双轨化（Cash + Resources）🔴 P0
  5. [深度1] **Task 98** — Weapon 规则系统（WeaponInfo + Projectile + Warheads）🔴 P0
  6. [深度1] **Task 122** — HPF 抽象图 + 抽象启发式引导
  7. [深度1] **Task 123** — HPF 动态更新
- 8. [深度1] **Task 133** — DamageTypes 伤害类型标签系统 🔴 P0
+ 8. [深度1] **Task 133** — DamageTypes 伤害类型标签系统 🔴 P0 ✅
  9. [深度1] **Task 134** — 前提条件令牌与动态 TechTree 🔴 P0
 
 

@@ -5,6 +5,8 @@
  * 独立管理资金、电力、已建造单位列表与难度修正。
  */
 
+import { HouseRelationship, HouseDiplomacy } from './HouseRelationship';
+
 /** 阵营类型 — 映射 C++ `HousesType` (`DEFINES.H:1171`)。 */
 export enum HouseType {
   None = -1,
@@ -65,6 +67,8 @@ export interface HouseOptions {
   tiberium?: number;
   /** 存储容量上限。 */
   capacity?: number;
+  /** 所属队伍（同队默认为盟友）。 */
+  team?: number;
   /** 难度修正 — 火力倍率。 */
   firepowerBias?: number;
   /** 难度修正 — 装甲倍率。 */
@@ -104,6 +108,11 @@ export class House {
   isSpied = false;
   isThieved = false;
   isGPSActive = false;
+
+  // ── 外交关系 ──
+  readonly diplomacy: HouseDiplomacy;
+  /** 所属队伍编号（同队默认盟友）。 */
+  team?: number;
 
   // ── 经济 ──
   credits = 0;
@@ -168,10 +177,25 @@ export class House {
     this.credits = options.credits ?? 0;
     this.tiberium = options.tiberium ?? 0;
     this.capacity = options.capacity ?? 0;
+    this.team = options.team;
     this.firepowerBias = options.firepowerBias ?? 1;
     this.armorBias = options.armorBias ?? 1;
     this.buildSpeedBias = options.buildSpeedBias ?? 1;
     this.costBias = options.costBias ?? 1;
+    this.diplomacy = new HouseDiplomacy(id);
+  }
+
+  /**
+   * 初始化外交关系（需在 HouseManager 注册所有阵营后调用）。
+   * @param allHouses — 所有已注册阵营的列表
+   */
+  initializeDiplomacy(allHouses: ReadonlyArray<{ type: HouseType; team?: number }>): void {
+    this.diplomacy.initializeByTeam(allHouses, this.team);
+  }
+
+  /** 获取对指定阵营的关系。 */
+  getRelationshipWith(other: HouseType): HouseRelationship {
+    return this.diplomacy.getRelationship(other);
   }
 
   // ── 经济操作 ──

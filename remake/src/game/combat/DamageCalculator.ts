@@ -11,6 +11,7 @@
  */
 
 import { ArmorType } from '../rules/UnitDefinitions';
+import { DamageResult, DamageType, resolveDamageEffects, resolveDeathType } from './DamageTypes';
 
 /** 弹头类型 — 映射 C++ `WarheadType` (`DEFINES.H:2667`)。 */
 export enum WarheadType {
@@ -111,7 +112,7 @@ export const WARHEAD_DEFINITIONS: Record<WarheadType, WarheadDef> = {
   },
 } as const;
 
-/** 伤害计算上下文 — 为 Task 133（DamageTypes）预留扩展点。 */
+/** 伤害计算上下文 — Task 133（DamageTypes）扩展。 */
 export interface DamageContext {
   readonly rawDamage: number;
   readonly warhead: WarheadType;
@@ -121,11 +122,10 @@ export interface DamageContext {
   readonly armorBias?: number;
   /** 距离爆炸中心的距离（格子数，0 = 直接命中）。 */
   readonly distanceCells?: number;
-}
-
-/** 伤害计算结果 — 为 Task 133 预留扩展点。 */
-export interface DamageResult {
-  readonly actualDamage: number;
+  /** 伤害类型标签（Task 133）。 */
+  readonly damageTypes?: readonly DamageType[];
+  /** 目标是否为步兵（影响匍匐触发）。 */
+  readonly isInfantry?: boolean;
 }
 
 /**
@@ -135,7 +135,7 @@ export interface DamageResult {
  */
 export class DamageCalculator {
   /**
-   * 计算对指定装甲类型的实际伤害。
+   * 计算对指定装甲类型的实际伤害（基础版本，向后兼容）。
    *
    * @param rawDamage    武器基础伤害
    * @param warhead      弹头类型
@@ -162,30 +162,44 @@ export class DamageCalculator {
     let actual = rawDamage * (verses / 100) * firepowerBias * armorBias;
 
     // 距离衰减（简化版：C++ 中距离以 lepton 为单位，这里用格子数近似）
-    // C++ 逻辑：distance 越大，damage 越小（distance /= spreadFactor; damage /= distance）
     if (distanceCells > 0) {
       const falloff = Math.max(1, distanceCells * 2);
       actual = actual / falloff;
     }
 
-    // C++ 规则：至少造成 1 点伤害（当原始伤害 > 0 且距离不远时）
-    // Rule.MinDamage = 1 (C++ COMBAT.CPP:121)
     const result = Math.round(actual);
     return Math.max(1, result);
   }
 
   /**
-   * 使用 DamageContext 计算伤害（便捷重载）。
+   * 使用 DamageContext 计算伤害（Task 133 扩展版本）。
+   *
+   * 返回完整的 DamageResult，包含触发匍匐和死亡动画类型。
    */
   static calculate(context: DamageContext, armor: ArmorType): DamageResult {
+    let raw = context.rawDamage;
+    const damageTypes = context.damageTypes ?? [];
+    const isInfantry = context.isInfantry ?? false;
+
+    // 先应用伤害类型效果（如匍匐减半）
+    const effects = resolveDamageEffects(damageTypes, isInfantry);
+    raw = raw * effects.proneDamageMultiplier;
+
     const actual = this.calculateDamage(
-      context.rawDamage,
+      raw,
       context.warhead,
       armor,
       context.firepowerBias ?? 1.0,
       context.armorBias ?? 1.0,
       context.distanceCells ?? 0
     );
-    return { actualDamage: actual };
+
+    const deathType = resolveDeathType(damageTypes);
+
+    return {
+      actualDamage: actual,
+      triggeredProne: effects.triggeredProne,
+      deathType,
+    };
   }
 }

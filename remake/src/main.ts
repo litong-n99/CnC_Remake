@@ -10,6 +10,8 @@ import { GameRules } from './game/rules/GameRules';
 import { UNIT_DEFINITIONS, ArmorType } from './game/rules/UnitDefinitions';
 import { BUILDING_DEFINITIONS, getBuildingFootprint } from './game/rules/BuildingDefinitions';
 import { HouseManager } from './game/house/HouseManager';
+import { HouseRelationship, HouseDiplomacy, getRelationshipColor } from './game/house/HouseRelationship';
+import { DamageType } from './game/combat/DamageTypes';
 import { HouseType } from './game/house/House';
 import { GameObjectFactory } from './game/objects/GameObjectFactory';
 import { GameObjectManager } from './game/objects/GameObjectManager';
@@ -697,6 +699,16 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
     clearAllCampaignProgress,
     getSavedCampaignIds,
   };
+  w._HouseType = HouseType;
+  w._HouseRelationship = HouseRelationship;
+  w._HouseDiplomacy = HouseDiplomacy;
+  w._getRelationshipColor = getRelationshipColor;
+  w._DamageType = DamageType;
+  w._HouseManager = HouseManager;
+  // HouseManager 动态方法代理（避免 Vite HMR 导致实例方法过时）
+  w._getAlliesOf = (type: HouseType) => HouseManager.getInstance().getAlliesOf(type);
+  w._getEnemiesOf = (type: HouseType) => HouseManager.getInstance().getEnemiesOf(type);
+  w._getRelationshipBetween = (a: HouseType, b: HouseType) => HouseManager.getInstance().getRelationship(a, b);
 
   // ── Verification ──
   const goManager = GameObjectManager.getInstance();

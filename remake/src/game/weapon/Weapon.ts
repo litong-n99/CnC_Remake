@@ -8,6 +8,7 @@
  */
 
 import { WarheadType } from '../combat/DamageCalculator';
+import { DamageType } from '../combat/DamageTypes';
 
 export type ProjectileType = 'instant' | 'projectile';
 
@@ -25,6 +26,8 @@ export interface WeaponDef {
   readonly projectileType: ProjectileType;
   /** 弹头类型 — Task 29。 */
   readonly warhead: WarheadType;
+  /** 伤害类型标签 — Task 133。 */
+  readonly damageTypes?: readonly DamageType[];
 }
 
 /** 默认武器库（硬编码，后续迁移到 YAML）。 */
@@ -37,6 +40,7 @@ export const WEAPON_DEFINITIONS: Record<string, WeaponDef> = {
     projectileSpeed: 1.2,
     projectileType: 'projectile',
     warhead: WarheadType.AP,
+    damageTypes: [DamageType.ExplosionDeath],
   },
   Rifle: {
     name: 'M16 Rifle',
@@ -46,6 +50,7 @@ export const WEAPON_DEFINITIONS: Record<string, WeaponDef> = {
     projectileSpeed: 0,
     projectileType: 'instant',
     warhead: WarheadType.SA,
+    damageTypes: [DamageType.Prone50Percent],
   },
   Rocket: {
     name: 'Dragon Rocket',
@@ -55,5 +60,26 @@ export const WEAPON_DEFINITIONS: Record<string, WeaponDef> = {
     projectileSpeed: 0.8,
     projectileType: 'projectile',
     warhead: WarheadType.HE,
+    damageTypes: [DamageType.ExplosionDeath],
+  },
+  Flamethrower: {
+    name: 'Flamethrower',
+    range: 5,
+    damage: 25,
+    reloadTime: 20,
+    projectileSpeed: 0,
+    projectileType: 'instant',
+    warhead: WarheadType.Fire,
+    damageTypes: [DamageType.FireDeath],
+  },
+  TeslaZap: {
+    name: 'Tesla Coil Zap',
+    range: 8,
+    damage: 100,
+    reloadTime: 60,
+    projectileSpeed: 0,
+    projectileType: 'instant',
+    warhead: WarheadType.Tesla,
+    damageTypes: [DamageType.ElectroDeath],
   },
 } as const;
