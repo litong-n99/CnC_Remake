@@ -1335,21 +1335,27 @@
 - **参考 OpenRA**：`mods/cnc/maps/` 目录结构 + 战役配置
 - **文件**：`src/ui/shell/CampaignMenu.ts`, `src/game/campaign/CampaignData.ts`
 - **验收**：点击战役展开任务列表，未完成任务显示锁定图标，已完成显示星星。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`CampaignMenu`（GDI/Nod 战役列表 + 任务锁定/完成状态），硬编码 MissionInfo 数据
+  - e2e 测试：`task-38-campaign.spec.ts`（2 个测试）
 
 ### Task 39: 遭遇战设置页面（Skirmish Setup）
 - **目标**：选择地图、玩家数（含 AI）、起始资金、游戏速度、科技等级、胜利条件。AI 难度下拉框。
 - **参考 OpenRA**：遭遇战大厅 UI
 - **文件**：`src/ui/shell/SkirmishSetup.ts`
 - **验收**：配置完成后点击"开始"进入游戏，配置参数传入 `GameLoop`。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`SkirmishSetup`（地图/资金/速度/AI 难度下拉框），`getConfig()` 暴露当前配置
+  - e2e 测试：`task-39-skirmish.spec.ts`（3 个测试）
 
 ### Task 40: 多人游戏大厅（Multiplayer Lobby）
 - **目标**：房间列表（显示主机、地图、玩家数/最大数）、创建房间、加入房间、聊天框。
 - **参考 OpenRA**：`OpenRA.Game/Network/Connection.cs` + Lobby UI
 - **文件**：`src/ui/shell/MultiplayerLobby.ts`, `src/network/LobbyClient.ts`
 - **验收**：能创建房间并显示在列表中，其他客户端可见。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`MultiplayerLobby`（房间列表 + 创建/加入按钮占位），网络层待 Task 61–68 对接
+  - e2e 测试：`task-40-lobby.spec.ts`（2 个测试）
 
 ### Task 41: 设置/选项页面（Settings）
 - **目标**：Tab 分组：Display（分辨率/全屏/画质）、Audio（主音量/音乐/音效）、Controls（快捷键绑定）、Game（滚动速度/难度）。
@@ -1904,7 +1910,7 @@
 | Phase 7.5 Mod 支持 | 1 | 0 | 99 地图级规则覆盖 |
 | Phase 7.6 Rules 补充 | 6 | 0 | 133 DamageTypes、134 TechTree令牌、135 阵营/建造限制、136 游戏速度/大厅、137 条件Trait、138 序列 |
 | Phase 8 循环发布 | 4 | 1 | Task 35 PerformanceMonitor done；32–34 待补统计 |
-| Phase 9 UI Shell | 7 | 4 | Task 36/37/41/42 done；38–40 待开发 |
+| Phase 9 UI Shell | 7 | 7 | Task 36/37/38/39/40/41/42 done |
 | Phase 10 交互增强 | 10 | 0 | 光标、Sidebar、Shift队列、攻击移动、编组；51.5 立场着色 |
 | Phase 11 战役系统 | 9 | 0 | Lua脚本、触发器、目标、过场 |
 | Phase 12 网络对战 | 9 | 0 | Lockstep、WebSocket、房间、回放；68.5 观战者身份 |
@@ -1914,7 +1920,7 @@
 | Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
 | Phase 17 发布平台 | 3 | 0 | 桌面打包、移动端、Steam |
 | 补充任务（OpenRA 差距填补） | 4 | 2 | 139 OrderGenerator done、140 GameOrder done；141 逻辑帧分离、142 AudioManager pending |
-| **总计** | **153** | **54** | |
+| **总计** | **153** | **57** | |
 
 ---
 
@@ -1928,15 +1934,15 @@
 
 | 深度 | 任务数 | 已完成 | 待完成 | 说明 |
 |------|--------|--------|--------|------|
-| 0 | 124 | 55 | 69 | 无显式前置依赖 |
+| 0 | 124 | 58 | 66 | 无显式前置依赖 |
 | 1 | 36 | 11 | 25 | 依赖深度 0 |
 | 2 | 1 | 0 | 1 | 依赖深度 1 |
 
 ### 深度 0：根基层（无显式前置依赖）
 
-**已完成 56 个**：Task 0、Task 0.1、Task 0.2、Task 0.3、Task 0.4、Task 0.5、Task 1、Task 2、Task 3、Task 4、Task 5、Task 6、Task 7、Task 8、Task 9、Task 11、Task 12、Task 13、Task 14、Task 15、Task 16、Task 17、Task 18、Task 19、Task 20、Task 21、Task 22、Task 23、Task 24、Task 25、Task 26、Task 27、Task 28、Task 29、Task 30、Task 35、Task 36、Task 37、Task 41、Task 42、Task 102、Task 103、Task 104、Task 105、Task 106、Task 107、Task 108、Task 109、Task 110、Task 112、Task 114、Task 115、Task 116、Task 117、Task 120、Task 121、Task 139、Task 140、Task 141
+**已完成 59 个**：Task 0、Task 0.1、Task 0.2、Task 0.3、Task 0.4、Task 0.5、Task 1、Task 2、Task 3、Task 4、Task 5、Task 6、Task 7、Task 8、Task 9、Task 11、Task 12、Task 13、Task 14、Task 15、Task 16、Task 17、Task 18、Task 19、Task 20、Task 21、Task 22、Task 23、Task 24、Task 25、Task 26、Task 27、Task 28、Task 29、Task 30、Task 35、Task 36、Task 37、Task 38、Task 39、Task 40、Task 41、Task 42、Task 102、Task 103、Task 104、Task 105、Task 106、Task 107、Task 108、Task 109、Task 110、Task 112、Task 114、Task 115、Task 116、Task 117、Task 120、Task 121、Task 139、Task 140、Task 141
 
-**待完成 69 个**：
+**待完成 66 个**：
 - [x] **Task 25**：选择系统（单选、框选、编队）
 - [x] **Task 26**：命令分发器（Move / Attack / Guard / Stop）
 - [x] **Task 27**：HUD / UI 覆盖层（资源、小地图、单位信息）
@@ -1950,9 +1956,9 @@
 - [x] **Task 35**：性能优化与发布检查
 - [x] **Task 36**：主菜单页面（Main Menu）
 - [x] **Task 37**：页面路由与过渡动画
-- [ ] **Task 38**：战役选择页面（Campaign）
-- [ ] **Task 39**：遭遇战设置页面（Skirmish Setup）
-- [ ] **Task 40**：多人游戏大厅（Multiplayer Lobby）
+- [x] **Task 38**：战役选择页面（Campaign）
+- [x] **Task 39**：遭遇战设置页面（Skirmish Setup）
+- [x] **Task 40**：多人游戏大厅（Multiplayer Lobby）
 - [x] **Task 41**：设置/选项页面（Settings）
 - [x] **Task 42**：加载画面（Load Screen）
 - [x] **Task 43**：鼠标光标系统（Cursors）

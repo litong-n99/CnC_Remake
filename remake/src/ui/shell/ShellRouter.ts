@@ -1,34 +1,20 @@
 /**
  * 页面路由管理器 — Task 37
  *
- * 管理应用顶层页面状态：menu → loading → game → settings → pause
+ * 管理应用顶层页面状态：menu → loading → game → settings → pause → campaign → skirmish → lobby
  * 无外部依赖，纯 DOM 显隐控制，零框架开销。
  */
 
-export type AppPage = 'menu' | 'loading' | 'game' | 'settings' | 'pause';
+export type AppPage = 'menu' | 'loading' | 'game' | 'settings' | 'pause' | 'campaign' | 'skirmish' | 'lobby';
 
 export class ShellRouter {
   private current: AppPage = 'menu';
   private readonly listeners: Set<(page: AppPage, prev: AppPage) => void> = new Set();
-  private gameCanvas: HTMLElement | null = null;
-  private menuContainer: HTMLElement | null = null;
-  private loadContainer: HTMLElement | null = null;
-  private settingsContainer: HTMLElement | null = null;
-  private pauseContainer: HTMLElement | null = null;
+  private containers: Partial<Record<AppPage, HTMLElement>> = {};
 
   /** 注册页面容器引用 */
-  registerContainers(containers: {
-    gameCanvas: HTMLElement;
-    menu: HTMLElement;
-    loading: HTMLElement;
-    settings: HTMLElement;
-    pause: HTMLElement;
-  }): void {
-    this.gameCanvas = containers.gameCanvas;
-    this.menuContainer = containers.menu;
-    this.loadContainer = containers.loading;
-    this.settingsContainer = containers.settings;
-    this.pauseContainer = containers.pause;
+  registerContainers(containers: Partial<Record<AppPage, HTMLElement>>): void {
+    this.containers = containers;
     this.updateVisibility();
   }
 
@@ -63,17 +49,10 @@ export class ShellRouter {
   }
 
   private updateVisibility(): void {
-    const map: Record<AppPage, HTMLElement | null> = {
-      menu: this.menuContainer,
-      loading: this.loadContainer,
-      game: this.gameCanvas,
-      settings: this.settingsContainer,
-      pause: this.pauseContainer,
-    };
-
-    for (const [page, el] of Object.entries(map)) {
-      if (!el) continue;
-      el.style.display = page === this.current ? 'flex' : 'none';
+    for (const el of Object.values(this.containers)) {
+      if (el) el.style.display = 'none';
     }
+    const target = this.containers[this.current];
+    if (target) target.style.display = 'flex';
   }
 }

@@ -24,6 +24,9 @@ export class MainMenu {
         <h2 class="cnc-subtitle">REMAKE</h2>
         <div class="cnc-menu-buttons">
           <button class="cnc-btn cnc-btn-primary" data-action="start">开始游戏</button>
+          <button class="cnc-btn" data-action="campaign">战役模式</button>
+          <button class="cnc-btn" data-action="skirmish">遭遇战</button>
+          <button class="cnc-btn" data-action="multiplayer">多人游戏</button>
           <button class="cnc-btn" data-action="settings">设置</button>
           <button class="cnc-btn" data-action="exit">退出</button>
         </div>
@@ -59,6 +62,15 @@ export class MainMenu {
       switch (action) {
         case 'start':
           this.onStartGame?.();
+          break;
+        case 'campaign':
+          this.router.navigate('campaign');
+          break;
+        case 'skirmish':
+          this.router.navigate('skirmish');
+          break;
+        case 'multiplayer':
+          this.router.navigate('lobby');
           break;
         case 'settings':
           this.router.navigate('settings');

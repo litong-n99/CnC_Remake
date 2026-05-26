@@ -43,6 +43,9 @@ import { MainMenu } from './ui/shell/MainMenu';
 import { LoadScreen } from './ui/shell/LoadScreen';
 import { SettingsMenu } from './ui/shell/SettingsMenu';
 import { PauseMenu } from './ui/shell/PauseMenu';
+import { CampaignMenu } from './ui/shell/CampaignMenu';
+import { SkirmishSetup } from './ui/shell/SkirmishSetup';
+import { MultiplayerLobby } from './ui/shell/MultiplayerLobby';
 import './ui/styles/shell.css';
 import { loadYamlRulesWithFallback } from './game/rules/YamlLoader';
 
@@ -657,13 +660,19 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
       const loadScreen = new LoadScreen(app);
       const settingsMenu = new SettingsMenu(app, router);
       const pauseMenu = new PauseMenu(app, router);
+      const campaignMenu = new CampaignMenu(app, router);
+      const skirmishSetup = new SkirmishSetup(app, router);
+      const multiplayerLobby = new MultiplayerLobby(app, router);
 
       router.registerContainers({
-        gameCanvas: canvas,
+        game: canvas,
         menu: mainMenu.getElement(),
         loading: loadScreen.getElement(),
         settings: settingsMenu.getElement(),
         pause: pauseMenu.getElement(),
+        campaign: campaignMenu.getElement(),
+        skirmish: skirmishSetup.getElement(),
+        lobby: multiplayerLobby.getElement(),
       });
 
       // Default to menu for real users, but game for e2e tests (navigator.webdriver)
@@ -705,7 +714,12 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
             router.navigate('pause');
           } else if (current === 'pause') {
             router.navigate('game');
-          } else if (current === 'settings') {
+          } else if (
+            current === 'settings' ||
+            current === 'campaign' ||
+            current === 'skirmish' ||
+            current === 'lobby'
+          ) {
             router.navigate('menu');
           }
         }
@@ -718,6 +732,8 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
       (window as any)._settingsMenu = settingsMenu;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (window as any)._performanceMonitor = performanceMonitor;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any)._skirmishSetup = skirmishSetup;
     }
   }
 

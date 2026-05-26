@@ -24,14 +24,21 @@
 /* ── Backgrounds ── */
 .cnc-menu-bg,
 .cnc-load-bg,
-.cnc-settings-bg {
+.cnc-settings-bg,
+.cnc-campaign-bg,
+.cnc-skirmish-bg,
+.cnc-lobby-bg,
+.cnc-pause-bg {
   position: absolute;
   inset: 0;
   background: linear-gradient(180deg, #0a0f0a 0%, #1a241a 100%);
   z-index: 0;
 }
 
-.cnc-menu-bg::before {
+.cnc-menu-bg::before,
+.cnc-campaign-bg::before,
+.cnc-skirmish-bg::before,
+.cnc-lobby-bg::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -56,7 +63,10 @@
 .cnc-menu-content,
 .cnc-load-content,
 .cnc-settings-content,
-.cnc-pause-content {
+.cnc-pause-content,
+.cnc-campaign-content,
+.cnc-skirmish-content,
+.cnc-lobby-content {
   position: relative;
   z-index: 1;
   display: flex;
@@ -90,7 +100,10 @@
 
 .cnc-load-title,
 .cnc-settings-title,
-.cnc-pause-title {
+.cnc-pause-title,
+.cnc-campaign-title-main,
+.cnc-skirmish-title,
+.cnc-lobby-title {
   font-size: 2rem;
   font-weight: 700;
   letter-spacing: 0.2em;
@@ -101,7 +114,11 @@
 
 /* ── Buttons ── */
 .cnc-menu-buttons,
-.cnc-settings-actions {
+.cnc-settings-actions,
+.cnc-pause-buttons,
+.cnc-campaign-actions,
+.cnc-skirmish-actions,
+.cnc-lobby-actions {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -205,4 +222,123 @@
   width: 18px;
   height: 18px;
   accent-color: #4a9;
+}
+
+/* ── Campaign ── */
+.cnc-campaign-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.cnc-campaign-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #6b8;
+  margin: 0 0 0.5rem;
+  letter-spacing: 0.1em;
+}
+
+.cnc-mission-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cnc-mission {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.8rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid #353;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cnc-mission:hover {
+  background: rgba(40, 80, 40, 0.5);
+}
+
+.cnc-mission-locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cnc-mission-done {
+  border-color: #4a9;
+}
+
+.cnc-mission-name {
+  font-size: 0.9rem;
+}
+
+.cnc-mission-status {
+  font-size: 0.75rem;
+  color: #7a8;
+}
+
+/* ── Skirmish ── */
+.cnc-skirmish-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.cnc-skirmish-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 0.8rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid #353;
+  font-size: 0.9rem;
+}
+
+.cnc-skirmish-row select {
+  background: rgba(0, 0, 0, 0.5);
+  color: #c8d6af;
+  border: 1px solid #3a5;
+  padding: 0.3rem 0.6rem;
+  font-family: inherit;
+}
+
+/* ── Lobby ── */
+.cnc-room-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.cnc-room {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid #353;
+}
+
+.cnc-room-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.cnc-room-meta {
+  font-size: 0.75rem;
+  color: #7a8;
+  flex: 1;
+  text-align: right;
+  margin-right: 0.5rem;
+}
+
+.cnc-room .cnc-btn {
+  width: auto;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
 }
