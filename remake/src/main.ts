@@ -49,6 +49,9 @@ import { DesktopAdapter } from './core/DesktopAdapter';
 import { TouchInputManager } from './core/TouchInputManager';
 import { MusicPlayer } from './core/MusicPlayer';
 import { VideoPlayer } from './core/VideoPlayer';
+import { MixLoader } from './assets/loaders/MixLoader';
+import { ShpLoader } from './assets/loaders/ShpLoader';
+import { BriefingScreen } from './ui/shell/BriefingScreen';
 import {
   getAllCampaigns,
   getCampaignById,
@@ -676,6 +679,9 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._TouchInputManager = TouchInputManager;
   w._musicPlayer = new MusicPlayer();
   w._videoPlayer = new VideoPlayer();
+  w._MixLoader = MixLoader;
+  w._ShpLoader = ShpLoader;
+  w._BriefingScreen = BriefingScreen;
   w._CampaignData = {
     getAllCampaigns,
     getCampaignById,

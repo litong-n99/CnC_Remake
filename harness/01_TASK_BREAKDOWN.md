@@ -1497,7 +1497,7 @@
 - **参考 OpenRA**：`BriefingLogic.cs` + `Media.PlaySoundNotification`
 - **文件**：`src/ui/shell/BriefingScreen.ts`
 - **验收**：文字逐字显示，语音同步播放，点击 Skip 跳过。
-- **状态**：[ ] `done`
+- **状态**：[x] `done
 
 ### Task 55: 脚本运行时集成（Lua 或 JS）🟡 P1
 - **目标**：集成脚本引擎。推荐 `fengari-web`（Lua 5.3 的 WASM 实现），或自建轻量 JS 脚本系统。
@@ -1627,14 +1627,14 @@
 - **参考 OpenRA**：`OpenRA.Mods.Cnc/FileSystem/MixFile.cs`
 - **文件**：`src/assets/loaders/MixLoader.ts`
 - **验收**：上传一个 `.mix` 文件，控制台列出内部所有文件名和大小。
-- **状态**：[ ] `done`
+- **状态**：[x] `done
 
 ### Task 70: 精灵序列系统（SHP 解析与 Sprite Sheet）
 - **目标**：解析 Westwood SHP 格式（帧动画、32/64 方向、调色板映射），构建时预处理为 PNG sprite sheet + JSON metadata。运行时按 actor + sequence + frame 索引。
 - **参考 OpenRA**：`ShpTSLoader.cs` + `SequenceProvider.cs`
 - **文件**：`tools/shp-to-spritesheet/`（Node.js CLI 工具）, `src/assets/loaders/ShpLoader.ts`
 - **验收**：一个坦克 SHP 转换为 sprite sheet 后，Babylon.js 正确显示 32 方向行走动画。
-- **状态**：[ ] `done`
+- **状态**：[x] `done
 
 ### Task 71: 调色板系统（Palette & Remap）
 - **目标**：加载 DOS/Win `.pal` 调色板文件。支持 remap（将调色板中的特定索引替换为阵营色，如 GDI 黄、Nod 红）。
@@ -1996,7 +1996,7 @@
 - [x] **Task 51**：Sell / Repair / Power 工具按钮
 - [x] **Task 52**：战役数据层
 - [x] **Task 53**：战役进度保存
-- [ ] **Task 54**：任务简报页面
+- [x] **Task 54**：任务简报页面
 - [ ] **Task 55**：脚本运行时集成（Lua 或 JS）🟡 P1
 - [ ] **Task 56**：脚本全局 API（ScriptGlobals）
 - [ ] **Task 57**：触发器系统（Triggers）
@@ -2011,8 +2011,8 @@
 - [ ] **Task 66**：同步检测与防作弊（SyncHash）
 - [ ] **Task 67**：断线重连与观战
 - [ ] **Task 68**：回放系统（Replay）
-- [ ] **Task 69**：资源包加载系统（MIX/MPR 解析）
-- [ ] **Task 70**：精灵序列系统（SHP 解析与 Sprite Sheet）
+- [x] **Task 69**：资源包加载系统（MIX/MPR 解析）
+- [x] **Task 70**：精灵序列系统（SHP 解析与 Sprite Sheet）
 - [x] **Task 71**：调色板系统（Palette & Remap）
 - [x] **Task 72**：语音与通知系统
 - [x] **Task 73**：背景音乐系统
