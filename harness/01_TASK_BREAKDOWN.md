@@ -1285,7 +1285,10 @@
 - **目标**：将当前游戏状态（地图、单位、建筑、资金）序列化为 JSON，支持下载与上传恢复。
 - **文件**：`src/save/GameSerializer.ts`, `src/save/SaveManager.ts`
 - **验收**：点击"保存"下载 `.cncsave` 文件；刷新页面后"加载"恢复完全相同的战场状态。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`GameSerializer`（serialize/deserialize/downloadSave）+ `SaveManager`（save/load/peek）
+  - 控制台命令：`cnc.save()` / `cnc.load(file)` / `cnc.peekSave()`
+  - e2e 测试：`task-33-saveLoad.spec.ts`
 
 ### Task 34: 音效事件系统（Dummy 音频占位）🟡 P1
 - **OpenRA 对标**：`OpenRA.Game/Sound/Sound.cs`, `ISoundEngine`, `ISoundLoader`
@@ -1375,21 +1378,29 @@
 - **参考 OpenRA**：`mods/*/chrome/ingame-*.yaml` + `ProductionPaletteWidget.cs`
 - **文件**：`src/renderer/ui/Sidebar.ts`
 - **验收**：点击电厂图标，图标变灰并显示进度条；完成后图标高亮，再次点击进入放置预览。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`Sidebar`（Babylon.GUI 右侧面板，显示建筑按钮/价格/进度）+ `ConstructionQueue`（单队列，资金扣除，取消退款）
+  - e2e 测试：`task-44-sidebar.spec.ts`（通过 `cnc.building()` 启动放置 + 点击 canvas 中心确认建造）
 
 ### Task 45: 建筑放置预览与合法性检查
 - **目标**：选择建筑后，鼠标跟随显示建筑幽灵轮廓（半透明）。合法位置绿色，非法位置红色（地形不可建造、与其他建筑重叠、距离不足）。
 - **参考 OpenRA**：`PlaceBuildingOrderGenerator.cs`
 - **文件**：`src/game/building/BuildingPlacement.ts`
 - **验收**：在水上放置电厂显示红色；在合法平地显示绿色；点击后扣除资金并开始建造。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`BuildingPlacer`（半透明 Ghost Mesh 跟随鼠标，逐 cell 合法性检查：绿色=合法/红色=非法）
+  - `InputManager.handleLeftClick` 拦截放置模式，左键确认 → `confirmPlacement()` → `tryPlaceBuilding()`
+  - e2e 测试：`task-45-buildingPlacer.spec.ts`（验证 `isPlacing()` / `cancelPlacement()`）
 
 ### Task 46: 命令队列（Shift Queue）
 - **目标**：按住 Shift 下达多个移动/攻击命令，单位按顺序执行，路径点用虚线和小圆点显示。
 - **参考 OpenRA**：`Order.Queued` 字段 + `UnitOrderGenerator`
 - **文件**：`src/game/CommandQueue.ts`
 - **验收**：Shift+右键点击 3 个不同位置，单位依次经过，地面上显示 3 个虚线路径点。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`UnitController` 新增 `commandQueue` + `enqueueCommand` / `processNextCommand`；`MoveHandler` / `AttackHandler` / `GuardHandler` 支持 `order.queued`
+  - 行为：Idle 时自动消费队列第一个命令；3 个 Shift+Move 入队后，第一个立即执行，剩余 2 个在队列中
+  - e2e 测试：`task-46-shiftQueue.spec.ts`（验证 `queueLength === 2`，`orderDispatcher` 返回 success）
 
 ### Task 47: 攻击移动（Attack-Move）
 - **目标**：A + 左键 或 右键点击敌方单位/地面时，单位向目标移动，途中自动攻击遇到的敌人。
@@ -1422,7 +1433,10 @@
 - **参考 OpenRA**：`SupportPowerManager` + `RepairOrderGenerator`
 - **文件**：`src/game/building/BuildingTools.ts`
 - **验收**：点击 Sell 后光标变 $，点击兵营获得一半资金，兵营消失。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`BuildingTools`（`sellBuilding` 返还 50% 资金 + 注销建筑；`repairBuilding` 按缺失 HP 扣费恢复满血）
+  - 控制台命令：`cnc.sell(buildingId)` / `cnc.repair(buildingId)`
+  - e2e 测试：`task-51-buildingTools.spec.ts`（sell 验证 refund + 移除；repair 验证扣血 → 修复 → 满血 + cost）
 
 ### Task 51.5: 立场着色（Player Relationship Colors）🟢 P2
 - **目标**：UI 层根据外交关系渲染不同颜色，而非固定阵营色。自己=绿、盟友=蓝、敌人=红、中立=灰。
@@ -1921,7 +1935,7 @@
 - [x] **Task 30**：采矿与经济系统
 - [x] **Task 31**：战争迷雾（Fog of War）
 - [x] **Task 32**：游戏主循环与 Tick 系统 🟡 P1
-- [ ] **Task 33**：存档 / 读档系统
+- [x] **Task 33**：存档 / 读档系统
 - [x] **Task 34**：音效事件系统（Dummy 音频占位）🟡 P1
 - [ ] **Task 35**：性能优化与发布检查
 - [ ] **Task 36**：主菜单页面（Main Menu）
@@ -1932,14 +1946,14 @@
 - [ ] **Task 41**：设置/选项页面（Settings）
 - [ ] **Task 42**：加载画面（Load Screen）
 - [x] **Task 43**：鼠标光标系统（Cursors）
-- [ ] **Task 44**：Sidebar 生产队列 UI
-- [ ] **Task 45**：建筑放置预览与合法性检查
-- [ ] **Task 46**：命令队列（Shift Queue）
+- [x] **Task 44**：Sidebar 生产队列 UI
+- [x] **Task 45**：建筑放置预览与合法性检查
+- [x] **Task 46**：命令队列（Shift Queue）
 - [x] **Task 47**：攻击移动（Attack-Move）
 - [x] **Task 48**：巡逻（Patrol）
 - [x] **Task 49**：单位编组（Ctrl+Number）
 - [x] **Task 50**：双击选中同类单位 + 框选优化
-- [ ] **Task 51**：Sell / Repair / Power 工具按钮
+- [x] **Task 51**：Sell / Repair / Power 工具按钮
 - [ ] **Task 52**：战役数据层
 - [ ] **Task 53**：战役进度保存
 - [ ] **Task 54**：任务简报页面
