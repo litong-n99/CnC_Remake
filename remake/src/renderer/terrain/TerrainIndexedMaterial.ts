@@ -61,6 +61,8 @@ void main(void) {
 `;
 
 export class TerrainIndexedMaterial {
+  static readonly vertexShader = VERTEX_SHADER;
+  static readonly fragmentShader = FRAGMENT_SHADER;
   private material: ShaderMaterial;
 
   constructor(scene: Scene, indexedTex: Texture, paletteTex: Texture, channel = 0) {

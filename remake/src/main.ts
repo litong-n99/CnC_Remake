@@ -38,6 +38,11 @@ import { getLocalization } from './core/Localization';
 import { ObjectPool } from './core/ObjectPool';
 import { ObjectiveManager } from './game/objectives/ObjectiveManager';
 import { WinLoseChecker } from './game/objectives/WinLoseChecker';
+import { SheetBuilder } from './renderer/terrain/SheetBuilder';
+import { TerrainIndexedMaterial } from './renderer/terrain/TerrainIndexedMaterial';
+import { NotificationManager } from './core/NotificationManager';
+import { DifficultyScaler } from './game/ai/DifficultyScaler';
+import { SupportPowerManager } from './game/combat/SupportPowers';
 import { CursorManager } from './core/CursorManager';
 import { SaveManager } from './save/SaveManager';
 import { BuildingTools } from './game/building/BuildingTools';
@@ -639,6 +644,11 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._ObjectPool = ObjectPool;
   w._objectiveManager = new ObjectiveManager();
   w._WinLoseChecker = WinLoseChecker;
+  w._SheetBuilder = SheetBuilder;
+  w._TerrainIndexedMaterial = TerrainIndexedMaterial;
+  w._notificationManager = new NotificationManager();
+  w._DifficultyScaler = DifficultyScaler;
+  w._SupportPowerManager = SupportPowerManager;
 
   // ── Verification ──
   const goManager = GameObjectManager.getInstance();

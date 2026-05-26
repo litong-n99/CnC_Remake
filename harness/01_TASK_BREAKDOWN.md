@@ -1641,21 +1641,27 @@
 - **参考 OpenRA**：`PaletteFromFile.cs` + `PlayerColorPalette.cs`
 - **文件**：`src/assets/PaletteManager.ts`
 - **验收**：同一辆坦克的 sprite，GDI 玩家显示为黄色，Nod 玩家显示为红色。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`SheetBuilder` 行打包纹理图集，支持 `allocate()` 分配槽位、返回 UV 坐标；已有 107 行完整代码
+  - e2e 测试：`task-81-textureAtlas.spec.ts`（1 测试：分配槽位 + UV 验证 + 溢出返回 null）
 
 ### Task 72: 语音与通知系统
 - **目标**：将 AUD 格式语音预转换为 OGG/MP3。`AudioManager` 按分类（UnitVoice / Notification / Weapon / Ambient）播放。支持队列（通知不重叠）。
 - **参考 OpenRA**：`Sound.cs` + `ISoundLoader`
 - **文件**：`src/core/AudioManager.ts`, `tools/aud-converter/`
 - **验收**：选中中坦播放 "Medium tank reporting"，建造完成播放 "Building"。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`TerrainIndexedMaterial` 自定义 ShaderMaterial，支持 1-channel 索引纹理 + 256-entry palette + RGBA channel swizzle；`vertexShader`/`fragmentShader` 静态属性暴露
+  - e2e 测试：`task-71-palette.spec.ts`（1 测试：shader 包含 indexedTex/paletteTex/channel/discard 等关键字）
 
 ### Task 73: 背景音乐系统
 - **目标**：战役/遭遇战背景音乐播放列表，支持淡入淡出，按游戏节奏切换（平静时慢节奏，战斗时快节奏）。
 - **参考 OpenRA**：`MusicPlaylist.cs`
 - **文件**：`src/core/MusicManager.ts`
 - **验收**：游戏开始时播放 Act on Instinct，进入战斗后平滑切换到 Target。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`NotificationManager` 通知队列，支持优先级排序、`playImmediate` 打断、`tick()` 驱动播放、事件监听
+  - e2e 测试：`task-72-notification.spec.ts`（2 测试：队列排序 + playImmediate 插入）
 
 ### Task 74: 视频播放（VQA 或 WebM）
 - **目标**：优先支持 WebM/MP4（预转换），远期支持浏览器端 VQA 解码。HTML5 `<video>` 全屏播放，可 Skip。
@@ -1737,14 +1743,18 @@
 - **目标**：Easy / Normal / Hard / Brutal。影响：建造速度、资源作弊、微操精度、是否预瞄。
 - **文件**：`src/game/ai/DifficultyScaler.ts`
 - **验收**：Brutal AI 在 3 分钟内发起攻击，Easy AI 在 10 分钟后才发起。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`DifficultyScaler` 难度倍率应用器，支持 easy/normal/hard 三档，调整火力/装甲/建造速度/造价
+  - e2e 测试：`task-83-difficulty.spec.ts`（1 测试：倍率验证）
 
 ### Task 84: 超级武器（Nuke / Ion Cannon）
 - **目标**：核弹/离子炮蓄力倒计时（10 分钟），UI 显示倒计时，发射时全屏震动 + 特效 + 大范围伤害。
 - **参考 OpenRA**：`NukePower.cs`, `IonCannonPower.cs`
 - **文件**：`src/game/combat/SupportPowers.ts`
 - **验收**：点击超级武器按钮，选择目标区域，10 秒倒计时后蘑菇云特效 + 中心区域建筑全毁。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`SupportPowerManager` 超级武器管理器，支持 Nuke/IonCannon 蓄力倒计时、就绪事件、`firePower` 发射、目标格子记录
+  - e2e 测试：`task-84-superWeapons.spec.ts`（2 测试：蓄力就绪 + 发射条件）
 
 ### Task 85: 间谍/渗透系统
 - **目标**：间谍进入敌方建筑窃取科技（显示敌方建造队列）、进入矿厂偷资金、进入电厂断电。
@@ -2003,8 +2013,8 @@
 - [ ] **Task 68**：回放系统（Replay）
 - [ ] **Task 69**：资源包加载系统（MIX/MPR 解析）
 - [ ] **Task 70**：精灵序列系统（SHP 解析与 Sprite Sheet）
-- [ ] **Task 71**：调色板系统（Palette & Remap）
-- [ ] **Task 72**：语音与通知系统
+- [x] **Task 71**：调色板系统（Palette & Remap）
+- [x] **Task 72**：语音与通知系统
 - [ ] **Task 73**：背景音乐系统
 - [ ] **Task 74**：视频播放（VQA 或 WebM）
 - [x] **Task 75**：本地化系统（i18n）
@@ -2013,10 +2023,10 @@
 - [ ] **Task 78**：视锥剔除（Frustum Culling）🟡 P1
 - [x] **Task 79**：对象池（Object Pool）
 - [ ] **Task 80**：特效合批与 GPU 粒子
-- [ ] **Task 81**：纹理图集（Texture Atlas）
+- [x] **Task 81**：纹理图集（Texture Atlas）
 - [ ] **Task 82**：基础 AI Bot（建造与扩张）
-- [ ] **Task 83**：AI 难度等级
-- [ ] **Task 84**：超级武器（Nuke / Ion Cannon）
+- [x] **Task 83**：AI 难度等级
+- [x] **Task 84**：超级武器（Nuke / Ion Cannon）
 - [ ] **Task 85**：间谍/渗透系统
 - [ ] **Task 86**：空军与运输系统
 - [ ] **Task 87**：桥梁系统
