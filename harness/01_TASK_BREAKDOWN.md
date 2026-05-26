@@ -1154,11 +1154,11 @@
 
 ### Task 31: 战争迷雾（Fog of War）
 - **目标**：已探索区域显示地形但单位不可见；当前视野内显示一切；未探索区域为黑色。
-- **实现方案**：Babylon.js 使用 `ShaderMaterial` 或动态顶点颜色，在 TerrainGrid 上叠加迷雾纹理。
+- **实现方案**：Babylon.js `DynamicTexture`（64×64，1 像素/格子）+ 覆盖平面 Mesh，使用 `ImageData` 批量更新像素，通过 `StandardMaterial.useAlphaFromDiffuseTexture` 实现透明混合。
 - **文件**：`src/renderer/effects/FogOfWar.ts`
-- **Dummy 资源**：迷雾用黑白网格纹理，单位视野半径固定 10 格。
+- **Dummy 资源**：迷雾用程序化像素（Shroud=纯黑，Fog=半透明灰蓝，Visible=透明），单位视野半径固定 10 格。
 - **验收**：单位移动后，周围圆形区域变为"已探索"，离开后不显示敌方单位。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
 
 ---
 

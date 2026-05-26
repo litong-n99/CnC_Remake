@@ -29,6 +29,7 @@ import { WEAPON_DEFINITIONS } from './game/weapon/Weapon';
 import { DamageCalculator, WarheadType } from './game/combat/DamageCalculator';
 import { ResourceLayer } from './game/economy/ResourceLayer';
 import { GameLoop } from './game/GameLoop';
+import { FogOfWar } from './renderer/effects/FogOfWar';
 import { loadYamlRulesWithFallback } from './game/rules/YamlLoader';
 
 const bootstrap = async (): Promise<void> => {
@@ -456,6 +457,15 @@ const bootstrap = async (): Promise<void> => {
   const gameConsole = new GameConsole(scene, lighting, rtsCamera, terrain, placer, pathfinder, resourceLayer);
   gameConsole.install();
 
+  // ── Task 31: Fog of War ──
+  const fogOfWar = new FogOfWar({
+    width: terrain.getWidth(),
+    height: terrain.getHeight(),
+    sightRadius: 10,
+    heightOffset: 0.15,
+  });
+  fogOfWar.create(scene);
+
   // ── Task 140: OrderDispatcher 初始化 ──
   const orderDispatcher = OrderDispatcher.getInstance();
   orderDispatcher.register(new MoveHandler(pathfinder));
@@ -487,6 +497,12 @@ const bootstrap = async (): Promise<void> => {
     GameObjectManager.getInstance().update(dt);
     terrain.update(dt);
     BulletManager.getInstance().updateAll();
+
+    // ── Task 31: 更新战争迷雾（仅本地玩家 GDI 的视野）──
+    const gdiUnits = GameObjectManager.getInstance()
+      .getUnits()
+      .filter((u) => u.isAlive() && u.house.id === HouseType.GDI) as Unit[];
+    fogOfWar.update(gdiUnits.map((u) => ({ x: u.x, y: u.y, team: u.house.id })));
 
     // ── Overlap 检测（每秒一次）──
     overlapCheckAccumulator += dt;
@@ -535,6 +551,7 @@ const bootstrap = async (): Promise<void> => {
     placer.dispose();
     GameObjectManager.getInstance().dispose();
     houseManager.dispose();
+    fogOfWar.dispose();
     terrain.dispose();
     lighting.dispose();
     rtsCamera.dispose();
@@ -564,6 +581,7 @@ const bootstrap = async (): Promise<void> => {
   w.WarheadType = WarheadType;
   w.ArmorType = ArmorType;
   w._resourceLayer = resourceLayer;
+  w._fogOfWar = fogOfWar;
 
   // ── Verification ──
   const goManager = GameObjectManager.getInstance();
