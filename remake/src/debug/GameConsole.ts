@@ -25,6 +25,7 @@ import { InstancedUnitRenderer } from '../renderer/InstancedUnitRenderer';
 import { ParticleManager } from '../renderer/effects/ParticleManager';
 import { BaseBuilderAI } from '../game/ai/BaseBuilderAI';
 import { AttackAI } from '../game/ai/AttackAI';
+import { InfiltrationSystem } from '../game/unit/InfiltrationSystem';
 import { UnitCollision } from '../game/unit/UnitCollision';
 import { BlockedByActor } from '../game/unit/BlockedByActor';
 import { ActorMap } from '../game/world/ActorMap';
@@ -210,6 +211,10 @@ export class GameConsole {
       attackAI: this.attackAI.bind(this),
       attackAITick: this.attackAITick.bind(this),
       placeBuildingDirect: this.placeBuildingDirect.bind(this),
+      // Task 85: Infiltration
+      infiltrationStats: this.infiltrationStats.bind(this),
+      infiltrationCheck: this.infiltrationCheck.bind(this),
+      grantStolenTech: this.grantStolenTech.bind(this),
       // internal refs for e2e
       _scene: this.scene,
       _rtsCamera: this.rtsCamera,
@@ -2239,5 +2244,38 @@ export class GameConsole {
     if (!def) return { placed: false };
     const building = GameObjectFactory.createBuilding({ definition: def, house, x, y, scene: this.scene });
     return { placed: true, id: building.id };
+  }
+
+  // ── Task 85: Infiltration ──
+
+  /** Query infiltration system statistics. */
+  private infiltrationStats(): { infiltratedCount: number } {
+    const sys = InfiltrationSystem.getInstance();
+    return { infiltratedCount: sys.getInfiltratedCount() };
+  }
+
+  /** Manually trigger infiltration check on all spy units (for e2e). */
+  private infiltrationCheck(): { checked: number; results: Array<{ unitId: string; type: string; amount?: number }> } {
+    const sys = InfiltrationSystem.getInstance();
+    const results: Array<{ unitId: string; type: string; amount?: number }> = [];
+    let checked = 0;
+    for (const obj of GameObjectManager.getInstance().getUnits()) {
+      const unit = obj as Unit;
+      if (unit.definition.id !== 'INFANTRY_SPY') continue;
+      checked++;
+      const res = sys.checkInfiltration(unit);
+      if (res) {
+        results.push({ unitId: unit.id, type: res.type, amount: res.amount });
+      }
+    }
+    return { checked, results };
+  }
+
+  /** Grant stolen tech to a house. */
+  private grantStolenTech(houseName: string): { granted: boolean } {
+    const house = this.resolveHouse(houseName);
+    if (!house) return { granted: false };
+    InfiltrationSystem.getInstance().grantStolenTech(house);
+    return { granted: true };
   }
 }

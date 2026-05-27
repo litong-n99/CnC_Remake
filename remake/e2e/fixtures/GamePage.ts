@@ -563,6 +563,39 @@ export class GamePage {
     );
   }
 
+  // ── Task 85: Infiltration helpers ──
+
+  async infiltrationStats(): Promise<{ infiltratedCount: number }> {
+    return await this.page.evaluate(() => {
+      const cnc = (window as unknown as Record<string, (() => unknown) | undefined>).cnc;
+      return (cnc.infiltrationStats?.() as { infiltratedCount: number } | undefined) ?? { infiltratedCount: 0 };
+    });
+  }
+
+  async infiltrationCheck(): Promise<{
+    checked: number;
+    results: Array<{ unitId: string; type: string; amount?: number }>;
+  }> {
+    return await this.page.evaluate(() => {
+      const cnc = (window as unknown as Record<string, (() => unknown) | undefined>).cnc;
+      return (
+        (cnc.infiltrationCheck?.() as
+          | { checked: number; results: Array<{ unitId: string; type: string; amount?: number }> }
+          | undefined) ?? { checked: 0, results: [] }
+      );
+    });
+  }
+
+  async grantStolenTech(house: string): Promise<{ granted: boolean }> {
+    return await this.page.evaluate(
+      ({ h }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (cnc.grantStolenTech?.(h) as { granted: boolean } | undefined) ?? { granted: false };
+      },
+      { h: house }
+    );
+  }
+
   async attackAITick(dt = 1000): Promise<{ squadSize: number; isAttacking: boolean; scoutId: string | null }> {
     return await this.page.evaluate(
       ({ d }) => {

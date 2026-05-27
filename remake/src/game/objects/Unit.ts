@@ -7,6 +7,7 @@ import { UnitState } from '../unit/UnitState';
 import { UnitMeshFactory } from '../../renderer/meshes/UnitMeshFactory';
 import { ActorMap } from '../world/ActorMap';
 import { LocomotorCache } from '../world/LocomotorCache';
+import { InfiltrationSystem } from '../unit/InfiltrationSystem';
 
 /** 运行时单位实例。
  *
@@ -93,6 +94,11 @@ export class Unit extends GameObject {
     }
 
     this.lastOccupiedCells = currentCells.map((c) => ({ x: c.x, y: c.y }));
+
+    // Task 85: Infiltration check when spy enters enemy building
+    if (!this.isMoving) {
+      InfiltrationSystem.getInstance().checkInfiltration(this);
+    }
 
     if (this.mesh) {
       // 同步位置
