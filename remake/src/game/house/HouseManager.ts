@@ -1,5 +1,6 @@
 import { HouseRelationship } from './HouseRelationship';
 import { House, HouseType, type HouseOptions } from './House';
+import { BotRegistry, type BotController } from '../ai/BotController';
 
 /**
  * 单例管理器，持有对局中所有 {@link House} 实例。
@@ -11,6 +12,7 @@ export class HouseManager {
   private static instance: HouseManager | null = null;
 
   private houses = new Map<HouseType, House>();
+  private activeBots = new Map<HouseType, BotController>();
 
   private constructor() {}
 
@@ -35,6 +37,16 @@ export class HouseManager {
     }
     const house = new House(type, options);
     this.houses.set(type, house);
+
+    // 自动激活 Bot（非人类玩家）
+    if (house.controller !== 'human') {
+      const bot = BotRegistry.create(house.controller);
+      if (bot) {
+        bot.activate(house);
+        this.activeBots.set(type, bot);
+      }
+    }
+
     // 新阵营加入后，重新初始化所有阵营的外交关系
     this.reinitializeAllDiplomacy();
     return house;
@@ -54,6 +66,16 @@ export class HouseManager {
     return this.houses.get(type);
   }
 
+  /** 获取指定阵营的活跃 Bot（若为人类玩家则返回 null）。 */
+  getBot(type: HouseType): BotController | null {
+    return this.activeBots.get(type) ?? null;
+  }
+
+  /** 获取所有活跃 Bot。 */
+  getAllBots(): ReadonlyMap<HouseType, BotController> {
+    return this.activeBots;
+  }
+
   /** 获取所有已注册的阵营。 */
   getAllHouses(): House[] {
     return Array.from(this.houses.values());
@@ -67,6 +89,11 @@ export class HouseManager {
   /** 获取所有 AI 控制的阵营。 */
   getAiHouses(): House[] {
     return this.getAllHouses().filter((h) => !h.isHuman);
+  }
+
+  /** 获取所有观战者阵营。 */
+  getSpectators(): House[] {
+    return this.getAllHouses().filter((h) => h.isSpectating);
   }
 
   /** 获取所有活跃且未战败的阵营。 */
@@ -119,6 +146,10 @@ export class HouseManager {
 
   /** 释放单例引用。 */
   dispose(): void {
+    for (const bot of this.activeBots.values()) {
+      bot.deactivate();
+    }
+    this.activeBots.clear();
     this.clear();
     HouseManager.instance = null;
   }

@@ -17,6 +17,8 @@ export class Building extends GameObject {
   readonly definition: BuildingDefinition;
   readonly logic: BuildingController;
 
+  private powerRegistered = true;
+
   /** 当前建造进度（0–1），用于表现层缩放/透明度动画。 */
   constructionProgress = 0;
   /** 是否正在工作中（表现层同步）。 */
@@ -28,6 +30,27 @@ export class Building extends GameObject {
     super(id, GameObjectType.Building, definition.id, house, x, y, definition.strength);
     this.definition = definition;
     this.logic = new BuildingController(definition, house, x, y);
+    this.onPlaced();
+  }
+
+  /** 建筑放置完成时调用 — 自注册电力贡献。 */
+  onPlaced(): void {
+    this.powerRegistered = true;
+    this.house.housePower.registerBuilding(this.id, this.definition.power);
+  }
+
+  /** 建筑被出售时调用 — 注销电力贡献。 */
+  onSold(): void {
+    if (!this.powerRegistered) return;
+    this.powerRegistered = false;
+    this.house.housePower.unregisterBuilding(this.id);
+  }
+
+  /** 建筑被摧毁时调用 — 注销电力贡献。 */
+  onDestroyed(): void {
+    if (!this.powerRegistered) return;
+    this.powerRegistered = false;
+    this.house.housePower.unregisterBuilding(this.id);
   }
 
   createMesh(scene: Scene): void {
@@ -48,6 +71,12 @@ export class Building extends GameObject {
     if (this.logic.stateMachine.state === BuildingState.Construction) {
       this.mesh.scaling = Vector3.Zero();
     }
+  }
+
+  /** 释放资源并注销电力贡献。 */
+  override dispose(): void {
+    this.onDestroyed();
+    super.dispose();
   }
 
   /** 每帧同步 logic 状态到视觉表现。 */

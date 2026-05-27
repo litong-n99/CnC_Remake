@@ -56,6 +56,7 @@ import { SheetBuilder } from './renderer/terrain/SheetBuilder';
 import { TerrainIndexedMaterial } from './renderer/terrain/TerrainIndexedMaterial';
 import { NotificationManager } from './core/NotificationManager';
 import { DifficultyScaler } from './game/ai/DifficultyScaler';
+import { BotRegistry, RushBot, NormalBot, DefensiveBot } from './game/ai/BotController';
 import * as NetworkProtocol from './network/NetworkProtocol';
 import * as OrderSerializer from './network/OrderSerializer';
 import { RoomClient } from './network/RoomClient';
@@ -72,6 +73,7 @@ import { NeutralBuildingManager, NeutralBuilding } from './game/neutral/NeutralB
 import { WildlifeAI } from './game/neutral/WildlifeAI';
 import { SpatialTriggerSystem } from './game/world/TriggerSystem';
 import { ActorMap } from './game/world/ActorMap';
+import { SubCell, getSubCellOffset, INFANTRY_SUBCELLS } from './game/terrain/SubCell';
 import { SupportPowerManager } from './game/combat/SupportPowers';
 import { ActorPlacer } from './editor/ActorPlacer';
 import { SandboxMode } from './game/sandbox/SandboxMode';
@@ -276,6 +278,11 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   if (enableTask2313) {
     pathfinder.hierarchical.rebuild();
   }
+
+  // ── Bot Registry (Task 27.6) ──
+  BotRegistry.register('bot-rush', RushBot);
+  BotRegistry.register('bot-normal', NormalBot);
+  BotRegistry.register('bot-defensive', DefensiveBot);
 
   // ── Houses ──
   const houseManager = HouseManager.getInstance();
@@ -718,6 +725,9 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w.WildlifeAI = WildlifeAI;
   w.SpatialTriggerSystem = SpatialTriggerSystem;
   w.ActorMap = ActorMap;
+  w.SubCell = SubCell;
+  w._getSubCellOffset = getSubCellOffset;
+  w._INFANTRY_SUBCELLS = INFANTRY_SUBCELLS;
   w.WEAPON_DEFINITIONS = WEAPON_DEFINITIONS;
   w.DamageCalculator = DamageCalculator;
   w.WarheadType = WarheadType;
@@ -767,6 +777,10 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
     getSavedCampaignIds,
   };
   w._HouseType = HouseType;
+  w._BotRegistry = BotRegistry;
+  w._RushBot = RushBot;
+  w._NormalBot = NormalBot;
+  w._DefensiveBot = DefensiveBot;
   w._HouseRelationship = HouseRelationship;
   w._HouseDiplomacy = HouseDiplomacy;
   w._getRelationshipColor = getRelationshipColor;
@@ -782,6 +796,8 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._getAlliesOf = (type: HouseType) => HouseManager.getInstance().getAlliesOf(type);
   w._getEnemiesOf = (type: HouseType) => HouseManager.getInstance().getEnemiesOf(type);
   w._getRelationshipBetween = (a: HouseType, b: HouseType) => HouseManager.getInstance().getRelationship(a, b);
+  w._getBot = (type: HouseType) => HouseManager.getInstance().getBot(type);
+  w._getSpectators = () => HouseManager.getInstance().getSpectators();
   // ── Task 55/56/57: Scripting & Triggers ──
   w._ScriptRuntime = ScriptRuntime;
   w._TriggerSystem = TriggerSystem;

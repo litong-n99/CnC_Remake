@@ -6,6 +6,7 @@
  */
 
 import { HouseRelationship, HouseDiplomacy } from './HouseRelationship';
+import { HousePower } from './HousePower';
 
 /** 阵营类型 — 映射 C++ `HousesType` (`DEFINES.H:1171`)。 */
 export enum HouseType {
@@ -59,8 +60,12 @@ export const HOUSE_METADATA: Record<HouseType, { readonly name: string; readonly
 
 /** 创建 House 时的可选参数。 */
 export interface HouseOptions {
-  /** 是否由人类玩家控制。 */
+  /** 控制器类型：'human' | 'bot-rush' | 'bot-normal' | 'bot-defensive'。 */
+  controller?: string;
+  /** @deprecated 使用 `controller` 替代。 */
   isHuman?: boolean;
+  /** 是否为观战者。 */
+  isSpectating?: boolean;
   /** 初始资金。 */
   credits?: number;
   /** 初始泰伯利亚储量。 */
@@ -96,7 +101,10 @@ export class House {
 
   // ── 状态 ──
   isActive = true;
+  controller = 'human';
+  /** @deprecated 使用 `controller === 'human'` 替代。 */
   isHuman = false;
+  isSpectating = false;
   isDefeated = false;
   isStarted = false;
   isAlerted = false;
@@ -125,6 +133,7 @@ export class House {
   // ── 电力 ──
   power = 0;
   drain = 0;
+  readonly housePower: HousePower;
 
   // ── 生产设施计数 ──
   aircraftFactories = 0;
@@ -173,7 +182,9 @@ export class House {
     this.name = meta.name;
     this.color = meta.color;
 
-    this.isHuman = options.isHuman ?? false;
+    this.controller = options.controller ?? (options.isHuman ? 'human' : 'bot-normal');
+    this.isHuman = this.controller === 'human';
+    this.isSpectating = options.isSpectating ?? false;
     this.credits = options.credits ?? 0;
     this.tiberium = options.tiberium ?? 0;
     this.capacity = options.capacity ?? 0;
@@ -183,6 +194,7 @@ export class House {
     this.buildSpeedBias = options.buildSpeedBias ?? 1;
     this.costBias = options.costBias ?? 1;
     this.diplomacy = new HouseDiplomacy(id);
+    this.housePower = new HousePower(this);
   }
 
   /**
@@ -215,16 +227,6 @@ export class House {
     this.credits -= amount;
     this.creditsSpent += amount;
     return true;
-  }
-
-  /** 当前电力余额（正值 = 盈余，负值 = 不足）。 */
-  getPowerBalance(): number {
-    return this.power - this.drain;
-  }
-
-  /** 是否电力不足。 */
-  isLowPower(): boolean {
-    return this.drain > this.power;
   }
 
   // ── 单位管理 ──
@@ -309,7 +311,12 @@ export class House {
     return this.availableUnits.has(typeId);
   }
 
-  /** 更新电力（遍历所有建筑重新计算，由外部调用）。 */
+  /** 获取电力余额（产出 - 消耗）。 */
+  getPowerBalance(): number {
+    return this.housePower.getBalance();
+  }
+
+  /** @deprecated 由 HousePower 自动维护，不再需要外部调用。 */
   updatePower(production: number, consumption: number): void {
     this.power = production;
     this.drain = consumption;

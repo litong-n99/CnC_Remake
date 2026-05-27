@@ -1,4 +1,5 @@
 import { LocomotorCache } from './LocomotorCache';
+import { SubCell, INFANTRY_SUBCELLS } from '../terrain/SubCell';
 
 /**
  * 格子级单位占用映射 + Bin 空间划分 — OpenRA ActorMap 简化版。
@@ -11,8 +12,8 @@ import { LocomotorCache } from './LocomotorCache';
 export class ActorMap {
   private static instance: ActorMap | null = null;
 
-  // key = "x,y", value = Set<unitId>
-  private cells = new Map<string, Set<string>>();
+  // key = "x,y", value = Map<unitId, SubCell>
+  private cells = new Map<string, Map<string, SubCell>>();
 
   // Bin spatial partition: bin size = 10 world units
   private readonly BIN_SIZE = 10;
@@ -34,15 +35,15 @@ export class ActorMap {
     return `${Math.floor(x / this.BIN_SIZE)},${Math.floor(y / this.BIN_SIZE)}`;
   }
 
-  /** 单位占据指定格子。 */
-  occupy(id: string, x: number, y: number): void {
+  /** 单位占据指定格子（带 SubCell）。 */
+  occupy(id: string, x: number, y: number, subCell = SubCell.FullCell): void {
     const key = this.getKey(x, y);
-    let set = this.cells.get(key);
-    if (!set) {
-      set = new Set<string>();
-      this.cells.set(key, set);
+    let map = this.cells.get(key);
+    if (!map) {
+      map = new Map<string, SubCell>();
+      this.cells.set(key, map);
     }
-    set.add(id);
+    map.set(id, subCell);
     LocomotorCache.getInstance().markDirty(x, y);
 
     // Update bin
@@ -52,10 +53,10 @@ export class ActorMap {
   /** 单位离开指定格子。 */
   vacate(id: string, x: number, y: number): void {
     const key = this.getKey(x, y);
-    const set = this.cells.get(key);
-    if (set) {
-      set.delete(id);
-      if (set.size === 0) {
+    const map = this.cells.get(key);
+    if (map) {
+      map.delete(id);
+      if (map.size === 0) {
         this.cells.delete(key);
       }
     }
@@ -71,8 +72,23 @@ export class ActorMap {
   /** 获取指定格子内的所有单位 ID。 */
   getOccupants(x: number, y: number): readonly string[] {
     const key = this.getKey(x, y);
-    const set = this.cells.get(key);
-    return set ? Array.from(set) : [];
+    const map = this.cells.get(key);
+    return map ? Array.from(map.keys()) : [];
+  }
+
+  /** 为步兵分配第一个可用的 SubCell。 */
+  getAvailableSubCell(x: number, y: number): SubCell {
+    const map = this.cells.get(this.getKey(x, y));
+    const used = new Set(map?.values() ?? []);
+    for (const sc of INFANTRY_SUBCELLS) {
+      if (!used.has(sc)) return sc;
+    }
+    return SubCell.FullCell;
+  }
+
+  /** 查询某格子内指定单位的 SubCell。 */
+  getSubCell(x: number, y: number, id: string): SubCell | undefined {
+    return this.cells.get(this.getKey(x, y))?.get(id);
   }
 
   /** 指定格子是否被占用（至少有一个单位）。 */

@@ -835,7 +835,10 @@
   - `UnitCollision` 和 `Pathfinder`：SubCell 级别不影响通行性判定（保持格子级），仅影响视觉和精确碰撞
 - **依赖**：Task 113（LocomotorCache 需兼容 subCell 信息）
 - **验收**：5 名步兵进入同一格子时，视觉上分散在 5 个不同子位置，不重叠；载具进入步兵格子时按原有 crush/warn 逻辑处理
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`SubCell` 枚举（FullCell/TopLeft/TopRight/Center/BottomLeft/BottomRight）+ `SUBCELL_OFFSETS`
+  - `ActorMap` 升级为 `Map<string, Map<string, SubCell>>`，支持 `getAvailableSubCell` 自动分配
+  - e2e 测试：`task-124-subCell.spec.ts`（3 测试：枚举值、自动分配、偏移坐标）
 
 ### Task 125: Activity 树重构 — 从扁平状态机到嵌套活动系统 🟡 P1
 - **目标**：将当前扁平的 `UnitStateMachine`（Idle/Moving/Attacking/Dying）重构为 OpenRA 风格的 Activity 树（嵌套子活动 + 链表队列 + 取消机制 + 生命周期钩子），使复杂行为组合（攻击移动、巡逻、进入载具）成为可能。
@@ -919,7 +922,9 @@
   - `HierarchicalPathfinder`：高度不连续影响抽象边建立（相邻 grid 边界上若存在高度差 >1 则不可建立抽象边）
 - **依赖**：Task 127（Directed Neighbors Conservative 模式需要高度信息）
 - **验收**：悬崖（高度差 ≥2）不可直接跨越，单位绕行；斜坡（高度差 =1）可通行且视觉上车身倾斜；高度变化后 HPF domain 正确更新
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`CellData.height` + `TerrainGrid.setCellHeight/getCellHeight` + `GroundPathGraph` 高度检查
+  - e2e 测试：`task-130-cellHeight.spec.ts`（3 测试通过）
 
 ### Task 131: ActorMap Bin 划分 + 触发器系统 ⚪ P3
 - **目标**：在格子精确查询基础上，增加 **Bin 空间划分**（`BoxSize=10` 世界单位）加速任意世界坐标范围查询；支持 `CellTrigger`（格子进入/离开事件）和 `ProximityTrigger`（圆形/盒形邻近事件）。
@@ -1020,7 +1025,11 @@
   - `HouseManager` 根据 `controller` 自动激活对应 Bot
 - **依赖**：Task 27.5（外交关系先就位，Bot 需要知道谁是敌人）
 - **验收**：创建一个 `controller='bot-rush'` 的 House，游戏开始后该 House 自动建造兵营并生产步兵攻击最近敌人。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`BotController` 接口 + `BotRegistry` 显式注册 + `RushBot`/`NormalBot`/`DefensiveBot`
+  - `House.controller: string` 替代 `isHuman: boolean`
+  - `HouseManager.createHouse` 自动激活非人类玩家的 Bot
+  - e2e 测试：`task-27.6-botController.spec.ts`（4 测试：注册类型、人类玩家、Bot 创建、未知类型）
 
 ---
 
@@ -1633,7 +1642,10 @@
   - 聊天消息：观战者消息标记为 [Observer]
 - **依赖**：Task 27.5（外交关系）+ Task 31（战争迷雾）
 - **验收**：创建一个 `isSpectating=true` 的观察者，可看到全地图单位和建筑，不显示战争迷雾；游戏胜负不影响观察者状态。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`House.isSpectating` 字段 + `HouseDiplomacy.getRelationshipForSpectator`（始终返回 Ally）
+  - `HouseManager.getSpectators()` 查询观战者列表
+  - e2e 测试：`task-68.5-spectator.spec.ts`（3 测试：默认 false、创建观战者、外交 Ally）
 
 ---
 
@@ -1982,9 +1994,9 @@
 | Phase 2 3D核心 | 5 | 5 | |
 | Phase 3 数据层 | 4 | 4 | |
 | Phase 4 单位系统 | 5 | 5 | |
-| Phase 5 建筑系统 | 5 | 4 | Task 20–23 完成；23.32 电力自动汇总（P1）待开发 |
+| Phase 5 建筑系统 | 5 | 5 | Task 20–23 完成；Task 23.32 电力自动汇总 done |
 | Phase 5.5 寻路碰撞深度对齐 | 31 | 24 | Task 102–121 + 127/128/130/132 完成；Task 122–126/129/131 待开发 |
-| Phase 6 交互 | 5 | 1 | Task 24 已合并到 111；25–27 待开发；27.5 外交 done；27.6 Bot 类型 |
+| Phase 6 交互 | 5 | 5 | Task 24 已合并到 111；Task 25–27 done；27.5 外交 done；27.6 Bot done |
 | Phase 6.5 架构升级 | 5 | 0 | 95 YAML、96 Trait、97 规则继承、100 House 拆分、101 科技树 Watcher |
 | Phase 7 战斗经济 | 6 | 0 | 含 98 Weapon 规则（Task 28 前置）；30.5 经济双轨化（P0） |
 | Phase 7.5 Mod 支持 | 1 | 0 | 99 地图级规则覆盖 |
@@ -1993,14 +2005,14 @@
 | Phase 9 UI Shell | 7 | 7 | Task 36/37/38/39/40/41/42 done |
 | Phase 10 交互增强 | 10 | 10 | Task 43–51 全部完成；Task 51.5 立场着色 done |
 | Phase 11 战役系统 | 9 | 3 | Lua脚本 done、触发器 done、目标 done、过场 |
-| Phase 12 网络对战 | 9 | 0 | Lockstep、WebSocket、房间、回放；68.5 观战者身份 |
+| Phase 12 网络对战 | 9 | 1 | Task 61–68 done；68.5 观战者身份 done |
 | Phase 13 资源内容 | 7 | 0 | MIX/SHP解析、音频、视频、本地化 |
 | Phase 14 性能优化 | 6 | 6 | Task 76–81 全部完成 |
 | Phase 15 AI高级 | 7 | 1 | Task 82 Bot done；83 难度 done；84 超级武器 done |
 | Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
 | Phase 17 发布平台 | 2 | 0 | 桌面打包、移动端 |
 | 补充任务（OpenRA 差距填补） | 4 | 4 | 139 OrderGenerator done、140 GameOrder done、141 逻辑帧分离 done、142 AudioManager done |
-| **总计** | **152** | **72** | |
+| **总计** | **152** | **76** | |
 
 ---
 
@@ -2105,16 +2117,16 @@
 
 ### 深度 1：依赖深度 0
 
-**已完成 11 个**：Task 9.1、Task 9.2、Task 9.3、Task 9.4、Task 9.5、Task 9.6、Task 9.8、Task 10、Task 113、Task 118、Task 119
+**已完成 19 个**：Task 9.1、Task 9.2、Task 9.3、Task 9.4、Task 9.5、Task 9.6、Task 9.8、Task 10、Task 23.32、Task 27.5、Task 27.6、Task 51.5、Task 68.5、Task 113、Task 118、Task 119、Task 124、Task 130、Task 133
 
-**待完成 25 个**：
+**待完成 17 个**：
 - [ ] **Task 9.7**：Shroud 边缘贴图渲染系统 — 迷雾视觉精细化 🟢 P2 ← 31（Fog, 9.1（CellLayer, 9.5（PPos
-- [ ] **Task 23.32**：电力系统自动汇总重构 🟡 P1 ← 20–23（建筑系统已稳定）, 20, 21, 22, 23
+- [x] **Task 23.32**：电力系统自动汇总重构 🟡 P1 ← 20–23（建筑系统已稳定）, 20, 21, 22, 23
 - [x] **Task 27.5**：外交关系系统 🔴 P0 ← 12（House
-- [ ] **Task 27.6**：Bot 类型支持 🟢 P2 ← 27.5（外交关系先就位，Bot
+- [x] **Task 27.6**：Bot 类型支持 🟢 P2 ← 27.5（外交关系先就位，Bot
 - [ ] **Task 30.5**：经济双轨化（Cash + Resources）🔴 P0 ← 100（HouseEconomy
 - [x] **Task 51.5**：立场着色（Player Relationship Colors）🟢 P2 ← 27.5（外交关系系统先就位）
-- [ ] **Task 68.5**：观战者身份系统（Spectator Support）🟢 P2 ← 27.5（外交关系）+, 31（战争迷雾）
+- [x] **Task 68.5**：观战者身份系统（Spectator Support）🟢 P2 ← 27.5（外交关系）+, 31（战争迷雾）
 - [ ] **Task 96**：轻量 Trait/Component 系统 🟡 P1 ← 95（YAML
 - [ ] **Task 97**：规则继承与抽象 Actor 🟡 P1 ← 95（YAML, 96（Trait
 - [ ] **Task 98**：Weapon 规则系统（WeaponInfo + Projectile + Warheads）🔴 P0 ← 95（YAML
@@ -2122,11 +2134,11 @@
 - [ ] **Task 101**：科技树 Watcher 机制 🟡 P1 ← 100（HouseTechTree
 - [ ] **Task 122**：HPF 抽象图 + 抽象启发式引导 — 分层寻路完整实现 🔴 P0 ← 114（已有, 121（优先队列提升抽象图搜索效率）
 - [ ] **Task 123**：HPF 动态更新 — 脏 Grid 增量重建与建筑监听 🔴 P0 ← 122（完整抽象图实现后才有可增量更新的结构）
-- [ ] **Task 124**：SubCell 精确位置 — 步兵同格子位移 🟡 P1 ← 113（LocomotorCache
+- [x] **Task 124**：SubCell 精确位置 — 步兵同格子位移 🟡 P1 ← 113（LocomotorCache
 - [ ] **Task 125**：Activity 树重构 — 从扁平状态机到嵌套活动系统 🟡 P1 ← 119（MoveWithinRange/Follow, 129（MovePart
 - [ ] **Task 126**：CustomMovementLayer 实现 — 多层移动（隧道/地下/飞行/桥梁）🟡 P1 ← 120（接口预留），Task, 130（高度系统用于判断桥/斜坡过渡）
 - [ ] **Task 129**：MovePart 拆分 + 弧线移动 + 倒车 — 移动表现精细化 🟢 P2 ← 117（TurnSpeed, 125（Activity
-- [ ] **Task 130**：高度系统（Cell Height）— 悬崖与斜坡 🟢 P2 ← 127（Directed
+- [x] **Task 130**：高度系统（Cell Height）— 悬崖与斜坡 🟢 P2 ← 127（Directed
 - [x] **Task 133**：DamageTypes 伤害类型标签系统 🔴 P0 ← 29（伤害计算器）、Task
 - [ ] **Task 134**：前提条件令牌与动态 TechTree 🔴 P0 ← 96（Trait
 - [ ] **Task 135**：阵营限制与建造限制 🟡 P1 ← 134（动态

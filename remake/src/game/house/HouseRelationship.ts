@@ -53,6 +53,14 @@ export class HouseDiplomacy {
     return this.relationships.get(other) ?? (this.defaultEnemy ? HouseRelationship.Enemy : HouseRelationship.Neutral);
   }
 
+  /**
+   * 获取对指定阵营的关系（观战者模式）。
+   * 观战者视为所有活跃玩家的盟友。
+   */
+  getRelationshipForSpectator(_other: HouseType): HouseRelationship {
+    return HouseRelationship.Ally;
+  }
+
   /** 是否与指定阵营为盟友。 */
   isAlliedWith(other: HouseType): boolean {
     return this.getRelationship(other) === HouseRelationship.Ally;

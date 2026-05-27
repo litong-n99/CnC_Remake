@@ -35,6 +35,7 @@ export class BuildingTools {
     const refund = Math.floor(building.definition.cost * 0.5);
     building.house.addCredits(refund);
     building.house.removeBuilding(building.definition.id);
+    building.onSold();
     manager.unregister(buildingId);
 
     return { success: true, refund, message: `Sold ${building.definition.name} for $${refund}` };
