@@ -1781,8 +1781,21 @@
 - **目标**：AI 自动建造基地（电厂→兵营→矿厂→战车工厂→防御），派出侦察单位，发现玩家后组织攻击。
 - **参考 OpenRA**：`OpenRA.Mods.Common/Traits/BotModules/`
 - **文件**：`src/game/ai/BaseBuilderAI.ts`, `src/game/ai/AttackAI.ts`
+- **关键变更**：
+  - `BaseBuilderAI`：管理建造队列，按预设顺序自动建造建筑
+    - 默认建造顺序：电厂→矿厂→兵营→战车工厂→雷达→电厂→战车工厂→炮塔×2
+    - `tick()` 驱动：队列空闲时启动下一建筑，就绪时螺旋搜索合法放置位置
+    - 集成 `ConstructionQueue` + `TechTree.canBuildBuilding`
+  - `AttackAI`：收集空闲战斗单位组成攻击小队
+    - `gatherSquad()`：收集非采集/非MCV的 idle 战斗单位
+    - `launchAttack()`：达到阈值（默认 5 单位）后向敌方基地移动
+    - `updateScout()`：派遣侦察单位探查敌方位置
+  - `GameConsole` 暴露 `baseBuilderAI` / `baseBuilderTick` / `attackAI` / `attackAITick` / `placeBuildingDirect`
 - **验收**：AI 在 5 分钟内建成完整基地并派出第一波攻击部队。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`BaseBuilderAI` + `AttackAI`
+  - `GameConsole` 控制命令
+  - e2e 测试：`task-82-aiBot.spec.ts`（4 测试：初始化、队列建造、放置完成、攻击小队收集）
 
 ### Task 83: AI 难度等级
 - **目标**：Easy / Normal / Hard / Brutal。影响：建造速度、资源作弊、微操精度、是否预瞄。
@@ -1985,11 +1998,11 @@
 | Phase 12 网络对战 | 9 | 0 | Lockstep、WebSocket、房间、回放；68.5 观战者身份 |
 | Phase 13 资源内容 | 7 | 0 | MIX/SHP解析、音频、视频、本地化 |
 | Phase 14 性能优化 | 6 | 6 | Task 76–81 全部完成 |
-| Phase 15 AI高级 | 7 | 0 | Bot、超级武器、空军、桥梁 |
+| Phase 15 AI高级 | 7 | 1 | Task 82 Bot done；83 难度 done；84 超级武器 done |
 | Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
 | Phase 17 发布平台 | 3 | 0 | 桌面打包、移动端、Steam |
 | 补充任务（OpenRA 差距填补） | 4 | 4 | 139 OrderGenerator done、140 GameOrder done、141 逻辑帧分离 done、142 AudioManager done |
-| **总计** | **153** | **71** | |
+| **总计** | **153** | **72** | |
 
 ---
 
@@ -2069,7 +2082,7 @@
 - [x] **Task 79**：对象池（Object Pool）
 - [x] **Task 80**：特效合批与 GPU 粒子
 - [x] **Task 81**：纹理图集（Texture Atlas）
-- [ ] **Task 82**：基础 AI Bot（建造与扩张）
+- [x] **Task 82**：基础 AI Bot（建造与扩张）
 - [x] **Task 83**：AI 难度等级
 - [x] **Task 84**：超级武器（Nuke / Ion Cannon）
 - [ ] **Task 85**：间谍/渗透系统

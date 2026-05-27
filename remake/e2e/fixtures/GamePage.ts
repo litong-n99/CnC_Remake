@@ -510,6 +510,100 @@ export class GamePage {
     );
   }
 
+  // ── Task 82: AI Bot helpers ──
+
+  async baseBuilderAI(
+    house = 'nod'
+  ): Promise<{ created: boolean; status: string; buildIndex: number; placedCount: number }> {
+    return await this.page.evaluate(
+      ({ h }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (
+          (cnc.baseBuilderAI?.(h) as { created: boolean; status: string; buildIndex: number; placedCount: number }) ?? {
+            created: false,
+            status: 'error',
+            buildIndex: 0,
+            placedCount: 0,
+          }
+        );
+      },
+      { h: house }
+    );
+  }
+
+  async baseBuilderTick(dt = 1000): Promise<{ status: string; buildIndex: number; placedCount: number }> {
+    return await this.page.evaluate(
+      ({ d }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (
+          (cnc.baseBuilderTick?.(d) as { status: string; buildIndex: number; placedCount: number }) ?? {
+            status: 'error',
+            buildIndex: 0,
+            placedCount: 0,
+          }
+        );
+      },
+      { d: dt }
+    );
+  }
+
+  async attackAI(house = 'nod'): Promise<{ created: boolean; squadSize: number; isAttacking: boolean }> {
+    return await this.page.evaluate(
+      ({ h }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (
+          (cnc.attackAI?.(h) as { created: boolean; squadSize: number; isAttacking: boolean }) ?? {
+            created: false,
+            squadSize: 0,
+            isAttacking: false,
+          }
+        );
+      },
+      { h: house }
+    );
+  }
+
+  async attackAITick(dt = 1000): Promise<{ squadSize: number; isAttacking: boolean; scoutId: string | null }> {
+    return await this.page.evaluate(
+      ({ d }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (
+          (cnc.attackAITick?.(d) as { squadSize: number; isAttacking: boolean; scoutId: string | null }) ?? {
+            squadSize: 0,
+            isAttacking: false,
+            scoutId: null,
+          }
+        );
+      },
+      { d: dt }
+    );
+  }
+
+  async placeBuildingDirect(
+    type: string,
+    house: string,
+    x: number,
+    y: number
+  ): Promise<{ placed: boolean; id?: string }> {
+    return await this.page.evaluate(
+      ({ t, h, cx, cy }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (cnc.placeBuildingDirect?.(t, h, cx, cy) as { placed: boolean; id?: string }) ?? { placed: false };
+      },
+      { t: type, h: house, cx: x, cy: y }
+    );
+  }
+
+  async money(house: string, amount: number): Promise<void> {
+    await this.page.evaluate(
+      ({ h, a }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        cnc.money?.(h, a);
+      },
+      { h: house, a: amount }
+    );
+  }
+
   // ── Task 80: Particle Effects helpers ──
 
   async spawnExplosion(worldX = 0, worldY = 0.5, worldZ = 0): Promise<{ spawned: boolean }> {

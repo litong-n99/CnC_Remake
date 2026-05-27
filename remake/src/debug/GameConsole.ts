@@ -23,6 +23,8 @@ import { DesktopAdapter } from '../core/DesktopAdapter';
 import { TouchInputManager } from '../core/TouchInputManager';
 import { InstancedUnitRenderer } from '../renderer/InstancedUnitRenderer';
 import { ParticleManager } from '../renderer/effects/ParticleManager';
+import { BaseBuilderAI } from '../game/ai/BaseBuilderAI';
+import { AttackAI } from '../game/ai/AttackAI';
 import { UnitCollision } from '../game/unit/UnitCollision';
 import { BlockedByActor } from '../game/unit/BlockedByActor';
 import { ActorMap } from '../game/world/ActorMap';
@@ -202,6 +204,12 @@ export class GameConsole {
       // Task 80: Particle Effects
       spawnExplosion: this.spawnExplosion.bind(this),
       particleStats: this.particleStats.bind(this),
+      // Task 82: AI Bot
+      baseBuilderAI: this.baseBuilderAI.bind(this),
+      baseBuilderTick: this.baseBuilderTick.bind(this),
+      attackAI: this.attackAI.bind(this),
+      attackAITick: this.attackAITick.bind(this),
+      placeBuildingDirect: this.placeBuildingDirect.bind(this),
       // internal refs for e2e
       _scene: this.scene,
       _rtsCamera: this.rtsCamera,
@@ -2152,5 +2160,84 @@ export class GameConsole {
       activeCount: pm.getActiveCount(),
       poolSize: pm.getPoolSize(),
     };
+  }
+
+  // ── Task 82: AI Bot ──
+
+  private baseBuilderAIInstance: BaseBuilderAI | null = null;
+  private attackAIInstance: AttackAI | null = null;
+
+  /** Create or query the BaseBuilderAI for a house. */
+  private baseBuilderAI(houseName = 'nod'): {
+    created: boolean;
+    status: string;
+    buildIndex: number;
+    placedCount: number;
+  } {
+    const house = this.resolveHouse(houseName);
+    if (!house) {
+      return { created: false, status: 'unknown-house', buildIndex: 0, placedCount: 0 };
+    }
+    if (!this.baseBuilderAIInstance) {
+      this.baseBuilderAIInstance = new BaseBuilderAI(house, this.terrain, this.scene);
+    }
+    return {
+      created: true,
+      status: this.baseBuilderAIInstance.getQueueStatus(),
+      buildIndex: this.baseBuilderAIInstance.getBuildIndex(),
+      placedCount: this.baseBuilderAIInstance.getPlacedCount(),
+    };
+  }
+
+  /** Manually tick the BaseBuilderAI (for e2e). */
+  private baseBuilderTick(dt = 1000): { status: string; buildIndex: number; placedCount: number } {
+    if (!this.baseBuilderAIInstance) {
+      return { status: 'not-created', buildIndex: 0, placedCount: 0 };
+    }
+    this.baseBuilderAIInstance.tick(dt);
+    return {
+      status: this.baseBuilderAIInstance.getQueueStatus(),
+      buildIndex: this.baseBuilderAIInstance.getBuildIndex(),
+      placedCount: this.baseBuilderAIInstance.getPlacedCount(),
+    };
+  }
+
+  /** Create or query the AttackAI for a house. */
+  private attackAI(houseName = 'nod'): { created: boolean; squadSize: number; isAttacking: boolean } {
+    const house = this.resolveHouse(houseName);
+    if (!house) {
+      return { created: false, squadSize: 0, isAttacking: false };
+    }
+    if (!this.attackAIInstance && this.pathfinder) {
+      this.attackAIInstance = new AttackAI(house, this.pathfinder);
+    }
+    return {
+      created: this.attackAIInstance !== null,
+      squadSize: this.attackAIInstance?.getSquadSize() ?? 0,
+      isAttacking: this.attackAIInstance?.isAttacking() ?? false,
+    };
+  }
+
+  /** Manually tick the AttackAI (for e2e). */
+  private attackAITick(_dt = 1000): { squadSize: number; isAttacking: boolean; scoutId: string | null } {
+    if (!this.attackAIInstance) {
+      return { squadSize: 0, isAttacking: false, scoutId: null };
+    }
+    this.attackAIInstance.tick(_dt);
+    return {
+      squadSize: this.attackAIInstance.getSquadSize(),
+      isAttacking: this.attackAIInstance.isAttacking(),
+      scoutId: this.attackAIInstance.getScoutId(),
+    };
+  }
+
+  /** Directly place a building at a cell (bypasses construction queue; for e2e setup). */
+  private placeBuildingDirect(type: string, houseName: string, x: number, y: number): { placed: boolean; id?: string } {
+    const house = this.resolveHouse(houseName);
+    if (!house) return { placed: false };
+    const def = BUILDING_DEFINITIONS[type];
+    if (!def) return { placed: false };
+    const building = GameObjectFactory.createBuilding({ definition: def, house, x, y, scene: this.scene });
+    return { placed: true, id: building.id };
   }
 }
