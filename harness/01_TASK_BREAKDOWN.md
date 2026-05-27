@@ -1704,8 +1704,19 @@
 ### Task 76: 地形 LOD 与动态细分
 - **目标**：远距离地形降低顶点密度，近景保持高细节。Babylon.js `LOD` 系统或自定义 shader。
 - **文件**：`src/game/terrain/TerrainLOD.ts`
+- **关键变更**：
+  - `TerrainLOD` 管理器：为单一地形 mesh 生成多级别简化 mesh
+  - LOD1 (`step=2`)：每 2×2 格子合并为 1 个 quad，顶点数降至 25%
+  - LOD2 (`step=4`)：每 4×4 格子合并为 1 个 quad，顶点数降至 ~6.25%
+  - 使用 Babylon.js `addLODLevel(distance, lodMesh)` 自动根据相机距离切换
+  - 远距离 LOD mesh 使用覆盖区域中心格子的颜色和高度
+  - `GameConsole` 暴露 `terrainLOD()` 命令用于查询/启用 LOD
+  - 默认在场景初始化时自动启用
 - **验收**：相机 zoom 到 100 时，地形 mesh 顶点数减少 50% 以上，视觉无明显差异。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`TerrainLOD` 类 + `TerrainGrid.enableLOD()` 集成
+  - `GameConsole` 暴露 `terrainLOD` 查询命令
+  - e2e 测试：`task-76-terrainLOD.spec.ts`（4 测试：默认启用、LOD1 顶点数、LOD2 顶点数、zoom=100 切换验证）
 
 ### Task 77: 单位实例化渲染（InstancedMesh）🟡 P1
 - **目标**：相同模型（如大量步兵、坦克）使用 `InstancedMesh` 批量渲染，减少 draw call。
@@ -1963,12 +1974,12 @@
 | Phase 11 战役系统 | 9 | 3 | Lua脚本 done、触发器 done、目标 done、过场 |
 | Phase 12 网络对战 | 9 | 0 | Lockstep、WebSocket、房间、回放；68.5 观战者身份 |
 | Phase 13 资源内容 | 7 | 0 | MIX/SHP解析、音频、视频、本地化 |
-| Phase 14 性能优化 | 6 | 1 | LOD、实例化、视锥剔除、对象池 |
+| Phase 14 性能优化 | 6 | 5 | Task 76 LOD done、77 实例化 done、78 视锥剔除 done、79 对象池 done、81 纹理图集 done |
 | Phase 15 AI高级 | 7 | 0 | Bot、超级武器、空军、桥梁 |
 | Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
 | Phase 17 发布平台 | 3 | 0 | 桌面打包、移动端、Steam |
 | 补充任务（OpenRA 差距填补） | 4 | 4 | 139 OrderGenerator done、140 GameOrder done、141 逻辑帧分离 done、142 AudioManager done |
-| **总计** | **153** | **69** | |
+| **总计** | **153** | **70** | |
 
 ---
 
@@ -2042,7 +2053,7 @@
 - [x] **Task 73**：背景音乐系统
 - [x] **Task 74**：视频播放（VQA 或 WebM）
 - [x] **Task 75**：本地化系统（i18n）
-- [ ] **Task 76**：地形 LOD 与动态细分
+- [x] **Task 76**：地形 LOD 与动态细分
 - [x] **Task 77**：单位实例化渲染（InstancedMesh）🟡 P1
 - [x] **Task 78**：视锥剔除（Frustum Culling）🟡 P1
 - [x] **Task 79**：对象池（Object Pool）

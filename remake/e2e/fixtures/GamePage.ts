@@ -472,4 +472,60 @@ export class GamePage {
       return (cnc.touchDevice?.() as Record<string, unknown> | undefined) ?? { error: 'touchDevice not available' };
     });
   }
+
+  // ── Task 76: Terrain LOD helpers ──
+
+  async terrainLOD(): Promise<{
+    enabled: boolean;
+    lodCount: number;
+    lodVertices: number[];
+    originalVertices: number;
+  }> {
+    return await this.page.evaluate(() => {
+      const cnc = (window as unknown as Record<string, (() => unknown) | undefined>).cnc;
+      return (
+        (cnc.terrainLOD?.() as
+          | {
+              enabled: boolean;
+              lodCount: number;
+              lodVertices: number[];
+              originalVertices: number;
+            }
+          | undefined) ?? { enabled: false, lodCount: 0, lodVertices: [], originalVertices: 0 }
+      );
+    });
+  }
+
+  /** Set camera zoom radius directly (for LOD e2e tests). */
+  async setCameraZoom(radius: number): Promise<void> {
+    await this.page.evaluate(
+      ({ r }) => {
+        const rts = (window as unknown as Record<string, unknown>).cnc._rtsCamera as {
+          getCamera(): { radius: number };
+        };
+        rts.getCamera().radius = r;
+        (rts as unknown as { targetZoom: number }).targetZoom = r;
+      },
+      { r: radius }
+    );
+  }
+
+  /** Get the active terrain mesh vertex count (accounts for LOD switching). */
+  async getActiveTerrainVertices(): Promise<number> {
+    return await this.page.evaluate(() => {
+      const scene = (window as unknown as Record<string, unknown>).cnc._scene as {
+        activeCamera: unknown;
+        getMeshByName(name: string): {
+          getTotalVertices(): number;
+          getLOD(camera: unknown): { getTotalVertices(): number } | null;
+        } | null;
+      };
+      const terrain = scene.getMeshByName('terrain');
+      if (!terrain) return 0;
+      const camera = scene.activeCamera;
+      if (!camera) return terrain.getTotalVertices();
+      const lodMesh = terrain.getLOD(camera);
+      return lodMesh ? lodMesh.getTotalVertices() : terrain.getTotalVertices();
+    });
+  }
 }

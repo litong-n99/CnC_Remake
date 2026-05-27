@@ -136,6 +136,7 @@ export class GameConsole {
       tickResources: this.tickResources.bind(this),
       enableTextureMode: this.enableTextureMode.bind(this),
       terrainMaterial: this.terrainMaterial.bind(this),
+      terrainLOD: this.terrainLOD.bind(this),
       waterTime: this.waterTime.bind(this),
       splatPixel: this.splatPixel.bind(this),
       pendingSplatUpdates: this.pendingSplatUpdates.bind(this),
@@ -197,6 +198,9 @@ export class GameConsole {
       instancedRegister: this.instancedRegister.bind(this),
       instancedStats: this.instancedStats.bind(this),
       instancedDispose: this.instancedDispose.bind(this),
+      // internal refs for e2e
+      _scene: this.scene,
+      _rtsCamera: this.rtsCamera,
     };
     // eslint-disable-next-line no-console
     console.info('GameConsole installed. Type cnc.help() for available commands.');
@@ -1595,6 +1599,34 @@ export class GameConsole {
     if (!mesh) return 'no-mesh';
     if (!mesh.material) return 'no-material';
     return mesh.material.getClassName();
+  }
+
+  /** Enable or query terrain LOD status (Task 76). */
+  private terrainLOD(enable?: boolean): {
+    enabled: boolean;
+    lodCount: number;
+    lodVertices: number[];
+    originalVertices: number;
+  } {
+    if (enable === true && !this.terrain.getLOD()) {
+      this.terrain.enableLOD(this.scene);
+    }
+    const lod = this.terrain.getLOD();
+    const mesh = this.scene.getMeshByName('terrain');
+    const originalVertices = mesh ? mesh.getTotalVertices() : 0;
+    const lodVertices: number[] = [];
+    if (lod) {
+      const count = lod.getLODCount();
+      for (let i = 0; i < count; i++) {
+        lodVertices.push(lod.getLODVertexCount(i));
+      }
+    }
+    return {
+      enabled: lod !== null,
+      lodCount: lod?.getLODCount() ?? 0,
+      lodVertices,
+      originalVertices,
+    };
   }
 
   /** Return current water animation time (Task 10.1). */

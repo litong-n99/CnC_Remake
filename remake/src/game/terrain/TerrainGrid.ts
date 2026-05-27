@@ -9,6 +9,7 @@ import { MapGrid } from './MapGrid';
 import type { TileSet, TerrainTile } from './TileSet';
 import { DefaultTileCache } from './DefaultTileCache';
 import { TerrainDecalLayer } from '../../renderer/terrain/TerrainDecalLayer';
+import { TerrainLOD } from './TerrainLOD';
 
 /**
  * Terrain types translated from the original C&C `LandType` enum
@@ -63,6 +64,7 @@ export class TerrainGrid {
   private dirtySplatCells = new Set<string>();
   private splatFlushPending = false;
   private decalLayer: TerrainDecalLayer | null = null;
+  private terrainLOD: TerrainLOD | null = null;
 
   /** World-unit height per elevation level (Task 130). */
   static readonly HEIGHT_SCALE = 0.5;
@@ -695,7 +697,22 @@ export class TerrainGrid {
     throw new Error('TerrainGrid has no mesh and no scene reference');
   }
 
-  /** Dispose terrain mesh, grid lines, and material. */
+  /** Enable LOD for the terrain mesh. Creates simplified meshes for distant views. */
+  enableLOD(scene: Scene): void {
+    if (this.terrainLOD || !this.terrainMesh) return;
+    this.terrainLOD = new TerrainLOD(scene, this.cellLayer, (type) => this.getColorForLandType(type));
+    this.terrainLOD.setupLODs(this.terrainMesh, [
+      { step: 2, distance: 40 },
+      { step: 4, distance: 70 },
+    ]);
+  }
+
+  /** Returns the LOD manager (for e2e / debug). */
+  getLOD(): TerrainLOD | null {
+    return this.terrainLOD;
+  }
+
+  /** Dispose terrain mesh, grid lines, material, and LOD meshes. */
   dispose(): void {
     this.terrainMesh?.dispose();
     this.terrainMesh = null;
@@ -706,5 +723,7 @@ export class TerrainGrid {
     this.splatMap?.dispose();
     this.splatMap2?.dispose();
     this.decalLayer?.dispose();
+    this.terrainLOD?.dispose();
+    this.terrainLOD = null;
   }
 }

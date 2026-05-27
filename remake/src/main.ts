@@ -114,6 +114,7 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
 
   // ── Terrain Grid ──
   const terrain = new TerrainGrid(scene, 64, 64);
+  terrain.enableLOD(scene);
 
   // ── Load map from JSON ──
   // Vite base path: import.meta.env.BASE_URL handles both dev (/CnC_Remake/) and prod
