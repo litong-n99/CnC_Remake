@@ -78,6 +78,11 @@ import { SupportPowerManager } from './game/combat/SupportPowers';
 import { ActorPlacer } from './editor/ActorPlacer';
 import { SandboxMode } from './game/sandbox/SandboxMode';
 import { DesktopAdapter } from './core/DesktopAdapter';
+import { Actor } from './game/actors/Actor';
+import { TraitRegistry, Trait } from './game/traits/Trait';
+import { HealthTrait } from './game/traits/HealthTrait';
+import { RenderTrait } from './game/traits/RenderTrait';
+import { ArmamentTrait } from './game/traits/ArmamentTrait';
 import { TouchInputManager } from './core/TouchInputManager';
 import { MusicPlayer } from './core/MusicPlayer';
 import { VideoPlayer } from './core/VideoPlayer';
@@ -807,6 +812,15 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._ActorGlobal = ActorGlobal;
   w._MediaGlobal = MediaGlobal;
   w._UIGlobal = UIGlobal;
+
+  // ── Task 96: Trait / Actor System ──
+  w._Actor = Actor;
+
+  w._TraitRegistry = TraitRegistry;
+  w._Trait = Trait;
+  w._HealthTrait = HealthTrait;
+  w._RenderTrait = RenderTrait;
+  w._ArmamentTrait = ArmamentTrait;
 
   // ── Verification ──
   const goManager = GameObjectManager.getInstance();

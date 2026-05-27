@@ -1,12 +1,23 @@
 /**
- * House (阵营 / 玩家) 数据层，翻译自 `origin/REDALERT/HOUSE.CPP`。
+ * House (阵营 / 玩家) — 轻量容器 — Task 100
  *
- * 每个 House 实例代表一局游戏中的一个阵营（玩家、AI 或中立），
- * 独立管理资金、电力、已建造单位列表与难度修正。
+ * 将原有 God Class 拆分为组合式子模块：
+ * - HouseEconomy: 资金、矿石、容量
+ * - HousePower: 电力（Task 23.32）
+ * - HouseProduction: 工厂计数 + 单位计数 + add/remove
+ * - HouseStatistics: 摧毁/建造/击杀统计
+ * - HouseTechTree: 可建造类型集合（Task 101 升级为 Watcher）
+ * - HouseDiplomacy: 外交关系（Task 27.5）
  */
 
 import { HouseRelationship, HouseDiplomacy } from './HouseRelationship';
 import { HousePower } from './HousePower';
+import { HouseEconomy } from './HouseEconomy';
+import { HouseProduction } from './HouseProduction';
+import { HouseStatistics } from './HouseStatistics';
+import { HouseTechTree } from './HouseTechTree';
+
+export { HouseRelationship, HouseDiplomacy };
 
 /** 阵营类型 — 映射 C++ `HousesType` (`DEFINES.H:1171`)。 */
 export enum HouseType {
@@ -33,7 +44,6 @@ export enum HouseType {
   Multi8 = 19,
 }
 
-/** 阵营名称与颜色映射（与 C++ 侧栏配色一致）。 */
 export const HOUSE_METADATA: Record<HouseType, { readonly name: string; readonly color: string }> = {
   [HouseType.None]: { name: 'None', color: '#888888' },
   [HouseType.Spain]: { name: 'Spain', color: '#FFD700' },
@@ -58,48 +68,36 @@ export const HOUSE_METADATA: Record<HouseType, { readonly name: string; readonly
   [HouseType.Multi8]: { name: 'Player 8', color: '#9370DB' },
 };
 
-/** 创建 House 时的可选参数。 */
 export interface HouseOptions {
-  /** 控制器类型：'human' | 'bot-rush' | 'bot-normal' | 'bot-defensive'。 */
   controller?: string;
   /** @deprecated 使用 `controller` 替代。 */
   isHuman?: boolean;
-  /** 是否为观战者。 */
   isSpectating?: boolean;
-  /** 初始资金。 */
   credits?: number;
-  /** 初始泰伯利亚储量。 */
   tiberium?: number;
-  /** 存储容量上限。 */
   capacity?: number;
-  /** 所属队伍（同队默认为盟友）。 */
   team?: number;
-  /** 难度修正 — 火力倍率。 */
   firepowerBias?: number;
-  /** 难度修正 — 装甲倍率。 */
   armorBias?: number;
-  /** 难度修正 — 建造速度倍率。 */
   buildSpeedBias?: number;
-  /** 难度修正 — 造价倍率。 */
   costBias?: number;
 }
 
-/**
- * 单个阵营实例。
- *
- * 映射 C++ `HouseClass` 的核心字段：
- * - 经济：`Credits`, `Tiberium`, `Capacity`, `CreditsSpent`, `HarvestedCredits`
- * - 电力：`Power`, `Drain`
- * - 计数：`CurUnits`, `CurBuildings`, `CurInfantry`, `CurVessels`, `CurAircraft`
- * - 设施：`UnitFactories`, `BuildingFactories`, `InfantryFactories`, `AircraftFactories`, `VesselFactories`
- * - 修正：`FirepowerBias`, `ArmorBias`, `BuildSpeedBias`, `CostBias`
- */
+/** 轻量容器：保留 id/name/color/状态标志，所有数据委托给子模块。 */
 export class House {
   readonly id: HouseType;
   readonly name: string;
   readonly color: string;
 
-  // ── 状态 ──
+  // ── 子模块 ──
+  readonly economy: HouseEconomy;
+  readonly production: HouseProduction;
+  readonly statistics: HouseStatistics;
+  readonly techTree: HouseTechTree;
+  readonly diplomacy: HouseDiplomacy;
+  private readonly _power: HousePower;
+
+  // ── 状态标志 ──
   isActive = true;
   controller = 'human';
   /** @deprecated 使用 `controller === 'human'` 替代。 */
@@ -117,37 +115,7 @@ export class House {
   isThieved = false;
   isGPSActive = false;
 
-  // ── 外交关系 ──
-  readonly diplomacy: HouseDiplomacy;
-  /** 所属队伍编号（同队默认盟友）。 */
   team?: number;
-
-  // ── 经济 ──
-  credits = 0;
-  tiberium = 0;
-  capacity = 0;
-  creditsSpent = 0;
-  harvestedCredits = 0;
-  stolenBuildingsCredits = 0;
-
-  // ── 电力 ──
-  power = 0;
-  drain = 0;
-  readonly housePower: HousePower;
-
-  // ── 生产设施计数 ──
-  aircraftFactories = 0;
-  infantryFactories = 0;
-  unitFactories = 0;
-  vesselFactories = 0;
-  buildingFactories = 0;
-
-  // ── 当前单位计数 ──
-  curUnits = 0;
-  curBuildings = 0;
-  curInfantry = 0;
-  curVessels = 0;
-  curAircraft = 0;
 
   // ── 难度修正 ──
   firepowerBias = 1;
@@ -160,165 +128,268 @@ export class House {
   repairDelay = 1;
   buildDelay = 0;
 
-  // ── 已建造类型集合（替代 C++ BScan / UScan 位图）──
-  availableBuildings = new Set<string>();
-  availableUnits = new Set<string>();
-  availableInfantry = new Set<string>();
-  availableAircraft = new Set<string>();
-  availableVessels = new Set<string>();
-
-  // ── 统计 ──
-  destroyedBuildings = 0;
-  destroyedUnits = 0;
-  destroyedInfantry = 0;
-  destroyedAircraft = 0;
-  destroyedVessels = 0;
-  capturedBuildings = 0;
-  totalCrates = 0;
-
   constructor(id: HouseType, options: HouseOptions = {}) {
     this.id = id;
     const meta = HOUSE_METADATA[id];
     this.name = meta.name;
     this.color = meta.color;
-
     this.controller = options.controller ?? (options.isHuman ? 'human' : 'bot-normal');
     this.isHuman = this.controller === 'human';
     this.isSpectating = options.isSpectating ?? false;
-    this.credits = options.credits ?? 0;
-    this.tiberium = options.tiberium ?? 0;
-    this.capacity = options.capacity ?? 0;
     this.team = options.team;
     this.firepowerBias = options.firepowerBias ?? 1;
     this.armorBias = options.armorBias ?? 1;
     this.buildSpeedBias = options.buildSpeedBias ?? 1;
     this.costBias = options.costBias ?? 1;
+    this.economy = new HouseEconomy(options);
+    this._power = new HousePower(this);
+    this.production = new HouseProduction();
+    this.statistics = new HouseStatistics();
+    this.techTree = new HouseTechTree();
     this.diplomacy = new HouseDiplomacy(id);
-    this.housePower = new HousePower(this);
   }
 
-  /**
-   * 初始化外交关系（需在 HouseManager 注册所有阵营后调用）。
-   * @param allHouses — 所有已注册阵营的列表
-   */
   initializeDiplomacy(allHouses: ReadonlyArray<{ type: HouseType; team?: number }>): void {
     this.diplomacy.initializeByTeam(allHouses, this.team);
   }
 
-  /** 获取对指定阵营的关系。 */
   getRelationshipWith(other: HouseType): HouseRelationship {
     return this.diplomacy.getRelationship(other);
   }
 
-  // ── 经济操作 ──
+  // ── 向后兼容代理：经济 ──
+  get credits(): number {
+    return this.economy.credits;
+  }
+  set credits(v: number) {
+    this.economy.credits = v;
+  }
+  get tiberium(): number {
+    return this.economy.tiberium;
+  }
+  set tiberium(v: number) {
+    this.economy.tiberium = v;
+  }
+  get capacity(): number {
+    return this.economy.capacity;
+  }
+  set capacity(v: number) {
+    this.economy.capacity = v;
+  }
+  get creditsSpent(): number {
+    return this.economy.creditsSpent;
+  }
+  set creditsSpent(v: number) {
+    this.economy.creditsSpent = v;
+  }
+  get harvestedCredits(): number {
+    return this.economy.harvestedCredits;
+  }
+  set harvestedCredits(v: number) {
+    this.economy.harvestedCredits = v;
+  }
+  get stolenBuildingsCredits(): number {
+    return this.economy.stolenBuildingsCredits;
+  }
+  set stolenBuildingsCredits(v: number) {
+    this.economy.stolenBuildingsCredits = v;
+  }
 
-  /** 增加资金（收入、矿车卸货）。 */
   addCredits(amount: number): void {
-    this.credits += amount;
-    this.harvestedCredits += amount;
+    this.economy.addCredits(amount);
   }
-
-  /**
-   * 尝试花费资金。
-   * @returns 是否成功扣除（余额不足时返回 false，不扣款）。
-   */
   spendCredits(amount: number): boolean {
-    if (this.credits < amount) return false;
-    this.credits -= amount;
-    this.creditsSpent += amount;
-    return true;
+    return this.economy.spendCredits(amount);
   }
 
-  // ── 单位管理 ──
-
-  /** 注册一座新建建筑。 */
-  addBuilding(typeId: string): void {
-    this.curBuildings++;
-    this.availableBuildings.add(typeId);
-  }
-
-  /** 注册一个新建单位。 */
-  addUnit(typeId: string): void {
-    this.curUnits++;
-    this.availableUnits.add(typeId);
-  }
-
-  /** 注册一个新建步兵。 */
-  addInfantry(typeId: string): void {
-    this.curInfantry++;
-    this.availableInfantry.add(typeId);
-  }
-
-  /** 注册一个新建飞行器。 */
-  addAircraft(typeId: string): void {
-    this.curAircraft++;
-    this.availableAircraft.add(typeId);
-  }
-
-  /** 注册一个新建舰船。 */
-  addVessel(typeId: string): void {
-    this.curVessels++;
-    this.availableVessels.add(typeId);
-  }
-
-  /** 建筑被摧毁。 */
-  removeBuilding(typeId: string, isLastOfType = false): void {
-    this.curBuildings = Math.max(0, this.curBuildings - 1);
-    if (isLastOfType) {
-      this.availableBuildings.delete(typeId);
-    }
-    this.destroyedBuildings++;
-  }
-
-  /** 单位被摧毁。 */
-  removeUnit(_typeId: string): void {
-    this.curUnits = Math.max(0, this.curUnits - 1);
-    this.destroyedUnits++;
-  }
-
-  /** 步兵被摧毁。 */
-  removeInfantry(): void {
-    this.curInfantry = Math.max(0, this.curInfantry - 1);
-    this.destroyedInfantry++;
-  }
-
-  /** 飞行器被摧毁。 */
-  removeAircraft(): void {
-    this.curAircraft = Math.max(0, this.curAircraft - 1);
-    this.destroyedAircraft++;
-  }
-
-  /** 舰船被摧毁。 */
-  removeVessel(): void {
-    this.curVessels = Math.max(0, this.curVessels - 1);
-    this.destroyedVessels++;
-  }
-
-  /** 总物体数（建筑 + 单位 + 步兵 + 飞行器 + 舰船）。 */
-  getTotalObjects(): number {
-    return this.curBuildings + this.curUnits + this.curInfantry + this.curAircraft + this.curVessels;
-  }
-
-  // ── 生产检查 ──
-
-  /** 是否拥有指定建筑类型。 */
-  hasBuilding(typeId: string): boolean {
-    return this.availableBuildings.has(typeId);
-  }
-
-  /** 是否拥有指定单位类型。 */
-  hasUnit(typeId: string): boolean {
-    return this.availableUnits.has(typeId);
-  }
-
-  /** 获取电力余额（产出 - 消耗）。 */
+  // ── 向后兼容代理：电力 ──
   getPowerBalance(): number {
-    return this.housePower.getBalance();
+    return this._power.getBalance();
+  }
+  /** @deprecated 由 HousePower 自动维护 */
+  updatePower(_production: number, _consumption: number): void {
+    // no-op: HousePower auto-maintains
   }
 
-  /** @deprecated 由 HousePower 自动维护，不再需要外部调用。 */
-  updatePower(production: number, consumption: number): void {
-    this.power = production;
-    this.drain = consumption;
+  // ── 向后兼容代理：生产计数 ──
+  get aircraftFactories(): number {
+    return this.production.aircraftFactories;
+  }
+  set aircraftFactories(v: number) {
+    this.production.aircraftFactories = v;
+  }
+  get infantryFactories(): number {
+    return this.production.infantryFactories;
+  }
+  set infantryFactories(v: number) {
+    this.production.infantryFactories = v;
+  }
+  get unitFactories(): number {
+    return this.production.unitFactories;
+  }
+  set unitFactories(v: number) {
+    this.production.unitFactories = v;
+  }
+  get vesselFactories(): number {
+    return this.production.vesselFactories;
+  }
+  set vesselFactories(v: number) {
+    this.production.vesselFactories = v;
+  }
+  get buildingFactories(): number {
+    return this.production.buildingFactories;
+  }
+  set buildingFactories(v: number) {
+    this.production.buildingFactories = v;
+  }
+
+  get curUnits(): number {
+    return this.production.curUnits;
+  }
+  set curUnits(v: number) {
+    this.production.curUnits = v;
+  }
+  get curBuildings(): number {
+    return this.production.curBuildings;
+  }
+  set curBuildings(v: number) {
+    this.production.curBuildings = v;
+  }
+  get curInfantry(): number {
+    return this.production.curInfantry;
+  }
+  set curInfantry(v: number) {
+    this.production.curInfantry = v;
+  }
+  get curVessels(): number {
+    return this.production.curVessels;
+  }
+  set curVessels(v: number) {
+    this.production.curVessels = v;
+  }
+  get curAircraft(): number {
+    return this.production.curAircraft;
+  }
+  set curAircraft(v: number) {
+    this.production.curAircraft = v;
+  }
+
+  get availableBuildings(): Set<string> {
+    return this.production.availableBuildings;
+  }
+  get availableUnits(): Set<string> {
+    return this.production.availableUnits;
+  }
+  get availableInfantry(): Set<string> {
+    return this.production.availableInfantry;
+  }
+  get availableAircraft(): Set<string> {
+    return this.production.availableAircraft;
+  }
+  get availableVessels(): Set<string> {
+    return this.production.availableVessels;
+  }
+
+  addBuilding(typeId: string): void {
+    this.production.addBuilding(typeId);
+  }
+  addUnit(typeId: string): void {
+    this.production.addUnit(typeId);
+  }
+  addInfantry(typeId: string): void {
+    this.production.addInfantry(typeId);
+  }
+  addAircraft(typeId: string): void {
+    this.production.addAircraft(typeId);
+  }
+  addVessel(typeId: string): void {
+    this.production.addVessel(typeId);
+  }
+  removeBuilding(typeId: string, isLastOfType = false): void {
+    this.production.removeBuilding(typeId, isLastOfType);
+  }
+  removeUnit(): void {
+    this.production.removeUnit();
+  }
+  removeInfantry(): void {
+    this.production.removeInfantry();
+  }
+  removeAircraft(): void {
+    this.production.removeAircraft();
+  }
+  removeVessel(): void {
+    this.production.removeVessel();
+  }
+  hasBuilding(typeId: string): boolean {
+    return this.production.hasBuilding(typeId);
+  }
+  hasUnit(typeId: string): boolean {
+    return this.production.hasUnit(typeId);
+  }
+  getTotalObjects(): number {
+    return this.production.getTotalObjects();
+  }
+
+  // ── 向后兼容代理：统计 ──
+  get destroyedBuildings(): number {
+    return this.statistics.destroyedBuildings;
+  }
+  set destroyedBuildings(v: number) {
+    this.statistics.destroyedBuildings = v;
+  }
+  get destroyedUnits(): number {
+    return this.statistics.destroyedUnits;
+  }
+  set destroyedUnits(v: number) {
+    this.statistics.destroyedUnits = v;
+  }
+  get destroyedInfantry(): number {
+    return this.statistics.destroyedInfantry;
+  }
+  set destroyedInfantry(v: number) {
+    this.statistics.destroyedInfantry = v;
+  }
+  get destroyedAircraft(): number {
+    return this.statistics.destroyedAircraft;
+  }
+  set destroyedAircraft(v: number) {
+    this.statistics.destroyedAircraft = v;
+  }
+  get destroyedVessels(): number {
+    return this.statistics.destroyedVessels;
+  }
+  set destroyedVessels(v: number) {
+    this.statistics.destroyedVessels = v;
+  }
+  get capturedBuildings(): number {
+    return this.statistics.capturedBuildings;
+  }
+  set capturedBuildings(v: number) {
+    this.statistics.capturedBuildings = v;
+  }
+  get totalCrates(): number {
+    return this.statistics.totalCrates;
+  }
+  set totalCrates(v: number) {
+    this.statistics.totalCrates = v;
+  }
+
+  // ── 向后兼容代理：电力 legacy 字段 ──
+  get power(): number {
+    return this._power.getBalance() >= 0 ? this._power['totalProduction'] : 0;
+  }
+  set power(_v: number) {
+    /* legacy no-op */
+  }
+  get drain(): number {
+    return this._power['totalConsumption'];
+  }
+  set drain(_v: number) {
+    /* legacy no-op */
+  }
+
+  // ── housePower 字段兼容 (Task 23.32 e2e 直接访问 house.housePower) ──
+  get housePower(): HousePower {
+    return this._power;
   }
 }

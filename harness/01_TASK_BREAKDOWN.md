@@ -2012,7 +2012,7 @@
 | Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
 | Phase 17 发布平台 | 2 | 0 | 桌面打包、移动端 |
 | 补充任务（OpenRA 差距填补） | 4 | 4 | 139 OrderGenerator done、140 GameOrder done、141 逻辑帧分离 done、142 AudioManager done |
-| **总计** | **152** | **76** | |
+| **总计** | **152** | **78** | |
 
 ---
 
@@ -2117,9 +2117,9 @@
 
 ### 深度 1：依赖深度 0
 
-**已完成 19 个**：Task 9.1、Task 9.2、Task 9.3、Task 9.4、Task 9.5、Task 9.6、Task 9.8、Task 10、Task 23.32、Task 27.5、Task 27.6、Task 51.5、Task 68.5、Task 113、Task 118、Task 119、Task 124、Task 130、Task 133
+**已完成 21 个**：Task 9.1、Task 9.2、Task 9.3、Task 9.4、Task 9.5、Task 9.6、Task 9.8、Task 10、Task 23.32、Task 27.5、Task 27.6、Task 51.5、Task 68.5、Task 96、Task 100、Task 113、Task 118、Task 119、Task 124、Task 130、Task 133
 
-**待完成 17 个**：
+**待完成 15 个**：
 - [ ] **Task 9.7**：Shroud 边缘贴图渲染系统 — 迷雾视觉精细化 🟢 P2 ← 31（Fog, 9.1（CellLayer, 9.5（PPos
 - [x] **Task 23.32**：电力系统自动汇总重构 🟡 P1 ← 20–23（建筑系统已稳定）, 20, 21, 22, 23
 - [x] **Task 27.5**：外交关系系统 🔴 P0 ← 12（House
@@ -2127,10 +2127,10 @@
 - [ ] **Task 30.5**：经济双轨化（Cash + Resources）🔴 P0 ← 100（HouseEconomy
 - [x] **Task 51.5**：立场着色（Player Relationship Colors）🟢 P2 ← 27.5（外交关系系统先就位）
 - [x] **Task 68.5**：观战者身份系统（Spectator Support）🟢 P2 ← 27.5（外交关系）+, 31（战争迷雾）
-- [ ] **Task 96**：轻量 Trait/Component 系统 🟡 P1 ← 95（YAML
+- [x] **Task 96**：轻量 Trait/Component 系统 🟡 P1 ← 95（YAML
 - [ ] **Task 97**：规则继承与抽象 Actor 🟡 P1 ← 95（YAML, 96（Trait
 - [ ] **Task 98**：Weapon 规则系统（WeaponInfo + Projectile + Warheads）🔴 P0 ← 95（YAML
-- [ ] **Task 100**：House 类拆分（God Class 治理）🟡 P1 ← 23.32（电力模块先独立）+, 27.5（外交模块先独立）
+- [x] **Task 100**：House 类拆分（God Class 治理）🟡 P1 ← 23.32（电力模块先独立）+, 27.5（外交模块先独立）
 - [ ] **Task 101**：科技树 Watcher 机制 🟡 P1 ← 100（HouseTechTree
 - [ ] **Task 122**：HPF 抽象图 + 抽象启发式引导 — 分层寻路完整实现 🔴 P0 ← 114（已有, 121（优先队列提升抽象图搜索效率）
 - [ ] **Task 123**：HPF 动态更新 — 脏 Grid 增量重建与建筑监听 🔴 P0 ← 122（完整抽象图实现后才有可增量更新的结构）
