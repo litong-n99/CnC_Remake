@@ -1879,14 +1879,6 @@
 - **验收**：在 iPad Safari 上流畅运行，所有核心操作可用触控完成。
 - **状态**：[x] `done`
 
-### Task 94: Steam 集成（远期）
-- **目标**：Steam API 集成：成就、排行榜、云存档、多人匹配（Steam P2P）。
-- **文件**：`src/platform/SteamIntegration.ts`
-- **验收**：通过 Steam 启动游戏，解锁"First Blood"成就，云存档同步。
-- **状态**：[ ] `done`
-
----
-
 ## 补充任务（深度 0 OpenRA 差距填补）
 
 > 以下任务来源于 `harness/07_DEPTH0_OPENRA_GAP_ANALYSIS.md` 的对比分析，用于填补 C&C Remake 与 OpenRA 在基础架构上的差距。所有任务均为深度 0（无显式前置依赖），可立即启动。
@@ -2000,9 +1992,9 @@
 | Phase 14 性能优化 | 6 | 6 | Task 76–81 全部完成 |
 | Phase 15 AI高级 | 7 | 1 | Task 82 Bot done；83 难度 done；84 超级武器 done |
 | Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
-| Phase 17 发布平台 | 3 | 0 | 桌面打包、移动端、Steam |
+| Phase 17 发布平台 | 2 | 0 | 桌面打包、移动端 |
 | 补充任务（OpenRA 差距填补） | 4 | 4 | 139 OrderGenerator done、140 GameOrder done、141 逻辑帧分离 done、142 AudioManager done |
-| **总计** | **153** | **72** | |
+| **总计** | **152** | **72** | |
 
 ---
 
@@ -2016,15 +2008,15 @@
 
 | 深度 | 任务数 | 已完成 | 待完成 | 说明 |
 |------|--------|--------|--------|------|
-| 0 | 124 | 63 | 61 | 无显式前置依赖 |
+| 0 | 123 | 75 | 48 | 无显式前置依赖 |
 | 1 | 36 | 11 | 25 | 依赖深度 0 |
 | 2 | 1 | 0 | 1 | 依赖深度 1 |
 
 ### 深度 0：根基层（无显式前置依赖）
 
-**已完成 63 个**：Task 0、Task 0.1、Task 0.2、Task 0.3、Task 0.4、Task 0.5、Task 1、Task 2、Task 3、Task 4、Task 5、Task 6、Task 7、Task 8、Task 9、Task 11、Task 12、Task 13、Task 14、Task 15、Task 16、Task 17、Task 18、Task 19、Task 20、Task 21、Task 22、Task 23、Task 24、Task 25、Task 26、Task 27、Task 28、Task 29、Task 30、Task 35、Task 36、Task 37、Task 38、Task 39、Task 40、Task 41、Task 42、Task 77、Task 95、Task 102、Task 103、Task 104、Task 105、Task 106、Task 107、Task 108、Task 109、Task 110、Task 112、Task 114、Task 115、Task 116、Task 117、Task 120、Task 121、Task 127、Task 128、Task 132、Task 139、Task 140、Task 141、Task 142
+**已完成 75 个**：Task 0、Task 0.1、Task 0.2、Task 0.3、Task 0.4、Task 0.5、Task 1、Task 2、Task 3、Task 4、Task 5、Task 6、Task 7、Task 8、Task 9、Task 11、Task 12、Task 13、Task 14、Task 15、Task 16、Task 17、Task 18、Task 19、Task 20、Task 21、Task 22、Task 23、Task 24、Task 25、Task 26、Task 27、Task 28、Task 29、Task 30、Task 35、Task 36、Task 37、Task 38、Task 39、Task 40、Task 41、Task 42、Task 61、Task 62、Task 63、Task 64、Task 65、Task 66、Task 67、Task 68、Task 77、Task 86、Task 87、Task 88、Task 95、Task 102、Task 103、Task 104、Task 105、Task 106、Task 107、Task 108、Task 109、Task 110、Task 112、Task 114、Task 115、Task 116、Task 117、Task 120、Task 121、Task 127、Task 128、Task 131、Task 132、Task 139、Task 140、Task 141、Task 142
 
-**待完成 66 个**：
+**待完成 48 个**：
 - [x] **Task 25**：选择系统（单选、框选、编队）
 - [x] **Task 26**：命令分发器（Move / Attack / Guard / Stop）
 - [x] **Task 27**：HUD / UI 覆盖层（资源、小地图、单位信息）
@@ -2061,14 +2053,14 @@
 - [x] **Task 58**：任务目标系统（Objectives）
 - [x] **Task 59**：胜利/失败条件与结算
 - [x] **Task 60**：战役过场动画（Video Playback）
-- [ ] **Task 61**：网络架构设计与协议定义
-- [ ] **Task 62**：Order 序列化与反序列化
-- [ ] **Task 63**：本地服务器（Headless Relay Server）
-- [ ] **Task 64**：客户端连接与房间管理
-- [ ] **Task 65**：Lockstep 确定性模拟
-- [ ] **Task 66**：同步检测与防作弊（SyncHash）
-- [ ] **Task 67**：断线重连与观战
-- [ ] **Task 68**：回放系统（Replay）
+- [x] **Task 61**：网络架构设计与协议定义
+- [x] **Task 62**：Order 序列化与反序列化
+- [x] **Task 63**：本地服务器（Headless Relay Server）
+- [x] **Task 64**：客户端连接与房间管理
+- [x] **Task 65**：Lockstep 确定性模拟
+- [x] **Task 66**：同步检测与防作弊（SyncHash）
+- [x] **Task 67**：断线重连与观战
+- [x] **Task 68**：回放系统（Replay）
 - [x] **Task 69**：资源包加载系统（MIX/MPR 解析）
 - [x] **Task 70**：精灵序列系统（SHP 解析与 Sprite Sheet）
 - [x] **Task 71**：调色板系统（Palette & Remap）
@@ -2086,20 +2078,19 @@
 - [x] **Task 83**：AI 难度等级
 - [x] **Task 84**：超级武器（Nuke / Ion Cannon）
 - [x] **Task 85**：间谍/渗透系统
-- [ ] **Task 86**：空军与运输系统
-- [ ] **Task 87**：桥梁系统
-- [ ] **Task 88**：中立单位与野生动物
+- [x] **Task 86**：空军与运输系统
+- [x] **Task 87**：桥梁系统
+- [x] **Task 88**：中立单位与野生动物
 - [x] **Task 89**：内置地图编辑器（Tile Brush）
 - [x] **Task 90**：编辑器 Actor 放置与触发器编辑
 - [x] **Task 91**：单位测试/平衡工具
 - [x] **Task 92**：桌面应用打包（Electron / Tauri）
 - [x] **Task 93**：移动端触控适配
-- [ ] **Task 94**：Steam 集成（远期）
 - [x] **Task 95**：YAML 规则解析基础设施 🔴 P0
 - [x] **Task 121**：A* 优先队列（Binary Heap）— 寻路 Open 集合优化 🔴 P0
 - [x] **Task 127**：Lane Bias + 方向邻居裁剪 — A* 邻居优化 🟢 P2
 - [x] **Task 128**：Path Cache / CellInfoLayerPool — 搜索层对象池 🟢 P2
-- [ ] **Task 131**：ActorMap Bin 划分 + 触发器系统 ⚪ P3
+- [x] **Task 131**：ActorMap Bin 划分 + 触发器系统 ⚪ P3
 - [x] **Task 132**：启发式权重可调 — 次优路径换性能 ⚪ P3
 - [x] **Task 139**：统一 OrderGenerator 框架
 - [x] **Task 140**：GameOrder 命令抽象与队列

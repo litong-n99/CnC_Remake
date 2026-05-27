@@ -1,10 +1,10 @@
 import { LocomotorCache } from './LocomotorCache';
 
 /**
- * 格子级单位占用映射 — OpenRA ActorMap 简化版。
+ * 格子级单位占用映射 + Bin 空间划分 — OpenRA ActorMap 简化版。
  *
- * 每个单位只在其当前 `Math.round(x), Math.round(y)` 位置注册。
- * key = `"x,y"`, value = 该格子内的单位 ID 集合。
+ * - Cell 映射：key = `"x,y"`, value = 单位 ID 集合。
+ * - Bin 划分：每格 10×10 世界单位，加速范围查询。
  *
  * Source: OpenRA.Mods.Common/Traits/World/ActorMap.cs
  */
@@ -13,6 +13,11 @@ export class ActorMap {
 
   // key = "x,y", value = Set<unitId>
   private cells = new Map<string, Set<string>>();
+
+  // Bin spatial partition: bin size = 10 world units
+  private readonly BIN_SIZE = 10;
+  private bins = new Map<string, Set<string>>();
+  private actorPositions = new Map<string, { x: number; y: number }>();
 
   static getInstance(): ActorMap {
     if (!ActorMap.instance) {
@@ -25,6 +30,10 @@ export class ActorMap {
     return `${x},${y}`;
   }
 
+  private getBinKey(x: number, y: number): string {
+    return `${Math.floor(x / this.BIN_SIZE)},${Math.floor(y / this.BIN_SIZE)}`;
+  }
+
   /** 单位占据指定格子。 */
   occupy(id: string, x: number, y: number): void {
     const key = this.getKey(x, y);
@@ -35,6 +44,9 @@ export class ActorMap {
     }
     set.add(id);
     LocomotorCache.getInstance().markDirty(x, y);
+
+    // Update bin
+    this.updateBin(id, x, y);
   }
 
   /** 单位离开指定格子。 */
@@ -82,9 +94,75 @@ export class ActorMap {
     return new Set(this.cells.keys());
   }
 
+  // ── Bin 空间划分（Task 131）──
+
+  private updateBin(id: string, x: number, y: number): void {
+    // Remove from old bin
+    const oldPos = this.actorPositions.get(id);
+    if (oldPos) {
+      const oldBinKey = this.getBinKey(oldPos.x, oldPos.y);
+      const oldBin = this.bins.get(oldBinKey);
+      if (oldBin) {
+        oldBin.delete(id);
+        if (oldBin.size === 0) this.bins.delete(oldBinKey);
+      }
+    }
+    // Add to new bin
+    const newBinKey = this.getBinKey(x, y);
+    let newBin = this.bins.get(newBinKey);
+    if (!newBin) {
+      newBin = new Set<string>();
+      this.bins.set(newBinKey, newBin);
+    }
+    newBin.add(id);
+    this.actorPositions.set(id, { x, y });
+  }
+
+  /** Query actors inside an axis-aligned box (world coordinates). */
+  actorsInBox(minX: number, minY: number, maxX: number, maxY: number): string[] {
+    const result = new Set<string>();
+    const minBinX = Math.floor(minX / this.BIN_SIZE);
+    const minBinY = Math.floor(minY / this.BIN_SIZE);
+    const maxBinX = Math.floor(maxX / this.BIN_SIZE);
+    const maxBinY = Math.floor(maxY / this.BIN_SIZE);
+
+    for (let bx = minBinX; bx <= maxBinX; bx++) {
+      for (let by = minBinY; by <= maxBinY; by++) {
+        const bin = this.bins.get(`${bx},${by}`);
+        if (!bin) continue;
+        for (const id of bin) {
+          const pos = this.actorPositions.get(id);
+          if (!pos) continue;
+          if (pos.x >= minX && pos.x <= maxX && pos.y >= minY && pos.y <= maxY) {
+            result.add(id);
+          }
+        }
+      }
+    }
+    return Array.from(result);
+  }
+
+  /** Query actors inside a circle (world coordinates). */
+  actorsInCircle(centerX: number, centerY: number, radius: number): string[] {
+    const result: string[] = [];
+    const candidates = this.actorsInBox(centerX - radius, centerY - radius, centerX + radius, centerY + radius);
+    for (const id of candidates) {
+      const pos = this.actorPositions.get(id);
+      if (!pos) continue;
+      const dx = pos.x - centerX;
+      const dy = pos.y - centerY;
+      if (dx * dx + dy * dy <= radius * radius) {
+        result.push(id);
+      }
+    }
+    return result;
+  }
+
   /** 清除所有占用记录（用于新游戏或重置）。 */
   clear(): void {
     this.cells.clear();
+    this.bins.clear();
+    this.actorPositions.clear();
     LocomotorCache.getInstance().clear();
   }
 

@@ -30,6 +30,8 @@ export class GameLoop {
   private engine: Engine | null = null;
   private scene: Scene | null = null;
   private boundRenderLoop: (() => void) | null = null;
+  private lockstepMode = false;
+  private pendingLogicSteps = 0;
 
   constructor(options: GameLoopOptions = {}) {
     const fps = options.logicFps ?? 25;
@@ -99,6 +101,21 @@ export class GameLoop {
     return this.logicIntervalMs;
   }
 
+  /** 启用/禁用 Lockstep 模式（Task 65） */
+  setLockstepMode(enabled: boolean): void {
+    this.lockstepMode = enabled;
+  }
+
+  /** Lockstep: 允许推进一帧逻辑（外部在收到服务器 OrderFrame 后调用） */
+  approveLogicStep(): void {
+    this.pendingLogicSteps++;
+  }
+
+  /** 当前待执行的逻辑帧数（Lockstep 模式下） */
+  getPendingLogicSteps(): number {
+    return this.pendingLogicSteps;
+  }
+
   /** 手动推进一帧逻辑（用于测试或回放） */
   stepLogic(dt = this.logicIntervalMs): void {
     this.logicTickCount++;
@@ -120,10 +137,18 @@ export class GameLoop {
     // 累加逻辑时间
     this.logicAccumulator += dt;
 
-    // 执行所有到期的逻辑帧
+    // 执行所有到期的逻辑帧（Lockstep 模式下需外部 approve）
     while (this.logicAccumulator >= this.logicIntervalMs) {
       this.logicAccumulator -= this.logicIntervalMs;
-      this.stepLogic(this.logicIntervalMs);
+      if (this.lockstepMode) {
+        if (this.pendingLogicSteps > 0) {
+          this.pendingLogicSteps--;
+          this.stepLogic(this.logicIntervalMs);
+        }
+        // else: wait for server OrderFrame, logic stalls but render continues
+      } else {
+        this.stepLogic(this.logicIntervalMs);
+      }
     }
 
     // 计算当前逻辑帧进度（0.0–1.0）
