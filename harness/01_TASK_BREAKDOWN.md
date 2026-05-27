@@ -2134,8 +2134,8 @@
 - [ ] **Task 98**：Weapon 规则系统（WeaponInfo + Projectile + Warheads）🔴 P0 ← 95（YAML
 - [x] **Task 100**：House 类拆分（God Class 治理）🟡 P1 ← 23.32（电力模块先独立）+, 27.5（外交模块先独立）
 - [x] **Task 101**：科技树 Watcher 机制 🟡 P1 ← 100（HouseTechTree
-- [ ] **Task 122**：HPF 抽象图 + 抽象启发式引导 — 分层寻路完整实现 🔴 P0 ← 114（已有, 121（优先队列提升抽象图搜索效率）
-- [ ] **Task 123**：HPF 动态更新 — 脏 Grid 增量重建与建筑监听 🔴 P0 ← 122（完整抽象图实现后才有可增量更新的结构）
+- [x] **Task 122**：HPF 抽象图 + 抽象启发式引导 — 分层寻路完整实现 🔴 P0 ← 114（已有, 121（优先队列提升抽象图搜索效率）
+- [x] **Task 123**：HPF 动态更新 — 脏 Grid 增量重建与建筑监听 🔴 P0 ← 122（完整抽象图实现后才有可增量更新的结构）
 - [x] **Task 124**：SubCell 精确位置 — 步兵同格子位移 🟡 P1 ← 113（LocomotorCache
 - [ ] **Task 125**：Activity 树重构 — 从扁平状态机到嵌套活动系统 🟡 P1 ← 119（MoveWithinRange/Follow, 129（MovePart
 - [ ] **Task 126**：CustomMovementLayer 实现 — 多层移动（隧道/地下/飞行/桥梁）🟡 P1 ← 120（接口预留），Task, 130（高度系统用于判断桥/斜坡过渡）
