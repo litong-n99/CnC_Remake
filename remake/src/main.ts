@@ -84,6 +84,8 @@ import { TraitRegistry, Trait } from './game/traits/Trait';
 import { HealthTrait } from './game/traits/HealthTrait';
 import { RenderTrait } from './game/traits/RenderTrait';
 import { ArmamentTrait } from './game/traits/ArmamentTrait';
+import { DynamicTechTree } from './game/rules/DynamicTechTree';
+import { evaluatePrerequisites, extractTokens } from './game/rules/PrerequisiteToken';
 import { TouchInputManager } from './core/TouchInputManager';
 import { MusicPlayer } from './core/MusicPlayer';
 import { VideoPlayer } from './core/VideoPlayer';
@@ -831,6 +833,11 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._HealthTrait = HealthTrait;
   w._RenderTrait = RenderTrait;
   w._ArmamentTrait = ArmamentTrait;
+
+  // ── Task 134: Dynamic TechTree ──
+  w._DynamicTechTree = DynamicTechTree;
+  w._evaluatePrerequisites = evaluatePrerequisites;
+  w._extractTokens = extractTokens;
 
   // ── Verification ──
   const goManager = GameObjectManager.getInstance();

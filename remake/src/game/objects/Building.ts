@@ -37,6 +37,7 @@ export class Building extends GameObject {
   onPlaced(): void {
     this.powerRegistered = true;
     this.house.housePower.registerBuilding(this.id, this.definition.power);
+    this.house.dynamicTechTree.registerBuilding(this.definition.id);
   }
 
   /** 建筑被出售时调用 — 注销电力贡献。 */
@@ -44,6 +45,7 @@ export class Building extends GameObject {
     if (!this.powerRegistered) return;
     this.powerRegistered = false;
     this.house.housePower.unregisterBuilding(this.id);
+    this.house.dynamicTechTree.unregisterBuilding(this.definition.id);
   }
 
   /** 建筑被摧毁时调用 — 注销电力贡献。 */
@@ -51,6 +53,7 @@ export class Building extends GameObject {
     if (!this.powerRegistered) return;
     this.powerRegistered = false;
     this.house.housePower.unregisterBuilding(this.id);
+    this.house.dynamicTechTree.unregisterBuilding(this.definition.id);
   }
 
   createMesh(scene: Scene): void {

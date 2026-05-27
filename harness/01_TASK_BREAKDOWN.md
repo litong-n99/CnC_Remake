@@ -394,7 +394,7 @@
 > | Task 27.5 | Phase 6 | 外交关系系统（Ally/Enemy/Neutral） | 🔴 P0 |
 > | Task 27.6 | Phase 6 | Bot 类型支持（rush/normal/defensive） | 🟢 P2 |
 > | Task 100 | Phase 6.5 | House 类拆分（God Class → 子模块） | 🟡 P1 |
-> | Task 101 | Phase 6.5 | 科技树 Watcher（自动维护可建造列表） | 🟡 P1 |
+> | Task 101 | Phase 6.5 | 科技树 Watcher（自动维护可建造列表） | ✅ |
 > | Task 30.5 | Phase 7 | 经济双轨化（Cash + Resources） | 🔴 P0 |
 > | Task 51.5 | Phase 10 | 立场着色（关系着色 UI） | 🟢 P2 |
 > | Task 68.5 | Phase 12 | 观战者身份系统 | 🟢 P2 |
@@ -1114,7 +1114,8 @@
 - **依赖**：Task 100（HouseTechTree 模块先拆分出来）
 - **备注**：原编号 Task 11.7（错误归属于 Rules 系统），改为独立编号 Task 101。
 - **验收**：建造兵营后，Sidebar 自动解锁步枪兵；卖掉兵营后，步枪兵图标自动变灰。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：Task 134 的 `DynamicTechTree` + `Building.ts` 自动 `registerBuilding`/`unregisterBuilding` 已覆盖本任务核心需求。`buildLimitReached` 等功能归入 Task 135。
 
 ---
 
@@ -1239,7 +1240,8 @@
   - 与 `MapEditor` 对接：导出时记录建筑的 `ProvidesCustomPrerequisite` 配置
 - **依赖**：Task 96（Trait 系统）
 - **验收**：建造战车工厂后 `weap` 令牌点亮，此时兵营中的火箭兵从灰显变为可造；摧毁战车工厂后火箭兵再次灰显。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：`DynamicTechTree`（`src/game/rules/DynamicTechTree.ts`）+ `PrerequisiteToken`（`src/game/rules/PrerequisiteToken.ts`）+ `Building.ts` 自动注册/注销已实现。e2e 测试 8 项通过。
 
 ### Task 135: 阵营限制与建造限制 🟡 P1
 - **目标**：实现单局阵营门控（GDI 无法建造 Nod 建筑）和单位建造上限（谭雅限造 1 个）。
@@ -2117,9 +2119,9 @@
 
 ### 深度 1：依赖深度 0
 
-**已完成 24 个**：Task 9.1、Task 9.2、Task 9.3、Task 9.4、Task 9.5、Task 9.6、Task 9.8、Task 10、Task 23.32、Task 27.5、Task 27.6、Task 30.5、Task 51.5、Task 68.5、Task 96、Task 100、Task 113、Task 118、Task 119、Task 122、Task 123、Task 124、Task 130、Task 133
+**已完成 26 个**：Task 9.1、Task 9.2、Task 9.3、Task 9.4、Task 9.5、Task 9.6、Task 9.8、Task 10、Task 23.32、Task 27.5、Task 27.6、Task 30.5、Task 51.5、Task 68.5、Task 96、Task 100、Task 101、Task 113、Task 118、Task 119、Task 122、Task 123、Task 124、Task 130、Task 133、Task 134
 
-**待完成 12 个**：
+**待完成 10 个**：
 - [ ] **Task 9.7**：Shroud 边缘贴图渲染系统 — 迷雾视觉精细化 🟢 P2 ← 31（Fog, 9.1（CellLayer, 9.5（PPos
 - [x] **Task 23.32**：电力系统自动汇总重构 🟡 P1 ← 20–23（建筑系统已稳定）, 20, 21, 22, 23
 - [x] **Task 27.5**：外交关系系统 🔴 P0 ← 12（House
@@ -2131,7 +2133,7 @@
 - [ ] **Task 97**：规则继承与抽象 Actor 🟡 P1 ← 95（YAML, 96（Trait
 - [ ] **Task 98**：Weapon 规则系统（WeaponInfo + Projectile + Warheads）🔴 P0 ← 95（YAML
 - [x] **Task 100**：House 类拆分（God Class 治理）🟡 P1 ← 23.32（电力模块先独立）+, 27.5（外交模块先独立）
-- [ ] **Task 101**：科技树 Watcher 机制 🟡 P1 ← 100（HouseTechTree
+- [x] **Task 101**：科技树 Watcher 机制 🟡 P1 ← 100（HouseTechTree
 - [ ] **Task 122**：HPF 抽象图 + 抽象启发式引导 — 分层寻路完整实现 🔴 P0 ← 114（已有, 121（优先队列提升抽象图搜索效率）
 - [ ] **Task 123**：HPF 动态更新 — 脏 Grid 增量重建与建筑监听 🔴 P0 ← 122（完整抽象图实现后才有可增量更新的结构）
 - [x] **Task 124**：SubCell 精确位置 — 步兵同格子位移 🟡 P1 ← 113（LocomotorCache
@@ -2140,7 +2142,7 @@
 - [ ] **Task 129**：MovePart 拆分 + 弧线移动 + 倒车 — 移动表现精细化 🟢 P2 ← 117（TurnSpeed, 125（Activity
 - [x] **Task 130**：高度系统（Cell Height）— 悬崖与斜坡 🟢 P2 ← 127（Directed
 - [x] **Task 133**：DamageTypes 伤害类型标签系统 🔴 P0 ← 29（伤害计算器）、Task
-- [ ] **Task 134**：前提条件令牌与动态 TechTree 🔴 P0 ← 96（Trait
+- [x] **Task 134**：前提条件令牌与动态 TechTree 🔴 P0 ← 96（Trait
 - [ ] **Task 135**：阵营限制与建造限制 🟡 P1 ← 134（动态
 - [ ] **Task 136**：游戏速度与大厅选项系统 🟡 P1 ← 32（GameLoop, 134（TechTree
 - [ ] **Task 137**：条件 Trait 系统（GrantConditionOnPrerequisite）🟢 P2 ← 96（Trait, 134（TechTree

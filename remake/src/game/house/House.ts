@@ -16,6 +16,7 @@ import { HouseEconomy } from './HouseEconomy';
 import { HouseProduction } from './HouseProduction';
 import { HouseStatistics } from './HouseStatistics';
 import { HouseTechTree } from './HouseTechTree';
+import { DynamicTechTree } from '../rules/DynamicTechTree';
 
 export { HouseRelationship, HouseDiplomacy };
 
@@ -96,6 +97,7 @@ export class House {
   readonly techTree: HouseTechTree;
   readonly diplomacy: HouseDiplomacy;
   private readonly _power: HousePower;
+  readonly dynamicTechTree: DynamicTechTree;
 
   // ── 状态标志 ──
   isActive = true;
@@ -146,6 +148,7 @@ export class House {
     this.production = new HouseProduction();
     this.statistics = new HouseStatistics();
     this.techTree = new HouseTechTree();
+    this.dynamicTechTree = new DynamicTechTree();
     this.diplomacy = new HouseDiplomacy(id);
   }
 
