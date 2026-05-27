@@ -6,6 +6,7 @@ import { Lighting } from './renderer/Lighting';
 import { TerrainGrid, LandType } from './game/terrain/TerrainGrid';
 import { MapLoader } from './game/terrain/MapLoader';
 import { Pathfinder } from './game/terrain/Pathfinder';
+import { HierarchicalPathfinder } from './game/terrain/HierarchicalPathfinder';
 import { GameRules } from './game/rules/GameRules';
 import { UNIT_DEFINITIONS, ArmorType } from './game/rules/UnitDefinitions';
 import { BUILDING_DEFINITIONS, getBuildingFootprint } from './game/rules/BuildingDefinitions';
@@ -756,6 +757,7 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._TerrainIndexedMaterial = TerrainIndexedMaterial;
   w._notificationManager = new NotificationManager();
   w._DifficultyScaler = DifficultyScaler;
+  w._HierarchicalPathfinder = HierarchicalPathfinder;
   w._SupportPowerManager = SupportPowerManager;
   w._ActorPlacer = ActorPlacer;
   w._SandboxMode = SandboxMode;

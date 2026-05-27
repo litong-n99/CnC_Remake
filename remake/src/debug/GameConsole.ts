@@ -118,6 +118,8 @@ export class GameConsole {
       cacheStats: this.cacheStats.bind(this),
       benchmarkPaths: this.benchmarkPaths.bind(this),
       hierarchical: this.hierarchical.bind(this),
+      abstractGraph: this.abstractGraph.bind(this),
+      abstractHeuristic: this.abstractHeuristic.bind(this),
       cooldown: this.cooldown.bind(this),
       setCooldown: this.setCooldown.bind(this),
       getCooldown: this.getCooldown.bind(this),
@@ -1013,6 +1015,24 @@ export class GameConsole {
     // eslint-disable-next-line no-console
     console.info(`HierarchicalPathfinder (${x}, ${y}): domain=${domain}`);
     return domain;
+  }
+
+  /** Inspect Abstract Graph statistics (Task 122). */
+  private abstractGraph(): { built: boolean; nodeCount: number; edgeCount: number } {
+    const h = this.pathfinder?.hierarchical;
+    if (!h) return { built: false, nodeCount: 0, edgeCount: 0 };
+    return {
+      built: h.isAbstractGraphBuilt(),
+      nodeCount: h.getAbstractNodeCount(),
+      edgeCount: h.getAbstractEdgeCount(),
+    };
+  }
+
+  /** Get abstract heuristic between two cells (Task 122). */
+  private abstractHeuristic(x1: number, y1: number, x2: number, y2: number): number {
+    const h = this.pathfinder?.hierarchical;
+    if (!h) return 0;
+    return h.getAbstractHeuristic(x1, y1, x2, y2);
   }
 
   /**
