@@ -120,6 +120,8 @@ export class GameConsole {
       hierarchical: this.hierarchical.bind(this),
       abstractGraph: this.abstractGraph.bind(this),
       abstractHeuristic: this.abstractHeuristic.bind(this),
+      markDirtyCell: this.markDirtyCell.bind(this),
+      dirtyGridCount: this.dirtyGridCount.bind(this),
       cooldown: this.cooldown.bind(this),
       setCooldown: this.setCooldown.bind(this),
       getCooldown: this.getCooldown.bind(this),
@@ -1033,6 +1035,16 @@ export class GameConsole {
     const h = this.pathfinder?.hierarchical;
     if (!h) return 0;
     return h.getAbstractHeuristic(x1, y1, x2, y2);
+  }
+
+  /** Mark a cell as dirty for HPF incremental rebuild (Task 123). */
+  private markDirtyCell(x: number, y: number): void {
+    this.pathfinder?.hierarchical.markDirtyCell(x, y);
+  }
+
+  /** Get dirty grid count for HPF incremental rebuild (Task 123). */
+  private dirtyGridCount(): number {
+    return this.pathfinder?.hierarchical.getDirtyGridCount() ?? 0;
   }
 
   /**

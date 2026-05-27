@@ -80,6 +80,7 @@ export class HierarchicalPathfinder {
    * 任一格子不可通行时返回 false。
    */
   areConnected(x1: number, y1: number, x2: number, y2: number): boolean {
+    this.flushDirtyGrids();
     const d1 = this.getDomain(x1, y1);
     const d2 = this.getDomain(x2, y2);
     return d1 !== -1 && d1 === d2;
@@ -102,6 +103,128 @@ export class HierarchicalPathfinder {
       }
     }
     return sizes;
+  }
+
+  // ── Task 123: 脏 Grid 增量更新 ──
+  private dirtyGrids = new Set<string>();
+
+  /** 标记指定格子为脏（地形/建筑变化时调用）。 */
+  markDirtyCell(x: number, y: number): void {
+    const gx = Math.floor(x / this.gridSize);
+    const gy = Math.floor(y / this.gridSize);
+    this.markDirtyGrid(gx, gy);
+  }
+
+  /** 标记指定 grid 为脏，同时脏化相邻 grid（抽象边可能受影响）。 */
+  markDirtyGrid(gx: number, gy: number): void {
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const ngx = gx + dx;
+        const ngy = gy + dy;
+        if (ngx >= 0 && ngy >= 0 && ngx * this.gridSize < this.width && ngy * this.gridSize < this.height) {
+          this.dirtyGrids.add(`${ngx},${ngy}`);
+        }
+      }
+    }
+  }
+
+  /** 当前脏 grid 数量。 */
+  getDirtyGridCount(): number {
+    return this.dirtyGrids.size;
+  }
+
+  /** 刷新所有脏 grid（增量重建）。 */
+  flushDirtyGrids(): void {
+    if (this.dirtyGrids.size === 0) return;
+
+    // 1. 对 dirty grids 重新做 domain flood-fill（局部）
+    this.rebuildDomainsForDirtyGrids();
+
+    // 2. 移除 dirty grids 的旧抽象节点和边
+    for (const key of this.dirtyGrids) {
+      const [gx, gy] = key.split(',').map(Number);
+      // 移除该 grid 的所有抽象节点
+      const oldNodes = this.abstractNodes.get(key);
+      if (oldNodes) {
+        for (const node of oldNodes) {
+          this.abstractEdges.delete(`${gx},${gy},${node.domainId}`);
+        }
+        this.abstractNodes.delete(key);
+      }
+      // 移除相邻 grid 指向该 grid 的边（将在 rebuild 中重建）
+      for (const [edgeKey, edges] of this.abstractEdges) {
+        const filtered = edges.filter((e) => !(e.to.gridX === gx && e.to.gridY === gy));
+        if (filtered.length !== edges.length) {
+          if (filtered.length === 0) {
+            this.abstractEdges.delete(edgeKey);
+          } else {
+            this.abstractEdges.set(edgeKey, filtered);
+          }
+        }
+      }
+    }
+
+    // 3. 重建 dirty grids 的抽象节点和边
+    const gridW = Math.ceil(this.width / this.gridSize);
+    const gridH = Math.ceil(this.height / this.gridSize);
+    for (const key of this.dirtyGrids) {
+      const [gx, gy] = key.split(',').map(Number);
+      const nodes = this.buildAbstractNodesForGrid(gx, gy);
+      if (nodes.length > 0) {
+        this.abstractNodes.set(key, nodes);
+      }
+    }
+    for (const key of this.dirtyGrids) {
+      const [gx, gy] = key.split(',').map(Number);
+      this.buildAbstractEdgesForGrid(gx, gy, gridW, gridH);
+    }
+
+    this.dirtyGrids.clear();
+  }
+
+  /** 对脏 grids 局部重建 domain（简化版：只重新标记受影响的区域）。 */
+  private rebuildDomainsForDirtyGrids(): void {
+    // 获取 dirty grids 覆盖的格子范围
+    let minX = this.width;
+    let minY = this.height;
+    let maxX = 0;
+    let maxY = 0;
+    for (const key of this.dirtyGrids) {
+      const [gx, gy] = key.split(',').map(Number);
+      const gStartX = gx * this.gridSize;
+      const gStartY = gy * this.gridSize;
+      const gEndX = Math.min(gStartX + this.gridSize, this.width);
+      const gEndY = Math.min(gStartY + this.gridSize, this.height);
+      minX = Math.min(minX, gStartX);
+      minY = Math.min(minY, gStartY);
+      maxX = Math.max(maxX, gEndX);
+      maxY = Math.max(maxY, gEndY);
+    }
+
+    // 扩展边界 1 格（邻居可能受影响）
+    minX = Math.max(0, minX - 1);
+    minY = Math.max(0, minY - 1);
+    maxX = Math.min(this.width, maxX + 1);
+    maxY = Math.min(this.height, maxY + 1);
+
+    // 将受影响区域的 domain 标记重置为 -1
+    for (let y = minY; y < maxY; y++) {
+      for (let x = minX; x < maxX; x++) {
+        if (this.isPassable(x, y)) {
+          this.domainIds[y][x] = -1;
+        }
+      }
+    }
+
+    // 重新 flood-fill 受影响区域
+    for (let y = minY; y < maxY; y++) {
+      for (let x = minX; x < maxX; x++) {
+        if (this.domainIds[y][x] === -1 && this.isPassable(x, y)) {
+          this.floodFill(x, y, this.domainCount);
+          this.domainCount++;
+        }
+      }
+    }
   }
 
   // ── Task 122: 抽象图 API ──
