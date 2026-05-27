@@ -51,4 +51,24 @@ export class HouseEconomy {
     this.credits += amount;
     return amount;
   }
+
+  /**
+   * 双轨花费：先扣 Resources（矿石），不足再扣 Cash。
+   * @returns 是否成功扣除。
+   */
+  takeCash(amount: number): boolean {
+    if (amount <= 0) return true;
+    const fromResources = Math.min(amount, this.tiberium);
+    const remaining = amount - fromResources;
+    if (this.credits < remaining) return false;
+    this.tiberium -= fromResources;
+    this.credits -= remaining;
+    this.creditsSpent += amount;
+    return true;
+  }
+
+  /** 查看当前总购买力（cash + resources）。 */
+  getTotalSpendable(): number {
+    return this.credits + this.tiberium;
+  }
 }

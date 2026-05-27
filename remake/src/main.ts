@@ -638,6 +638,14 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
       .filter((u) => u.isAlive() && u.house.id === HouseType.GDI) as Unit[];
     fogOfWar.update(gdiUnits.map((u) => ({ x: u.x, y: u.y, team: u.house.id })));
 
+    // ── Task 30.5: 矿石精炼（Resources → Cash）──
+    // 每帧将所有矿石储量按固定速率精炼为资金
+    for (const house of HouseManager.getInstance().getAllHouses()) {
+      if (house.economy.tiberium > 0) {
+        house.economy.refineResources(Infinity);
+      }
+    }
+
     // ── Overlap 检测（每秒一次）──
     overlapCheckAccumulator += dt;
     if (overlapCheckAccumulator >= 1000) {

@@ -236,12 +236,19 @@ export class HarvesterAI {
   }
 
   private tickUnloading(): void {
-    // 卸货：将负载转换为资金
+    // 卸货：将负载转换为矿石储量（Task 30.5 双轨经济）
     if (this.load > 0 && this.targetRefineryId) {
       const refinery = GameObjectManager.getInstance().get(this.targetRefineryId) as Building | undefined;
       if (refinery && refinery.isAlive()) {
-        const credits = this.load * this.resourceValue;
-        refinery.house.addCredits(credits);
+        // 存入 resources（受 capacity 限制）
+        const stored = refinery.house.economy.giveResources(this.load);
+        // 超出 capacity 的部分直接转为 cash
+        const overflow = this.load - stored;
+        if (overflow > 0) {
+          refinery.house.economy.addCredits(overflow * this.resourceValue);
+        }
+        // 记录精炼收入（统计兼容）
+        refinery.house.harvestedCredits += this.load * this.resourceValue;
       }
     }
 

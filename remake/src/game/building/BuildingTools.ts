@@ -56,11 +56,11 @@ export class BuildingTools {
     }
 
     const cost = missingHealth; // $1 per HP
-    if (building.house.credits < cost) {
+    if (building.house.economy.getTotalSpendable() < cost) {
       return { success: false, cost, message: 'Insufficient funds for repair' };
     }
 
-    building.house.spendCredits(cost);
+    building.house.economy.takeCash(cost);
     building.logic.currentHealth = building.maxHealth;
 
     return { success: true, cost, message: `Repaired ${building.definition.name} for $${cost}` };

@@ -40,7 +40,7 @@ export class ConstructionQueue {
     if (this._status !== QueueStatus.Idle) return false;
     if (!this.canAfford(definition)) return false;
     if (!this.hasPrerequisites(definition)) return false;
-    if (!this.house.spendCredits(definition.cost)) return false;
+    if (!this.house.economy.takeCash(definition.cost)) return false;
 
     const totalTime = (definition.buildTime * 1000) / Math.max(0.1, this.house.buildSpeedBias);
     this.current = { definition, elapsed: 0, totalTime };
@@ -78,7 +78,7 @@ export class ConstructionQueue {
   /** 取消当前建造。建造中状态全额退款；就绪状态不退款（建筑保留就绪）。 */
   cancel(): void {
     if (this._status === QueueStatus.Building && this.current) {
-      this.house.credits += this.current.definition.cost;
+      this.house.economy.addCredits(this.current.definition.cost);
     }
     this.current = null;
     this._status = QueueStatus.Idle;
@@ -101,7 +101,7 @@ export class ConstructionQueue {
   }
 
   canAfford(definition: BuildingDefinition): boolean {
-    return this.house.credits >= definition.cost;
+    return this.house.economy.getTotalSpendable() >= definition.cost;
   }
 
   hasPrerequisites(definition: BuildingDefinition): boolean {
