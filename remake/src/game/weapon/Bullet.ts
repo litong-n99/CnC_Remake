@@ -9,6 +9,7 @@
 import { Vector3, MeshBuilder, StandardMaterial, Color3, type Scene } from '@babylonjs/core';
 import type { WeaponDef } from './Weapon';
 import { WarheadType } from '../combat/DamageCalculator';
+import { ParticleManager } from '../../renderer/effects/ParticleManager';
 
 export interface BulletHitCallback {
   (targetX: number, targetY: number, damage: number, warhead: WarheadType): void;
@@ -100,24 +101,8 @@ export class Bullet {
   }
 
   private createExplosion(): void {
-    const exp = MeshBuilder.CreateSphere(
-      `explosion_${Math.random().toString(36).slice(2)}`,
-      { diameter: 0.8 },
-      this.scene
-    );
-    exp.position = new Vector3(this.toX - 32, 0.5, this.toY - 32);
-
-    const mat = new StandardMaterial('expMat', this.scene);
-    mat.diffuseColor = new Color3(1, 0.3, 0);
-    mat.emissiveColor = new Color3(1, 0.2, 0);
-    mat.disableLighting = true;
-    exp.material = mat;
-
-    // 0.3s 后销毁爆炸球
-    setTimeout(() => {
-      exp.dispose();
-      mat.dispose();
-    }, 300);
+    const pm = ParticleManager.getInstance();
+    pm.spawnExplosion(this.toX - 32, 0.5, this.toY - 32);
   }
 
   dispose(): void {

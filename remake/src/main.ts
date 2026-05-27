@@ -38,6 +38,7 @@ import { DamageCalculator, WarheadType } from './game/combat/DamageCalculator';
 import { ResourceLayer } from './game/economy/ResourceLayer';
 import { GameLoop } from './game/GameLoop';
 import { FogOfWar } from './renderer/effects/FogOfWar';
+import { ParticleManager } from './renderer/effects/ParticleManager';
 import { AudioManager } from './core/AudioManager';
 import { getLocalization } from './core/Localization';
 import { ObjectPool } from './core/ObjectPool';
@@ -510,6 +511,10 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
     { name: 'Ore', terrainType: 'clear', maxDensity: 200, growthRate: 0.03, spreadRate: 0.01, value: 50 },
   ]);
 
+  // ── Particle Manager (Task 80) ──
+  const particleManager = ParticleManager.getInstance();
+  particleManager.init(scene);
+
   // ── Debug Console ──
   const gameConsole = new GameConsole(scene, lighting, rtsCamera, terrain, placer, pathfinder, resourceLayer);
   gameConsole.install();
@@ -618,6 +623,7 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
       placer.updateFromScreen(ptr.x, ptr.y);
     }
     sidebar.refresh(_dt);
+    particleManager.update();
     hud.updateResourceBar(gdi);
   });
 

@@ -22,6 +22,7 @@ import { SandboxMode, BattleStats } from '../game/sandbox/SandboxMode';
 import { DesktopAdapter } from '../core/DesktopAdapter';
 import { TouchInputManager } from '../core/TouchInputManager';
 import { InstancedUnitRenderer } from '../renderer/InstancedUnitRenderer';
+import { ParticleManager } from '../renderer/effects/ParticleManager';
 import { UnitCollision } from '../game/unit/UnitCollision';
 import { BlockedByActor } from '../game/unit/BlockedByActor';
 import { ActorMap } from '../game/world/ActorMap';
@@ -198,6 +199,9 @@ export class GameConsole {
       instancedRegister: this.instancedRegister.bind(this),
       instancedStats: this.instancedStats.bind(this),
       instancedDispose: this.instancedDispose.bind(this),
+      // Task 80: Particle Effects
+      spawnExplosion: this.spawnExplosion.bind(this),
+      particleStats: this.particleStats.bind(this),
       // internal refs for e2e
       _scene: this.scene,
       _rtsCamera: this.rtsCamera,
@@ -2126,5 +2130,27 @@ export class GameConsole {
   private instancedDispose(): { disposed: boolean } {
     InstancedUnitRenderer.reset();
     return { disposed: true };
+  }
+
+  // ── Task 80: Particle Effects ──
+
+  /** Spawn a particle explosion at world coordinates (for e2e / visual testing). */
+  private spawnExplosion(worldX?: number, worldY?: number, worldZ?: number): { spawned: boolean } {
+    const pm = ParticleManager.getInstance();
+    // Default to camera target position if not provided
+    const x = worldX ?? this.rtsCamera.getTarget().x;
+    const y = worldY ?? 0.5;
+    const z = worldZ ?? this.rtsCamera.getTarget().z;
+    const spawned = pm.spawnExplosion(x, y, z);
+    return { spawned };
+  }
+
+  /** Query particle manager statistics. */
+  private particleStats(): { activeCount: number; poolSize: number } {
+    const pm = ParticleManager.getInstance();
+    return {
+      activeCount: pm.getActiveCount(),
+      poolSize: pm.getPoolSize(),
+    };
   }
 }

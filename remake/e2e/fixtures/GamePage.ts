@@ -510,6 +510,30 @@ export class GamePage {
     );
   }
 
+  // ── Task 80: Particle Effects helpers ──
+
+  async spawnExplosion(worldX = 0, worldY = 0.5, worldZ = 0): Promise<{ spawned: boolean }> {
+    return await this.page.evaluate(
+      ({ x, y, z }) => {
+        const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+        return (cnc.spawnExplosion?.(x, y, z) as { spawned: boolean }) ?? { spawned: false };
+      },
+      { x: worldX, y: worldY, z: worldZ }
+    );
+  }
+
+  async particleStats(): Promise<{ activeCount: number; poolSize: number }> {
+    return await this.page.evaluate(() => {
+      const cnc = (window as unknown as Record<string, (() => unknown) | undefined>).cnc;
+      return (
+        (cnc.particleStats?.() as { activeCount: number; poolSize: number } | undefined) ?? {
+          activeCount: 0,
+          poolSize: 0,
+        }
+      );
+    });
+  }
+
   /** Get the active terrain mesh vertex count (accounts for LOD switching). */
   async getActiveTerrainVertices(): Promise<number> {
     return await this.page.evaluate(() => {

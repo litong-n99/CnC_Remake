@@ -1754,8 +1754,18 @@
 ### Task 80: 特效合批与 GPU 粒子
 - **目标**：爆炸、烟雾等特效使用 Babylon.js `ParticleSystem` 或 `GPUParticleSystem`，而非独立 Mesh。
 - **文件**：`src/renderer/effects/ParticleManager.ts`
+- **关键变更**：
+  - `ParticleManager` 单例：管理 `ParticleSystem` 对象池（最大 60 个）
+  - `spawnExplosion(x, y, z)`：从池中获取/创建系统，发射 80 个粒子的一次性爆发
+  - 粒子配置：橙→红渐变、0.2–0.5s 生命周期、向上漂移、ONEONE 混合
+  - 回收机制：`returnTime = now + 1000ms`，渲染循环 `update()` 自动回收过期系统
+  - `Bullet.createExplosion()` 从 `MeshBuilder.CreateSphere` 替换为 `ParticleManager.spawnExplosion()`
+  - `GameConsole` 暴露 `spawnExplosion` / `particleStats` 命令
 - **验收**：50 个同时爆炸的特效帧率 > 55FPS。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`ParticleManager` 类 + `Bullet` 集成
+  - `GameConsole` 暴露 `spawnExplosion` / `particleStats`
+  - e2e 测试：`task-80-particleEffects.spec.ts`（4 测试：初始化、单爆炸、50 并发、回收）
 
 ### Task 81: 纹理图集（Texture Atlas）
 - **目标**：将大量小纹理（UI 图标、单位图标、地形贴图）合并为少数几张大 texture atlas，减少纹理切换。
@@ -1974,12 +1984,12 @@
 | Phase 11 战役系统 | 9 | 3 | Lua脚本 done、触发器 done、目标 done、过场 |
 | Phase 12 网络对战 | 9 | 0 | Lockstep、WebSocket、房间、回放；68.5 观战者身份 |
 | Phase 13 资源内容 | 7 | 0 | MIX/SHP解析、音频、视频、本地化 |
-| Phase 14 性能优化 | 6 | 5 | Task 76 LOD done、77 实例化 done、78 视锥剔除 done、79 对象池 done、81 纹理图集 done |
+| Phase 14 性能优化 | 6 | 6 | Task 76–81 全部完成 |
 | Phase 15 AI高级 | 7 | 0 | Bot、超级武器、空军、桥梁 |
 | Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
 | Phase 17 发布平台 | 3 | 0 | 桌面打包、移动端、Steam |
 | 补充任务（OpenRA 差距填补） | 4 | 4 | 139 OrderGenerator done、140 GameOrder done、141 逻辑帧分离 done、142 AudioManager done |
-| **总计** | **153** | **70** | |
+| **总计** | **153** | **71** | |
 
 ---
 
@@ -2057,7 +2067,7 @@
 - [x] **Task 77**：单位实例化渲染（InstancedMesh）🟡 P1
 - [x] **Task 78**：视锥剔除（Frustum Culling）🟡 P1
 - [x] **Task 79**：对象池（Object Pool）
-- [ ] **Task 80**：特效合批与 GPU 粒子
+- [x] **Task 80**：特效合批与 GPU 粒子
 - [x] **Task 81**：纹理图集（Texture Atlas）
 - [ ] **Task 82**：基础 AI Bot（建造与扩张）
 - [x] **Task 83**：AI 难度等级
