@@ -54,6 +54,8 @@ export interface BuildingDefinition {
    * Source: origin/REDALERT/BDATA.CPP IsPowered.
    */
   readonly requiresPower: boolean;
+  /** 建造上限（undefined / 0 = 无限制）。 */
+  readonly buildLimit?: number;
 }
 
 /**

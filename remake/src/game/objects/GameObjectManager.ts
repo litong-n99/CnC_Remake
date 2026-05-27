@@ -29,6 +29,18 @@ export class GameObjectManager {
   unregister(id: string): boolean {
     const obj = this.objects.get(id);
     if (obj) {
+      // Task 135: 建造限制追踪 — 销毁时递减
+      if (obj.type === GameObjectType.Unit) {
+        const unit = obj as import('./Unit').Unit;
+        if (unit.definition.buildLimit !== undefined && unit.definition.buildLimit > 0) {
+          obj.house.buildLimitTracker.remove(unit.definition.id);
+        }
+      } else if (obj.type === GameObjectType.Building) {
+        const building = obj as import('./Building').Building;
+        if (building.definition.buildLimit !== undefined && building.definition.buildLimit > 0) {
+          obj.house.buildLimitTracker.remove(building.definition.id);
+        }
+      }
       obj.dispose();
       return this.objects.delete(id);
     }

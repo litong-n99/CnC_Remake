@@ -49,8 +49,10 @@ export interface UnitDefinition {
   readonly techLevel: number;
   /** Armour type. */
   readonly armor: ArmorType;
-  /** Primary weapon range in cells. */
+  /** Primary weapon range in cells. @deprecated 使用 WeaponInfo.range */
   readonly range: number;
+  /** Primary weapon name（引用 WEAPON_DEFINITIONS 的键）。 */
+  readonly primaryWeapon?: string;
   /** Movement zone capability. */
   readonly mzone: MovementZone;
   /** Whether the unit has a turret. */
@@ -67,6 +69,8 @@ export interface UnitDefinition {
   readonly rotationSpeed: number;
   /** Crush class for crushable units (e.g. 'infantry'). Empty = not crushable. */
   readonly crushClass?: string;
+  /** 建造上限（undefined / 0 = 无限制）。 */
+  readonly buildLimit?: number;
 }
 
 /** Classic Red Alert unit roster. */
@@ -522,7 +526,7 @@ export function convertUnitDefinition(raw: Record<string, unknown>, key: string)
     cost: parseNum(raw.cost),
     techLevel: parseNum(raw.techLevel),
     armor: parseEnum(raw.armor, ARMOR_MAP, 'armor'),
-    range: parseNum(raw.range),
+    range: raw.range !== undefined ? parseNum(raw.range) : 0,
     mzone: parseEnum(raw.mzone, MZONE_MAP, 'mzone'),
     hasTurret: parseBool(raw.hasTurret),
     isSelfHealing: parseBool(raw.isSelfHealing),
@@ -530,6 +534,7 @@ export function convertUnitDefinition(raw: Record<string, unknown>, key: string)
     isCrusher: parseBool(raw.isCrusher),
     isScanner: parseBool(raw.isScanner),
     rotationSpeed: parseNum(raw.rotationSpeed),
+    primaryWeapon: raw.primaryWeapon !== undefined ? parseStr(raw.primaryWeapon) : undefined,
   };
   if (raw.crushClass !== undefined) {
     (def as unknown as Record<string, unknown>).crushClass = parseStr(raw.crushClass);

@@ -2,6 +2,7 @@ import yaml from 'js-yaml';
 import { RuleRegistry } from './RuleRegistry';
 import { registerUnitRuleConverter, loadYamlUnitDefinitions } from './UnitDefinitions';
 import { registerBuildingRuleConverter, loadYamlBuildingDefinitions } from './BuildingDefinitions';
+import { registerWeaponRuleConverter, loadYamlWeaponDefinitions } from './WeaponInfo';
 import { loadYamlGameRules } from './GameRules';
 
 /**
@@ -31,7 +32,7 @@ export interface YamlLoaderOptions {
  */
 export async function loadYamlRules(options: YamlLoaderOptions = {}): Promise<boolean> {
   const base = options.basePath ?? `${import.meta.env.BASE_URL}rules/`.replace(/\/+/g, '/');
-  const files = ['defaults.yaml', 'units.yaml', 'buildings.yaml', 'rules.yaml'];
+  const files = ['defaults.yaml', 'units.yaml', 'buildings.yaml', 'weapons.yaml', 'rules.yaml'];
 
   const rawDocs: Array<Record<string, unknown>> = [];
 
@@ -68,6 +69,7 @@ export async function loadYamlRules(options: YamlLoaderOptions = {}): Promise<bo
 
   const units: Record<string, Record<string, unknown>> = {};
   const buildings: Record<string, Record<string, unknown>> = {};
+  const weapons: Record<string, Record<string, unknown>> = {};
 
   for (const [key, value] of Object.entries(resolved)) {
     if (key.startsWith('^')) continue;
@@ -82,6 +84,8 @@ export async function loadYamlRules(options: YamlLoaderOptions = {}): Promise<bo
       units[key] = record;
     } else if ('strength' in record && 'width' in record) {
       buildings[key] = record;
+    } else if ('warhead' in record && 'projectile' in record) {
+      weapons[key] = record;
     }
   }
 
@@ -92,6 +96,10 @@ export async function loadYamlRules(options: YamlLoaderOptions = {}): Promise<bo
   if (Object.keys(buildings).length > 0) {
     registry.load('Building', buildings);
     if (options.verbose) console.info(`[YamlLoader] Loaded ${Object.keys(buildings).length} buildings from YAML`);
+  }
+  if (Object.keys(weapons).length > 0) {
+    registry.load('Weapon', weapons);
+    if (options.verbose) console.info(`[YamlLoader] Loaded ${Object.keys(weapons).length} weapons from YAML`);
   }
 
   return true;
@@ -105,11 +113,13 @@ export async function loadYamlRules(options: YamlLoaderOptions = {}): Promise<bo
 export async function loadYamlRulesWithFallback(): Promise<boolean> {
   registerUnitRuleConverter();
   registerBuildingRuleConverter();
+  registerWeaponRuleConverter();
 
   const ok = await loadYamlRules({ verbose: true });
   if (ok) {
     loadYamlUnitDefinitions();
     loadYamlBuildingDefinitions();
+    loadYamlWeaponDefinitions();
   }
   return ok;
 }
@@ -147,8 +157,14 @@ function mergeDocs(docs: Array<Record<string, unknown>>): Record<string, unknown
 function resolveInherits(doc: Record<string, unknown>): Record<string, Record<string, unknown>> {
   const resolved = new Map<string, Record<string, unknown>>();
 
-  function resolve(key: string): Record<string, unknown> {
+  function resolve(key: string, resolving = new Set<string>()): Record<string, unknown> {
     if (resolved.has(key)) return resolved.get(key)!;
+
+    // 循环继承检测
+    if (resolving.has(key)) {
+      console.error(`[YamlLoader] Circular inheritance detected: ${Array.from(resolving).join(' → ')} → ${key}`);
+      return {};
+    }
 
     const raw = doc[key];
     if (!raw || typeof raw !== 'object') {
@@ -161,17 +177,21 @@ function resolveInherits(doc: Record<string, unknown>): Record<string, Record<st
     // 处理继承
     const inherits = record.Inherits;
     if (typeof inherits === 'string') {
-      const parent = resolve(inherits);
+      resolving.add(key);
+      const parent = resolve(inherits, resolving);
+      resolving.delete(key);
       record = { ...parent, ...record };
       delete record.Inherits;
     } else if (Array.isArray(inherits)) {
       // 多继承：从左到右依次合并
+      resolving.add(key);
       for (const parentName of inherits) {
         if (typeof parentName === 'string') {
-          const parent = resolve(parentName);
+          const parent = resolve(parentName, resolving);
           record = { ...parent, ...record };
         }
       }
+      resolving.delete(key);
       delete record.Inherits;
     }
 

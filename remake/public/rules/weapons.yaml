@@ -1,0 +1,263 @@
+# Weapon definitions — Task 98
+# Migrated from WEAPON_DEFINITIONS in WeaponInfo.ts
+
+105mm:
+  name: 105mm
+  range: 4.75
+  minRange: 0
+  burst: 1
+  reloadDelay: 50
+  validTargets: [Ground, Water]
+  invalidTargets: []
+  projectile:
+    type: Bullet
+    speed: 8
+    inaccuracy: 0
+  warhead:
+    damage: 25
+    spread: 0.5
+    verses:
+      None: 25
+      Wood: 50
+      Aluminum: 75
+      Steel: 100
+      Concrete: 50
+    delay: 0
+
+90mm:
+  name: 90mm
+  range: 4.75
+  minRange: 0
+  burst: 1
+  reloadDelay: 40
+  validTargets: [Ground, Water]
+  invalidTargets: []
+  projectile:
+    type: Bullet
+    speed: 8
+    inaccuracy: 0
+  warhead:
+    damage: 18
+    spread: 0.5
+    verses:
+      None: 25
+      Wood: 50
+      Aluminum: 75
+      Steel: 100
+      Concrete: 50
+    delay: 0
+
+120mm:
+  name: 120mm
+  range: 4.75
+  minRange: 0
+  burst: 2
+  reloadDelay: 70
+  burstDelays: 8
+  validTargets: [Ground, Water]
+  invalidTargets: []
+  projectile:
+    type: Bullet
+    speed: 8
+    inaccuracy: 0
+  warhead:
+    damage: 40
+    spread: 0.5
+    verses:
+      None: 25
+      Wood: 50
+      Aluminum: 75
+      Steel: 100
+      Concrete: 50
+    delay: 0
+
+MammothTusk:
+  name: MammothTusk
+  range: 5
+  minRange: 0
+  burst: 2
+  reloadDelay: 60
+  burstDelays: 10
+  validTargets: [Ground, Air, Water]
+  invalidTargets: []
+  projectile:
+    type: Missile
+    speed: 10
+    inaccuracy: 0
+    turnRate: 0.2
+  warhead:
+    damage: 30
+    spread: 0.5
+    verses:
+      None: 50
+      Wood: 100
+      Aluminum: 100
+      Steel: 75
+      Concrete: 50
+    delay: 0
+
+Dragon:
+  name: Dragon
+  range: 5
+  minRange: 0
+  burst: 1
+  reloadDelay: 50
+  validTargets: [Ground, Air, Water]
+  invalidTargets: []
+  projectile:
+    type: Missile
+    speed: 12
+    inaccuracy: 0
+    turnRate: 0.15
+  warhead:
+    damage: 30
+    spread: 0.5
+    verses:
+      None: 50
+      Wood: 100
+      Aluminum: 100
+      Steel: 100
+      Concrete: 50
+    delay: 0
+
+Grenade:
+  name: Grenade
+  range: 3.5
+  minRange: 0
+  burst: 1
+  reloadDelay: 40
+  validTargets: [Ground]
+  invalidTargets: [Air]
+  projectile:
+    type: Bullet
+    speed: 6
+    inaccuracy: 0.3
+    gravity: 0.05
+  warhead:
+    damage: 35
+    spread: 0.8
+    verses:
+      None: 100
+      Wood: 75
+      Aluminum: 50
+      Steel: 25
+      Concrete: 25
+    delay: 0
+
+Flamethrower:
+  name: Flamethrower
+  range: 2
+  minRange: 0
+  burst: 1
+  reloadDelay: 30
+  validTargets: [Ground]
+  invalidTargets: [Air]
+  projectile:
+    type: Bullet
+    speed: 20
+    inaccuracy: 0.5
+  warhead:
+    damage: 20
+    spread: 0.5
+    verses:
+      None: 100
+      Wood: 100
+      Aluminum: 25
+      Steel: 10
+      Concrete: 10
+    delay: 0
+
+M1Carbine:
+  name: M1Carbine
+  range: 3
+  minRange: 0
+  burst: 1
+  reloadDelay: 20
+  validTargets: [Ground]
+  invalidTargets: [Air]
+  projectile:
+    type: Bullet
+    speed: 30
+    inaccuracy: 0.2
+  warhead:
+    damage: 15
+    spread: 0.3
+    verses:
+      None: 100
+      Wood: 30
+      Aluminum: 30
+      Steel: 20
+      Concrete: 10
+    delay: 0
+
+Colt45:
+  name: Colt45
+  range: 3
+  minRange: 0
+  burst: 2
+  reloadDelay: 15
+  burstDelays: 5
+  validTargets: [Ground]
+  invalidTargets: [Air]
+  projectile:
+    type: Bullet
+    speed: 30
+    inaccuracy: 0.1
+  warhead:
+    damage: 50
+    spread: 0.3
+    verses:
+      None: 100
+      Wood: 30
+      Aluminum: 30
+      Steel: 20
+      Concrete: 10
+    delay: 0
+
+V2Rocket:
+  name: V2Rocket
+  range: 10
+  minRange: 2
+  burst: 1
+  reloadDelay: 150
+  validTargets: [Ground]
+  invalidTargets: [Air]
+  projectile:
+    type: Missile
+    speed: 5
+    inaccuracy: 0.5
+    turnRate: 0.05
+  warhead:
+    damage: 200
+    spread: 1.5
+    verses:
+      None: 50
+      Wood: 100
+      Aluminum: 100
+      Steel: 75
+      Concrete: 50
+    delay: 0
+
+155mm:
+  name: 155mm
+  range: 8
+  minRange: 2
+  burst: 1
+  reloadDelay: 90
+  validTargets: [Ground]
+  invalidTargets: [Air]
+  projectile:
+    type: Bullet
+    speed: 6
+    inaccuracy: 0.8
+    gravity: 0.03
+  warhead:
+    damage: 80
+    spread: 1.2
+    verses:
+      None: 50
+      Wood: 100
+      Aluminum: 100
+      Steel: 75
+      Concrete: 50
+    delay: 0

@@ -17,6 +17,7 @@ import { HouseProduction } from './HouseProduction';
 import { HouseStatistics } from './HouseStatistics';
 import { HouseTechTree } from './HouseTechTree';
 import { DynamicTechTree } from '../rules/DynamicTechTree';
+import { BuildLimitTracker } from '../rules/BuildLimitTracker';
 
 export { HouseRelationship, HouseDiplomacy };
 
@@ -98,6 +99,7 @@ export class House {
   readonly diplomacy: HouseDiplomacy;
   private readonly _power: HousePower;
   readonly dynamicTechTree: DynamicTechTree;
+  readonly buildLimitTracker: BuildLimitTracker;
 
   // ── 状态标志 ──
   isActive = true;
@@ -149,6 +151,7 @@ export class House {
     this.statistics = new HouseStatistics();
     this.techTree = new HouseTechTree();
     this.dynamicTechTree = new DynamicTechTree();
+    this.buildLimitTracker = new BuildLimitTracker();
     this.diplomacy = new HouseDiplomacy(id);
   }
 

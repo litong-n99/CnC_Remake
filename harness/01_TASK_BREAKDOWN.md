@@ -1080,7 +1080,8 @@
 - **依赖**：Task 95（YAML 基础设施）+ Task 96（Trait 系统）
 - **备注**：原编号 Task 11.4，改为独立编号 Task 97。
 - **验收**：定义 `^Vehicle`（含 Mobile + Health + Render），`LightTank` 继承 `^Vehicle` 并只覆盖 `speed` 和 `primaryWeapon`，`Harvester` 继承 `^Vehicle` 并移除 `Armament`。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：`resolveInherits` 已支持 `Inherits:` 递归合并、`^` 前缀抽象 Actor 过滤、`-Key` 删除语法、循环继承检测。e2e 测试 4 项通过。
 
 ### Task 100: House 类拆分（God Class 治理）🟡 P1
 - **目标**：当前 `House.ts` 是 293 行的上帝类，聚合经济/电力/计数/难度/统计/状态等 50+ 字段，违反 SRP。在不引入完整 Trait 系统的前提下，先拆分为组合式子模块。
@@ -1133,7 +1134,8 @@
 - **依赖**：Task 95（YAML 基础设施先就位，或如 YAML 未就绪则先硬编码在 TS 中）
 - **备注**：原编号 Task 11.2，改为独立编号 Task 98。
 - **验收**：`weapons.yaml` 中定义 `105mm` 武器，坦克引用后，开火时可见抛射体飞行、命中后按装甲类型计算伤害。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：`WeaponInfo.ts` + `ProjectileInfo.ts` + `WarheadInfo.ts` + `public/rules/weapons.yaml` 已实现。`UnitDefinition` 新增 `primaryWeapon` 可选字段，`range` 保持向后兼容。e2e 测试 7 项通过。
 
 ### Task 28: 武器与弹道系统（翻译 WEAPON.CPP / BULLET.CPP）
 - **OpenRA 对标**：`mods/cnc/weapons/*.yaml`, `OpenRA.Mods.Common/Traits/Armament.cs`, `OpenRA.Mods.Common/Projectiles/`
@@ -1254,7 +1256,8 @@
   - `FactionRules`：定义阵营科技树差异（如 Nod 没有医院、GDI 没有 Obelisk）
 - **依赖**：Task 134（动态 TechTree）
 - **验收**：GDI 玩家选中谭雅时按钮显示 "1/1"，造完 1 个后按钮灰显并提示 "已达到建造上限"；Nod 玩家的 Sidebar 中不出现 GDI 专属建筑图标。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：`BuildLimitTracker`（引用计数）+ `FactionRules`（阵营令牌与专属列表）+ `UnitDefinition/BuildingDefinition.buildLimit` 已实现。`GameObjectFactory` 和 `GameObjectManager.unregister` 自动同步计数。e2e 测试 6 项通过。
 
 ### Task 136: 游戏速度与大厅选项系统 🟡 P1
 - **目标**：支持多档游戏速度（慢速/正常/快速）和遭遇战大厅选项（短兵相接、科技等级、起始资金）。
@@ -2119,9 +2122,9 @@
 
 ### 深度 1：依赖深度 0
 
-**已完成 26 个**：Task 9.1、Task 9.2、Task 9.3、Task 9.4、Task 9.5、Task 9.6、Task 9.8、Task 10、Task 23.32、Task 27.5、Task 27.6、Task 30.5、Task 51.5、Task 68.5、Task 96、Task 100、Task 101、Task 113、Task 118、Task 119、Task 122、Task 123、Task 124、Task 130、Task 133、Task 134
+**已完成 29 个**：Task 9.1、Task 9.2、Task 9.3、Task 9.4、Task 9.5、Task 9.6、Task 9.8、Task 10、Task 23.32、Task 27.5、Task 27.6、Task 30.5、Task 51.5、Task 68.5、Task 96、Task 97、Task 98、Task 100、Task 101、Task 113、Task 118、Task 119、Task 122、Task 123、Task 124、Task 130、Task 133、Task 134、Task 135
 
-**待完成 10 个**：
+**待完成 7 个**：
 - [ ] **Task 9.7**：Shroud 边缘贴图渲染系统 — 迷雾视觉精细化 🟢 P2 ← 31（Fog, 9.1（CellLayer, 9.5（PPos
 - [x] **Task 23.32**：电力系统自动汇总重构 🟡 P1 ← 20–23（建筑系统已稳定）, 20, 21, 22, 23
 - [x] **Task 27.5**：外交关系系统 🔴 P0 ← 12（House
@@ -2130,8 +2133,8 @@
 - [x] **Task 51.5**：立场着色（Player Relationship Colors）🟢 P2 ← 27.5（外交关系系统先就位）
 - [x] **Task 68.5**：观战者身份系统（Spectator Support）🟢 P2 ← 27.5（外交关系）+, 31（战争迷雾）
 - [x] **Task 96**：轻量 Trait/Component 系统 🟡 P1 ← 95（YAML
-- [ ] **Task 97**：规则继承与抽象 Actor 🟡 P1 ← 95（YAML, 96（Trait
-- [ ] **Task 98**：Weapon 规则系统（WeaponInfo + Projectile + Warheads）🔴 P0 ← 95（YAML
+- [x] **Task 97**：规则继承与抽象 Actor 🟡 P1 ← 95（YAML, 96（Trait
+- [x] **Task 98**：Weapon 规则系统（WeaponInfo + Projectile + Warheads）🔴 P0 ← 95（YAML
 - [x] **Task 100**：House 类拆分（God Class 治理）🟡 P1 ← 23.32（电力模块先独立）+, 27.5（外交模块先独立）
 - [x] **Task 101**：科技树 Watcher 机制 🟡 P1 ← 100（HouseTechTree
 - [x] **Task 122**：HPF 抽象图 + 抽象启发式引导 — 分层寻路完整实现 🔴 P0 ← 114（已有, 121（优先队列提升抽象图搜索效率）
@@ -2143,7 +2146,7 @@
 - [x] **Task 130**：高度系统（Cell Height）— 悬崖与斜坡 🟢 P2 ← 127（Directed
 - [x] **Task 133**：DamageTypes 伤害类型标签系统 🔴 P0 ← 29（伤害计算器）、Task
 - [x] **Task 134**：前提条件令牌与动态 TechTree 🔴 P0 ← 96（Trait
-- [ ] **Task 135**：阵营限制与建造限制 🟡 P1 ← 134（动态
+- [x] **Task 135**：阵营限制与建造限制 🟡 P1 ← 134（动态
 - [ ] **Task 136**：游戏速度与大厅选项系统 🟡 P1 ← 32（GameLoop, 134（TechTree
 - [ ] **Task 137**：条件 Trait 系统（GrantConditionOnPrerequisite）🟢 P2 ← 96（Trait, 134（TechTree
 - [ ] **Task 138**：序列系统（Sequences）⚪ P3 ← 10.4（Sprite, 96（Trait
@@ -2174,12 +2177,12 @@
  1. [深度0] **Task 95** — YAML 规则解析基础设施 ✅
  2. [深度0] **Task 121** — A* 优先队列（Binary Heap）✅
  3. [深度1] **Task 27.5** — 外交关系系统 🔴 P0 ✅
- 4. [深度1] **Task 30.5** — 经济双轨化（Cash + Resources）🔴 P0
- 5. [深度1] **Task 98** — Weapon 规则系统（WeaponInfo + Projectile + Warheads）🔴 P0
- 6. [深度1] **Task 122** — HPF 抽象图 + 抽象启发式引导
- 7. [深度1] **Task 123** — HPF 动态更新
+ 4. [深度1] **Task 30.5** — 经济双轨化（Cash + Resources）🔴 P0 ✅
+ 5. [深度1] **Task 98** — Weapon 规则系统（WeaponInfo + Projectile + Warheads）🔴 P0 ✅
+ 6. [深度1] **Task 122** — HPF 抽象图 + 抽象启发式引导 ✅
+ 7. [深度1] **Task 123** — HPF 动态更新 ✅
  8. [深度1] **Task 133** — DamageTypes 伤害类型标签系统 🔴 P0 ✅
- 9. [深度1] **Task 134** — 前提条件令牌与动态 TechTree 🔴 P0
+ 9. [深度1] **Task 134** — 前提条件令牌与动态 TechTree 🔴 P0 ✅
 
 
 ---

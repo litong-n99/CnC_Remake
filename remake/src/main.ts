@@ -8,6 +8,19 @@ import { MapLoader } from './game/terrain/MapLoader';
 import { Pathfinder } from './game/terrain/Pathfinder';
 import { HierarchicalPathfinder } from './game/terrain/HierarchicalPathfinder';
 import { GameRules } from './game/rules/GameRules';
+import { RuleRegistry } from './game/rules/RuleRegistry';
+import { convertUnitDefinition, registerUnitRuleConverter } from './game/rules/UnitDefinitions';
+import { BuildLimitTracker, checkBuildLimit } from './game/rules/BuildLimitTracker';
+import { Faction, houseTypeToFaction, getFactionToken, canFactionBuild } from './game/rules/FactionRules';
+import {
+  WEAPON_DEFINITIONS as WeaponInfoDefinitions,
+  getWeaponInfo,
+  canTarget,
+  TargetType,
+  convertWeaponInfo,
+  registerWeaponRuleConverter,
+} from './game/rules/WeaponInfo';
+import { computeDamage, getVersus } from './game/rules/WarheadInfo';
 import { UNIT_DEFINITIONS, ArmorType } from './game/rules/UnitDefinitions';
 import { BUILDING_DEFINITIONS, getBuildingFootprint } from './game/rules/BuildingDefinitions';
 import { HouseManager } from './game/house/HouseManager';
@@ -808,6 +821,26 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._hexToColor3 = hexToColor3;
   w._UnitHealthBarManager = UnitHealthBarManager;
   w._DamageType = DamageType;
+  // ── Task 95/97: Rule Registry + YAML Inheritance ──
+  w._RuleRegistry = RuleRegistry;
+  w._convertUnitDefinition = convertUnitDefinition;
+  w._registerUnitRuleConverter = registerUnitRuleConverter;
+  // ── Task 98: Weapon Rules ──
+  w._WeaponDefinitions = WeaponInfoDefinitions;
+  // ── Task 135: Faction Rules & Build Limits ──
+  w._BuildLimitTracker = BuildLimitTracker;
+  w._checkBuildLimit = checkBuildLimit;
+  w._Faction = Faction;
+  w._houseTypeToFaction = houseTypeToFaction;
+  w._getFactionToken = getFactionToken;
+  w._canFactionBuild = canFactionBuild;
+  w._getWeaponInfo = getWeaponInfo;
+  w._canTarget = canTarget;
+  w._TargetType = TargetType;
+  w._computeDamage = computeDamage;
+  w._getVersus = getVersus;
+  w._convertWeaponInfo = convertWeaponInfo;
+  w._registerWeaponRuleConverter = registerWeaponRuleConverter;
   w._HouseManager = HouseManager;
   // HouseManager 动态方法代理（避免 Vite HMR 导致实例方法过时）
   w._getAlliesOf = (type: HouseType) => HouseManager.getInstance().getAlliesOf(type);

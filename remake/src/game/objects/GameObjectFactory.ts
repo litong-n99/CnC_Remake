@@ -59,6 +59,10 @@ export class GameObjectFactory {
     } else {
       house.addUnit(definition.id);
     }
+    // Task 135: 建造限制追踪
+    if (definition.buildLimit !== undefined && definition.buildLimit > 0) {
+      house.buildLimitTracker.add(definition.id);
+    }
     return unit;
   }
 
@@ -74,6 +78,10 @@ export class GameObjectFactory {
     building.createMesh(scene);
     GameObjectManager.getInstance().register(building);
     house.addBuilding(definition.id);
+    // Task 135: 建造限制追踪
+    if (definition.buildLimit !== undefined && definition.buildLimit > 0) {
+      house.buildLimitTracker.add(definition.id);
+    }
     return building;
   }
 }
