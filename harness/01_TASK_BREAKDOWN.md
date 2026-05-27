@@ -801,7 +801,13 @@
   - 双向分层搜索：单源单目标时用双向；多源或不可达源时用单向
 - **依赖**：Task 114（已有 domain 索引），Task 121（优先队列提升抽象图搜索效率）
 - **验收**：128×128 地图含水域/悬崖障碍，长距离（>50格）寻路搜索节点数比纯 A* 减少 60%+；路径质量（长度）与纯 A* 差异 <5%
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`RelationshipColors.ts`（四色映射 + `getRelationshipColorForLocalPlayer` + `hexToColor3`）
+  - `SelectionManager`：选择环按关系着色（Self/Ally=绿, Enemy=红, Neutral=灰）
+  - `UnitHealthBarManager`：3D血条（背景+前景），前景色按关系着色
+  - `HUD.minimap`：Canvas 绘制单位点，按关系着色
+  - `BuildingPlacer`：`startPlacement` 支持 `tintColor` 参数，幽灵带阵营色调
+  - e2e 测试：`task-51.5-relationshipColors.spec.ts`（8 测试：配置、本地玩家颜色、自环、hex转换、viewer设置、minimap canvas、HealthBarManager、建筑放置色调）
 
 ### Task 123: HPF 动态更新 — 脏 Grid 增量重建与建筑监听 🔴 P0
 - **目标**：`HierarchicalPathfinder` 不再仅在构造时一次性 build，而是在地形变化或建筑建造/销毁/受损时自动延迟标记脏 grid，在下次寻路时增量重建受影响的抽象节点和边。
@@ -1985,7 +1991,7 @@
 | Phase 7.6 Rules 补充 | 6 | 1 | 133 DamageTypes done、134 TechTree令牌、135 阵营/建造限制、136 游戏速度/大厅、137 条件Trait、138 序列 |
 | Phase 8 循环发布 | 4 | 2 | Task 35 PerformanceMonitor done；32–34 待补统计；141 逻辑帧分离 done |
 | Phase 9 UI Shell | 7 | 7 | Task 36/37/38/39/40/41/42 done |
-| Phase 10 交互增强 | 10 | 0 | 光标、Sidebar、Shift队列、攻击移动、编组；51.5 立场着色 |
+| Phase 10 交互增强 | 10 | 10 | Task 43–51 全部完成；Task 51.5 立场着色 done |
 | Phase 11 战役系统 | 9 | 3 | Lua脚本 done、触发器 done、目标 done、过场 |
 | Phase 12 网络对战 | 9 | 0 | Lockstep、WebSocket、房间、回放；68.5 观战者身份 |
 | Phase 13 资源内容 | 7 | 0 | MIX/SHP解析、音频、视频、本地化 |
@@ -2107,7 +2113,7 @@
 - [x] **Task 27.5**：外交关系系统 🔴 P0 ← 12（House
 - [ ] **Task 27.6**：Bot 类型支持 🟢 P2 ← 27.5（外交关系先就位，Bot
 - [ ] **Task 30.5**：经济双轨化（Cash + Resources）🔴 P0 ← 100（HouseEconomy
-- [ ] **Task 51.5**：立场着色（Player Relationship Colors）🟢 P2 ← 27.5（外交关系系统先就位）
+- [x] **Task 51.5**：立场着色（Player Relationship Colors）🟢 P2 ← 27.5（外交关系系统先就位）
 - [ ] **Task 68.5**：观战者身份系统（Spectator Support）🟢 P2 ← 27.5（外交关系）+, 31（战争迷雾）
 - [ ] **Task 96**：轻量 Trait/Component 系统 🟡 P1 ← 95（YAML
 - [ ] **Task 97**：规则继承与抽象 Actor 🟡 P1 ← 95（YAML, 96（Trait

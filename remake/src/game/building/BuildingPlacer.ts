@@ -29,6 +29,7 @@ export class BuildingPlacer {
   private ghostCells: GhostCell[] = [];
   private definition: BuildingDefinition | null = null;
   private targetCell: { x: number; y: number } | null = null;
+  private ghostTint: string | null = null;
 
   constructor(scene: Scene, camera: Camera, terrain: TerrainGrid) {
     this.scene = scene;
@@ -39,9 +40,10 @@ export class BuildingPlacer {
   // ──  生命周期  ──
 
   /** 开始对指定建筑进行放置预览。 */
-  startPlacement(definition: BuildingDefinition): void {
+  startPlacement(definition: BuildingDefinition, tintColor?: string): void {
     this.stopPlacement();
     this.definition = definition;
+    this.ghostTint = tintColor ?? null;
     this.createGhost(definition);
   }
 
@@ -171,8 +173,14 @@ export class BuildingPlacer {
 
     for (const { dx, dy } of getBuildingFootprint(def)) {
       const mat = new StandardMaterial(`ghostMat_${dx}_${dy}`, this.scene);
-      mat.alpha = 0.35;
+      mat.alpha = 0.45;
       mat.disableLighting = true;
+
+      // 若有阵营色调，先设为基础 ambient
+      if (this.ghostTint) {
+        const c = this.parseTint(this.ghostTint);
+        mat.ambientColor = c;
+      }
 
       const box = MeshBuilder.CreateBox(`ghostCell_${dx}_${dy}`, { width: 0.95, depth: 0.95, height: 0.1 }, this.scene);
       box.position.x = dx + 0.5;
@@ -186,6 +194,14 @@ export class BuildingPlacer {
 
     this.ghost = root;
     this.ghost.setEnabled(false);
+  }
+
+  private parseTint(hex: string): Color3 {
+    const clean = hex.replace('#', '');
+    const r = parseInt(clean.substring(0, 2), 16) / 255;
+    const g = parseInt(clean.substring(2, 4), 16) / 255;
+    const b = parseInt(clean.substring(4, 6), 16) / 255;
+    return new Color3(r, g, b);
   }
 
   private worldToCell(worldPos: Vector3): { x: number; y: number } {

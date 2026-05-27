@@ -11,6 +11,14 @@ import { UNIT_DEFINITIONS, ArmorType } from './game/rules/UnitDefinitions';
 import { BUILDING_DEFINITIONS, getBuildingFootprint } from './game/rules/BuildingDefinitions';
 import { HouseManager } from './game/house/HouseManager';
 import { HouseRelationship, HouseDiplomacy, getRelationshipColor } from './game/house/HouseRelationship';
+import {
+  getRelationshipColorConfig,
+  setRelationshipColorConfig,
+  getRelationshipColorForLocalPlayer,
+  getRelationshipColorFor,
+  hexToColor3,
+} from './renderer/ui/RelationshipColors';
+import { UnitHealthBarManager } from './renderer/ui/UnitHealthBar';
 import { DamageType } from './game/combat/DamageTypes';
 import { ScriptRuntime } from './game/scripting/ScriptRuntime';
 import { MapGlobal, PlayerGlobal, ActorGlobal, MediaGlobal, UIGlobal } from './game/scripting/ScriptGlobals';
@@ -507,7 +515,7 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
     },
     () => {
       if (queue.status === 'ready' && queue.currentDefinition) {
-        placer.startPlacement(queue.currentDefinition);
+        placer.startPlacement(queue.currentDefinition, gdi.color);
       }
     },
     (mode) => {
@@ -576,12 +584,24 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
 
   // ── Task 24: InputManager（鼠标输入层）──
   const selectionManager = SelectionManager.getInstance();
+  selectionManager.setViewerHouseType(HouseType.GDI);
   const inputManager = new InputManager(rtsCamera, scene, selectionManager, placer, gameConsole);
 
   // ── Task 27: HUD 覆盖层 ──
   const hud = new HUD();
+  const healthBarManager = new UnitHealthBarManager();
+
   selectionManager.onSelectionChanged = (selected) => {
     hud.showUnitInfo(selected as Unit[]);
+    // 显示选中单位的血条，隐藏非选中单位的血条
+    const allUnits = GameObjectManager.getInstance().getUnits();
+    for (const u of allUnits) {
+      if ((selected as Unit[]).includes(u as Unit)) {
+        healthBarManager.show(u as Unit);
+      } else {
+        healthBarManager.hide(u.id);
+      }
+    }
   };
 
   // worldToScreen 通过 inputManager.worldToScreen 暴露给 e2e 测试
@@ -641,6 +661,8 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
     sidebar.refresh(_dt);
     particleManager.update();
     hud.updateResourceBar(gdi);
+    hud.drawMinimap();
+    healthBarManager.updateAll(GameObjectManager.getInstance().getUnits() as Unit[]);
   });
 
   const engine = engineManager.getEngine();
@@ -748,6 +770,12 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._HouseRelationship = HouseRelationship;
   w._HouseDiplomacy = HouseDiplomacy;
   w._getRelationshipColor = getRelationshipColor;
+  w._getRelationshipColorConfig = getRelationshipColorConfig;
+  w._setRelationshipColorConfig = setRelationshipColorConfig;
+  w._getRelationshipColorForLocalPlayer = getRelationshipColorForLocalPlayer;
+  w._getRelationshipColorFor = getRelationshipColorFor;
+  w._hexToColor3 = hexToColor3;
+  w._UnitHealthBarManager = UnitHealthBarManager;
   w._DamageType = DamageType;
   w._HouseManager = HouseManager;
   // HouseManager 动态方法代理（避免 Vite HMR 导致实例方法过时）

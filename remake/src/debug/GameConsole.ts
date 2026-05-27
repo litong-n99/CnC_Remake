@@ -308,7 +308,7 @@ export class GameConsole {
       return false;
     }
     this.pendingBuilding = { definition: allDefs[type], house };
-    this.placer.startPlacement(allDefs[type]);
+    this.placer.startPlacement(allDefs[type], house.color);
     // eslint-disable-next-line no-console
     console.info(
       `Placement mode started for ${allDefs[type].name} (${house.name}) — left-click to place, right-click to cancel`

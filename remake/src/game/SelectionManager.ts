@@ -1,6 +1,8 @@
 import type { Unit } from './objects/Unit';
 import { GameObjectManager } from './objects/GameObjectManager';
-import { MeshBuilder, StandardMaterial, Color3, Vector3, type Scene } from '@babylonjs/core';
+import { MeshBuilder, StandardMaterial, Vector3, type Scene } from '@babylonjs/core';
+import { HouseType } from './house/House';
+import { getRelationshipColorForLocalPlayer, hexToColor3 } from '../renderer/ui/RelationshipColors';
 
 /**
  * 选中单位管理器 — 跟踪当前选中的单位列表，并渲染选择环。
@@ -13,8 +15,9 @@ export class SelectionManager {
 
   private selected = new Set<Unit>();
   private selectionRings: ReturnType<typeof MeshBuilder.CreateTorus>[] = [];
-  private selectionMaterial: StandardMaterial | null = null;
+  private selectionMaterials = new Map<string, StandardMaterial>();
   private scene: Scene | null = null;
+  private viewerHouseType: HouseType | null = null;
 
   /** 编组存储：0-9 共 10 个编组槽 */
   private squads = new Map<number, Unit[]>();
@@ -28,16 +31,35 @@ export class SelectionManager {
     return SelectionManager.instance;
   }
 
-  /** 初始化选择环材质（延迟到首次需要时）。 */
+  /** 设置观察者阵营（用于立场着色）。 */
+  setViewerHouseType(type: HouseType): void {
+    this.viewerHouseType = type;
+  }
+
+  /** 获取当前观察者阵营。 */
+  getViewerHouseType(): HouseType | null {
+    return this.viewerHouseType;
+  }
+
+  /** 初始化场景引用（延迟到首次需要时）。 */
   private ensureScene(scene: Scene): void {
     if (this.scene === scene) return;
     this.scene = scene;
+  }
 
-    this.selectionMaterial = new StandardMaterial('selectionRingMat', scene);
-    this.selectionMaterial.diffuseColor = new Color3(0, 1, 0);
-    this.selectionMaterial.emissiveColor = new Color3(0, 0.8, 0);
-    this.selectionMaterial.alpha = 0.6;
-    this.selectionMaterial.disableLighting = true;
+  /** 获取或创建指定关系颜色的选择环材质。 */
+  private getRingMaterial(colorHex: string, scene: Scene): StandardMaterial {
+    let mat = this.selectionMaterials.get(colorHex);
+    if (!mat) {
+      mat = new StandardMaterial(`selRing_${colorHex.replace('#', '')}`, scene);
+      const c = hexToColor3(colorHex);
+      mat.diffuseColor = c;
+      mat.emissiveColor = c.scale(0.8);
+      mat.alpha = 0.6;
+      mat.disableLighting = true;
+      this.selectionMaterials.set(colorHex, mat);
+    }
+    return mat;
   }
 
   /** 选中单个单位（单选模式，清除之前的选择）。 */
@@ -149,10 +171,13 @@ export class SelectionManager {
 
   private showRings(): void {
     this.hideRings();
-    if (!this.scene || !this.selectionMaterial) return;
+    if (!this.scene) return;
 
     for (const unit of this.selected) {
       if (!unit.mesh) continue;
+
+      const colorHex = getRelationshipColorForLocalPlayer(unit.house.id);
+      const mat = this.getRingMaterial(colorHex, this.scene);
 
       const radius = 0.6;
       const ring = MeshBuilder.CreateTorus(
@@ -160,7 +185,7 @@ export class SelectionManager {
         { diameter: radius * 2, thickness: 0.08, tessellation: 32 },
         this.scene
       );
-      ring.material = this.selectionMaterial;
+      ring.material = mat;
       ring.parent = unit.mesh;
       ring.position = new Vector3(0, 0.05, 0);
       this.selectionRings.push(ring);
@@ -176,8 +201,10 @@ export class SelectionManager {
 
   dispose(): void {
     this.clear();
-    this.selectionMaterial?.dispose();
-    this.selectionMaterial = null;
+    for (const mat of this.selectionMaterials.values()) {
+      mat.dispose();
+    }
+    this.selectionMaterials.clear();
     this.scene = null;
     SelectionManager.instance = null;
   }
