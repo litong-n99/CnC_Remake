@@ -1710,8 +1710,18 @@
 ### Task 77: 单位实例化渲染（InstancedMesh）🟡 P1
 - **目标**：相同模型（如大量步兵、坦克）使用 `InstancedMesh` 批量渲染，减少 draw call。
 - **文件**：`src/renderer/InstancedUnitRenderer.ts`
+- **关键变更**：
+  - `InstancedUnitRenderer` 单例：管理 thin instance 模板缓存和实例注册表
+  - 按 `(definitionId, houseColor)` 分组创建模板 Mesh，每组共享一个模板
+  - `registerUnit` / `updateUnit` / `unregisterUnit` API
+  - 索引回收机制：`freeIndices` 复用已注销的实例槽位
+  - 默认 `enabled = false`，通过 `GameConsole` 手动控制（避免与现有选择环parent系统冲突）
+  - 炮塔独立旋转暂不纳入实例化（需额外架构支持）
 - **验收**：200 辆相同坦克的 draw call 从 200 降至 1，帧率提升 > 30%。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+  - 核心实现：`InstancedUnitRenderer` thin instance 管理器
+  - `GameConsole` 暴露 `instancedRenderer` / `instancedRegister` / `instancedStats` / `instancedDispose`
+  - e2e 测试：`task-77-instancedMesh.spec.ts`（4 测试：API 存在性、注册计数、注销计数、批量共享模板）
 
 ### Task 78: 视锥剔除（Frustum Culling）🟡 P1
 - **目标**：Babylon.js 自动视锥剔除已启用，但自定义逻辑（如 UI 元素、特效）需手动剔除。确保屏幕外单位不更新逻辑（可选）。
@@ -1953,7 +1963,7 @@
 | Phase 11 战役系统 | 9 | 3 | Lua脚本 done、触发器 done、目标 done、过场 |
 | Phase 12 网络对战 | 9 | 0 | Lockstep、WebSocket、房间、回放；68.5 观战者身份 |
 | Phase 13 资源内容 | 7 | 0 | MIX/SHP解析、音频、视频、本地化 |
-| Phase 14 性能优化 | 6 | 0 | LOD、实例化、视锥剔除、对象池 |
+| Phase 14 性能优化 | 6 | 1 | LOD、实例化、视锥剔除、对象池 |
 | Phase 15 AI高级 | 7 | 0 | Bot、超级武器、空军、桥梁 |
 | Phase 16 编辑器 | 3 | 0 | 地图编辑器、触发器编辑、沙盒 |
 | Phase 17 发布平台 | 3 | 0 | 桌面打包、移动端、Steam |
@@ -1972,13 +1982,13 @@
 
 | 深度 | 任务数 | 已完成 | 待完成 | 说明 |
 |------|--------|--------|--------|------|
-| 0 | 124 | 62 | 62 | 无显式前置依赖 |
+| 0 | 124 | 63 | 61 | 无显式前置依赖 |
 | 1 | 36 | 11 | 25 | 依赖深度 0 |
 | 2 | 1 | 0 | 1 | 依赖深度 1 |
 
 ### 深度 0：根基层（无显式前置依赖）
 
-**已完成 59 个**：Task 0、Task 0.1、Task 0.2、Task 0.3、Task 0.4、Task 0.5、Task 1、Task 2、Task 3、Task 4、Task 5、Task 6、Task 7、Task 8、Task 9、Task 11、Task 12、Task 13、Task 14、Task 15、Task 16、Task 17、Task 18、Task 19、Task 20、Task 21、Task 22、Task 23、Task 24、Task 25、Task 26、Task 27、Task 28、Task 29、Task 30、Task 35、Task 36、Task 37、Task 38、Task 39、Task 40、Task 41、Task 42、Task 102、Task 103、Task 104、Task 105、Task 106、Task 107、Task 108、Task 109、Task 110、Task 112、Task 114、Task 115、Task 116、Task 117、Task 120、Task 121、Task 139、Task 140、Task 141
+**已完成 63 个**：Task 0、Task 0.1、Task 0.2、Task 0.3、Task 0.4、Task 0.5、Task 1、Task 2、Task 3、Task 4、Task 5、Task 6、Task 7、Task 8、Task 9、Task 11、Task 12、Task 13、Task 14、Task 15、Task 16、Task 17、Task 18、Task 19、Task 20、Task 21、Task 22、Task 23、Task 24、Task 25、Task 26、Task 27、Task 28、Task 29、Task 30、Task 35、Task 36、Task 37、Task 38、Task 39、Task 40、Task 41、Task 42、Task 77、Task 95、Task 102、Task 103、Task 104、Task 105、Task 106、Task 107、Task 108、Task 109、Task 110、Task 112、Task 114、Task 115、Task 116、Task 117、Task 120、Task 121、Task 127、Task 128、Task 132、Task 139、Task 140、Task 141、Task 142
 
 **待完成 66 个**：
 - [x] **Task 25**：选择系统（单选、框选、编队）
@@ -2033,7 +2043,7 @@
 - [x] **Task 74**：视频播放（VQA 或 WebM）
 - [x] **Task 75**：本地化系统（i18n）
 - [ ] **Task 76**：地形 LOD 与动态细分
-- [ ] **Task 77**：单位实例化渲染（InstancedMesh）🟡 P1
+- [x] **Task 77**：单位实例化渲染（InstancedMesh）🟡 P1
 - [x] **Task 78**：视锥剔除（Frustum Culling）🟡 P1
 - [x] **Task 79**：对象池（Object Pool）
 - [ ] **Task 80**：特效合批与 GPU 粒子

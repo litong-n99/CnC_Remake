@@ -21,6 +21,7 @@ import { ActorPlacer, PlacedActor } from '../editor/ActorPlacer';
 import { SandboxMode, BattleStats } from '../game/sandbox/SandboxMode';
 import { DesktopAdapter } from '../core/DesktopAdapter';
 import { TouchInputManager } from '../core/TouchInputManager';
+import { InstancedUnitRenderer } from '../renderer/InstancedUnitRenderer';
 import { UnitCollision } from '../game/unit/UnitCollision';
 import { BlockedByActor } from '../game/unit/BlockedByActor';
 import { ActorMap } from '../game/world/ActorMap';
@@ -191,6 +192,11 @@ export class GameConsole {
       touchBind: this.touchBind.bind(this),
       touchUnbind: this.touchUnbind.bind(this),
       touchDevice: this.touchDevice.bind(this),
+      // ── Task 77: InstancedUnitRenderer ──
+      instancedRenderer: this.instancedRenderer.bind(this),
+      instancedRegister: this.instancedRegister.bind(this),
+      instancedStats: this.instancedStats.bind(this),
+      instancedDispose: this.instancedDispose.bind(this),
     };
     // eslint-disable-next-line no-console
     console.info('GameConsole installed. Type cnc.help() for available commands.');
@@ -2034,5 +2040,59 @@ export class GameConsole {
 
   private touchDevice(): { isTouchDevice: boolean } {
     return { isTouchDevice: TouchInputManager.isTouchDevice() };
+  }
+
+  // ── Task 77: InstancedUnitRenderer ──
+
+  private instancedRenderer(enabled?: boolean): {
+    enabled: boolean;
+    activeCount: number;
+    groupCount: number;
+    totalSlots: number;
+  } {
+    const renderer = InstancedUnitRenderer.getInstance();
+    renderer.initScene(this.scene);
+    if (typeof enabled === 'boolean') {
+      renderer.enabled = enabled;
+    }
+    return {
+      enabled: renderer.enabled,
+      activeCount: renderer.getActiveCount(),
+      groupCount: renderer.getGroupCount(),
+      totalSlots: renderer.getTotalInstanceSlots(),
+    };
+  }
+
+  private instancedRegister(
+    unitId: string,
+    worldX: number,
+    worldZ: number,
+    rotationY = 0
+  ): { success: boolean; message: string } {
+    const renderer = InstancedUnitRenderer.getInstance();
+    renderer.initScene(this.scene);
+
+    const unit = GameObjectManager.getInstance()
+      .getUnits()
+      .find((u) => u.id === unitId) as Unit | undefined;
+    if (!unit) return { success: false, message: `Unit ${unitId} not found` };
+
+    const ok = renderer.registerUnit(unitId, unit.definition, unit.house, worldX, worldZ, rotationY);
+    return { success: ok, message: ok ? 'Registered' : 'Failed to register' };
+  }
+
+  private instancedStats(): { enabled: boolean; activeCount: number; groupCount: number; totalSlots: number } {
+    const renderer = InstancedUnitRenderer.getInstance();
+    return {
+      enabled: renderer.enabled,
+      activeCount: renderer.getActiveCount(),
+      groupCount: renderer.getGroupCount(),
+      totalSlots: renderer.getTotalInstanceSlots(),
+    };
+  }
+
+  private instancedDispose(): { disposed: boolean } {
+    InstancedUnitRenderer.reset();
+    return { disposed: true };
   }
 }
