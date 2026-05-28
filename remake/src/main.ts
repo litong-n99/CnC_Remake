@@ -79,6 +79,8 @@ import { WEAPON_DEFINITIONS } from './game/weapon/Weapon';
 import { DamageCalculator, WarheadType } from './game/combat/DamageCalculator';
 import { ReloadState } from './game/combat/ReloadState';
 import { TargetScanner } from './game/combat/TargetScanner';
+import { TurnConstraint } from './game/combat/TurnConstraint';
+import { RangeCheck } from './game/combat/RangeCheck';
 import { ResourceLayer } from './game/economy/ResourceLayer';
 import { GameLoop } from './game/GameLoop';
 import {
@@ -856,6 +858,8 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w.WarheadType = WarheadType;
   w._ReloadState = ReloadState;
   w._TargetScanner = TargetScanner;
+  w._TurnConstraint = TurnConstraint;
+  w._RangeCheck = RangeCheck;
   w.ArmorType = ArmorType;
   w._resourceLayer = resourceLayer;
   w._fogOfWar = fogOfWar;
