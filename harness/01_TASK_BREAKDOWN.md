@@ -951,7 +951,8 @@
   - `weight = 1.25`：OpenRA 默认值，节点数减少 30-50%，路径长度增加通常 <5%
   - 可在 `GameRules.ts` 中全局配置，或在 `Pathfinder` 构造时按场景设置（如 `MoveWithinRange` 可用较低 weight，`MoveTo` 精确目标保持 1.0）
 - **验收**：`heuristicWeight=1.25` 时，128×128 地图长距离寻路节点数减少 30-50%，路径长度与纯 A* 差异 <5%；`heuristicWeight=1.0` 时路径严格最短
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：`MapRuleset.ts`（`applyMapRules` 白名单覆盖 + `resetMapRules` 深拷贝恢复 + `IRulesetLoaded` 回调机制）已实现。支持单位/建筑/武器/GameRules 四类的数值字段地图级覆盖，禁止 Trait 注入。e2e 测试 5 项通过。
 
 ---
 
@@ -2156,8 +2157,8 @@
 
 ### 深度 2：依赖深度 1
 
-**待完成 1 个**：
-- [ ] **Task 99**：地图级规则覆盖 🟢 P2 ← 95, 97
+**已完成 1 个**：
+- [x] **Task 99**：地图级规则覆盖 🟢 P2 ← 95, 97
 
 ### 循环依赖说明
 

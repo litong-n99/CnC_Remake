@@ -108,6 +108,16 @@ import {
   DEFAULT_MEDIUM_TANK_SEQUENCES,
 } from './game/rules/SequenceProvider';
 import { SequenceRenderer } from './renderer/sprites/SequenceRenderer';
+import {
+  applyMapRules,
+  resetMapRules,
+  getCurrentMapRules,
+  registerRulesetLoadedListener,
+  unregisterRulesetLoadedListener,
+  notifyRulesetLoaded,
+  clearRulesetLoadedListeners,
+  getOriginalUnitDefinition,
+} from './game/rules/MapRuleset';
 import { ParticleManager } from './renderer/effects/ParticleManager';
 import { AudioManager } from './core/AudioManager';
 import { getLocalization } from './core/Localization';
@@ -910,6 +920,15 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._DEFAULT_RIFLE_INFANTRY_SEQUENCES = DEFAULT_RIFLE_INFANTRY_SEQUENCES;
   w._DEFAULT_MEDIUM_TANK_SEQUENCES = DEFAULT_MEDIUM_TANK_SEQUENCES;
   w._SequenceRenderer = SequenceRenderer;
+  // ── Task 99: Map Ruleset Overrides ──
+  w._applyMapRules = applyMapRules;
+  w._resetMapRules = resetMapRules;
+  w._getCurrentMapRules = getCurrentMapRules;
+  w._registerRulesetLoadedListener = registerRulesetLoadedListener;
+  w._unregisterRulesetLoadedListener = unregisterRulesetLoadedListener;
+  w._notifyRulesetLoaded = notifyRulesetLoaded;
+  w._clearRulesetLoadedListeners = clearRulesetLoadedListeners;
+  w._getOriginalUnitDefinition = getOriginalUnitDefinition;
   // ── Task 126: Custom Movement Layer ──
   w._CustomMovementLayer = CustomMovementLayer;
   w._MovementLayerType = MovementLayerType;
