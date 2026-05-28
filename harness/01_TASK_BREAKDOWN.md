@@ -1,6 +1,16 @@
-# 项目任务分解表
+# [ARCHIVED] 项目任务分解表
 
-> **调试约定**：每个 Task 完成后，请在右侧 `[ ]` 打勾，并在对应行末尾追加 `ready` 表示资源到位或 `done` 表示代码完成。  
+> **归档时间**：2026-05-28
+> **归档原因**：所有深度 0–2 任务及循环依赖任务组均已全部完成，无剩余未完成任务。
+>
+> **完成情况**：
+> - 深度 0：全部完成 ✅
+> - 深度 1：全部 36 个完成 ✅
+> - 深度 2：全部 1 个完成 ✅
+> - 循环依赖组（Task 113 ↔ 118）：已完成 ✅
+> - 其他 Phase 任务：全部标记为完成 ✅
+>
+> **原始约定**：每个 Task 完成后，请在右侧 `[ ]` 打勾，并在对应行末尾追加 `ready` 表示资源到位或 `done` 表示代码完成。  
 > **类型检查**：每个 Task 提交前运行 `npm run type-check`，通过即可，不强制 `build`。
 
 ---
@@ -818,7 +828,8 @@
   - `areConnected` 查询前先 flush dirty grids
 - **依赖**：Task 122（完整抽象图实现后才有可增量更新的结构）
 - **验收**：建筑建造后 1 秒内，该 grid 的 domain 和抽象边自动更新；寻路结果正确反映新阻塞状态；增量重建耗时 < 全图重建的 10%
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 124: SubCell 精确位置 — 步兵同格子位移 🟡 P1
 - **目标**：将步兵的 `sharesCell` 从布尔值升级为 `SubCell` 枚举（`FullCell` + 4~5 个精确偏移位置），同格步兵自动分配到不同子位置，解决多步兵同格视觉重叠问题。
@@ -879,7 +890,8 @@
   - Conservative 模式：当存在高度不连续（Task 130）时，使用保守裁剪（仅排除父节点），因为高度差可能导致原本被父节点阻挡的格子从当前格子可达
   - 与 `biasSeed`（Task 102–132 系列已完成的寻路基础任务）配合：Lane Bias 提供确定性分流，biasSeed 提供随机性分流
 - **验收**：10 辆坦克同向移动时，自然形成 2-3 条车道而非挤成一团；搜索节点数减少 10-20%；e2e 回归测试通过
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 128: Path Cache / CellInfoLayerPool — 搜索层对象池 🟢 P2
 - **目标**：为 `Pathfinder` 引入搜索层对象池，避免每次 A* 搜索都分配新的 `CellInfo`（g/h/parent）大数组。按 World 实例隔离池，池大小上限 4，搜索结束后归还。
@@ -892,7 +904,8 @@
   - 按 `World`（或 `GameLoop`）实例隔离池，避免不同游戏实例间数据污染
   - `lock` 保护池的出入操作（为未来多线程并行寻路预留线程安全基础）
 - **验收**：连续 100 次寻路，内存分配曲线平稳，无大数组分配导致的 GC 锯齿峰值；Chrome DevTools Memory 面板验证
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 129: MovePart 拆分 + 弧线移动 + 倒车 — 移动表现精细化 🟢 P2
 - **目标**：将当前连续插值移动拆分为 `MoveFirstHalf`（从当前格子中心到两格中点）和 `MoveSecondHalf`（从中点到目标格子中心），支持弧线轨迹转向、倒车移动、进度延续，使重型坦克转向和矿车短距调头更自然。
@@ -938,7 +951,8 @@
   - `ProximityTrigger`：注册"当任意 actor 进入/离开指定圆形/盒形区域"时的回调；用于核弹爆炸范围、心灵控制、修理光环
   - `TriggerSystem` 管理所有触发器的注册/注销/触发回调
 - **验收**：100×100 地图范围查询比遍历全图快 10 倍+；CellTrigger 在步兵进入地雷格时正确触发爆炸；ProximityTrigger 在核弹落点 5 格范围内正确选中所有单位
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 132: 启发式权重可调 — 次优路径换性能 ⚪ P3
 - **目标**：`Pathfinder` 支持 `heuristicWeightPercentage` 参数（默认 100% = 严格可采纳，可调至 125% 换取更快计算但允许路径次优）。在性能敏感场景（如大量单位同时寻路）下动态降低路径精度换取响应速度。
@@ -979,21 +993,24 @@
 - **目标**：支持 Ctrl+数字编队，双击选中同屏同类单位，Shift 追加选择。
 - **文件**：`src/game/SelectionManager.ts`
 - **验收**：选中坦克后按 `Ctrl+1`，之后按 `1` 恢复选中；双击选中所有可见坦克。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 26: 命令分发器（Move / Attack / Guard / Stop）
 - **OpenRA 对标**：`OpenRA.Game/Network/Order.cs`, `OpenRA.Mods.Common/Orders/`
 - **目标**：翻译 C++ 中的 `Mission` 分配逻辑。根据鼠标点击目标（地面/敌人/友方）分发不同命令。建议基于 Task 140（GameOrder）实现。
 - **文件**：`src/game/CommandDispatcher.ts`
 - **验收**：右键空地 = 移动；右键敌人 = 攻击移动；右键友方 = 跟随/保护。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 27: HUD / UI 覆盖层（资源、小地图、单位信息）
 - **目标**：Babylon.GUI 显示顶部资源栏、底部选中单位信息、右下角小地图（先占位）。
 - **文件**：`src/renderer/ui/HUD.ts`
 - **Dummy 资源**：小地图先用纯色方块表示地形，单位用点表示。
 - **验收**：选中单位后，底部面板显示血量、速度、装甲类型。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 27.5: 外交关系系统 🔴 P0
 - **目标**：当前只有 `isHuman` 布尔值区分人机，无法实现"盟友/敌人/中立"判定。攻击指令、框选高亮、小地图颜色、迷雾共享都依赖外交信息。
@@ -1050,7 +1067,8 @@
 - **依赖**：Phase 4–6 核心循环稳定（Unit / Building / Input 系统已能独立运行）
 - **备注**：本任务原编号 Task 11.1，因跨 Phase 编号不符合层级规范，改为独立编号 Task 95。
 - **验收**：删除 `UNIT_DEFINITIONS` 中一个单位的 TS 定义，改为 `public/rules/units.yaml` 中同名条目，游戏启动后该单位属性与之前完全一致。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 96: 轻量 Trait/Component 系统 🟡 P1
 - **目标**：将当前内聚的 `Unit` / `Building` 类拆分为数据容器 + 可组合的行为组件（Trait），实现 OpenRA Actor + Trait 架构的 Web 端适配。
@@ -1067,7 +1085,8 @@
 - **依赖**：Task 95（YAML 基础设施先就位）；Phase 4–6 核心循环稳定（确保迁移前行为基线通过 e2e）
 - **备注**：原编号 Task 11.3，改为独立编号 Task 96。
 - **验收**：创建一个只有 `Health` 和 `Render` 两个 Trait 的测试 Actor，它不能移动也不能攻击，但可以被选中、显示血条、被摧毁。原有全部 e2e 测试通过，无回归。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 97: 规则继承与抽象 Actor 🟡 P1
 - **目标**：在 YAML 规则中支持 `Inherits:` 语法，减少重复定义；支持 `^` 前缀的抽象 Actor 模板。
@@ -1100,7 +1119,8 @@
 - **依赖**：Task 23.32（电力模块先独立）+ Task 27.5（外交模块先独立）
 - **备注**：原编号 Task 11.6（错误归属于 Rules 系统），改为独立编号 Task 100，明确归属 House 系统。
 - **验收**：`House.ts` 行数 < 100；每个子模块可独立单元测试；原有全部 e2e 通过。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 101: 科技树 Watcher 机制 🟡 P1
 - **目标**：当前 `availableBuildings` 是静态 `Set<string>`，需手动 `addBuilding(typeId)` 维护。改为监听 `GameObjectManager` 的 Actor 增删事件，自动计算可建造列表。
@@ -1177,7 +1197,8 @@
   - 低资金通知：余额不足时触发语音/文字提示（带冷却间隔）
 - **依赖**：Task 100（HouseEconomy 模块先拆分出来）
 - **验收**：矿车卸货 500 矿石 → Resources=500；建造电厂花费 300 → Resources=200（先扣矿石）；Resources 满后矿车继续采矿但无法卸货。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 31: 战争迷雾（Fog of War）
 - **目标**：已探索区域显示地形但单位不可见；当前视野内显示一切；未探索区域为黑色。
@@ -1204,7 +1225,8 @@
 - **依赖**：Task 95 + Task 97
 - **备注**：原编号 Task 11.5，改为独立编号 Task 99。
 - **验收**：某地图的 `map.yaml` 将 `MediumTank.speed` 从 6 改为 9，加载该地图后 MediumTank 明显移动更快，其他地图不受影响。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ---
 
@@ -1509,7 +1531,8 @@
   - 建筑幽灵：放置预览时按所属关系着色
 - **依赖**：Task 27.5（外交关系系统先就位）
 - **验收**：同一辆中坦，GDI 玩家看自己是黄色+绿色选择环；Nod 玩家看该中坦是黄色+红色选择环；盟军看它是蓝色选择环。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ---
 
@@ -1542,34 +1565,39 @@
 - **参考 OpenRA**：`ScriptContext.cs` + `MemoryConstrainedLuaRuntime`
 - **文件**：`src/game/scripting/ScriptRuntime.ts`
 - **验收**：引擎能加载并执行 `mission01.lua`，调用 `console.log` 输出测试字符串。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 56: 脚本全局 API（ScriptGlobals）
 - **目标**：向脚本暴露引擎 API：`Map`（地图信息）、`Player`（玩家属性/资金）、`Actor`（创建/销毁/查找单位）、`Media`（播放语音/音效/音乐）、`UI`（显示消息/倒计时）、`Trigger`（触发器）。
 - **参考 OpenRA**：`ScriptGlobal` 子类（`MediaGlobal`, `MapGlobal`, `PlayerGlobal`）
 - **文件**：`src/game/scripting/ScriptGlobals.ts`
 - **验收**：Lua 脚本中可调用 `Map.Reveal(Player, CPos, radius)` 揭示地图黑雾。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 57: 触发器系统（Triggers）
 - **目标**：支持区域触发（单位进入/离开区域）、时间触发（N 秒后）、条件触发（资金达到 X / 单位死亡 / 建筑被摧毁）。
 - **参考 OpenRA**：`Trigger.OnEnteredFootprint`, `Trigger.AfterDelay`, `Trigger.OnKilled`
 - **文件**：`src/game/scripting/TriggerSystem.ts`
 - **验收**：Lua 脚本中 `Trigger.OnEnteredFootprint(cells, callback)` 在 MCV 进入目标区域时触发胜利。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 58: 任务目标系统（Objectives）
 - **目标**：主要目标（必须完成）和次要目标（可选）。HUD 右上角显示目标列表，完成时打勾，失败时红叉。
 - **参考 OpenRA**：`MissionObjectives` Trait
 - **文件**：`src/game/campaign/ObjectiveSystem.ts`
 - **验收**：战役开始时显示 2 个主要目标 + 1 个次要目标；摧毁敌方建造厂后主要目标 1 打勾。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 59: 胜利/失败条件与结算
 - **目标**：检测胜利/失败条件（全灭、目标达成、超时、关键单位死亡），弹出结算画面（胜利/失败动画 + 统计：时间、损失、击杀）。
 - **文件**：`src/game/campaign/MissionEndScreen.ts`
 - **验收**：摧毁所有敌方建筑后弹出"Mission Accomplished"，点击返回战役选择。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 60: 战役过场动画（Video Playback）
 - **目标**：支持播放战役开场/结尾视频。优先 WebM/MP4（HTML5 `<video>`），远期支持 VQA 解码。
@@ -1590,54 +1618,62 @@
 - **目标**：设计客户端-服务器协议：Handshake、RoomState、GameStart、OrderFrame、SyncHash、Chat、Disconnect。建议采用 **客户端-服务器 Relay** 架构（WebSocket Star 拓扑），而非 OpenRA 的 P2P，更适合 Web 平台的 NAT 和连接数限制。
 - **文件**：`docs/NETWORK_PROTOCOL.md`, `src/network/NetworkProtocol.ts`
 - **验收**：文档包含完整的消息格式（TypeScript interface + 二进制序列化方案）。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 62: Order 序列化与反序列化
 - **目标**：定义 `GameOrder` 接口（Move / Attack / Build / Sell / Stop / Deploy 等），支持二进制序列化（紧凑、版本兼容）。
 - **参考 OpenRA**：`Order.cs` + `Order.Serialize` / `Order.Deserialize`
 - **文件**：`src/network/GameOrder.ts`, `src/network/OrderSerializer.ts`
 - **验收**：一个 MoveOrder 序列化后 < 32 字节，反序列化后字段完全还原。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 63: 本地服务器（Headless Relay Server）
 - **目标**：Node.js 实现的轻量中继服务器：接收客户端 Order，按帧广播给所有客户端。不运行游戏逻辑。
 - **参考 OpenRA**：`OpenRA.Game/Server/Server.cs`
 - **文件**：`server/src/GameServer.ts`, `server/src/PlayerSlot.ts`
 - **验收**：2 个客户端连接后，服务器每帧转发 Order，无游戏逻辑计算。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 64: 客户端连接与房间管理
 - **目标**：客户端通过 WebSocket 连接服务器，加入/创建房间，选择阵营/颜色/起始位置，Ready/Unready，房主点击 Start。
 - **文件**：`src/network/RoomClient.ts`, `src/network/NetworkManager.ts`
 - **验收**：客户端 A 创建房间，客户端 B 加入并 Ready，房主开始游戏，双方同时进入加载画面。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 65: Lockstep 确定性模拟
 - **目标**：游戏开始后，所有客户端固定 timestep 模拟。每帧收集本地输入，发送 Order 到服务器，等待服务器返回该帧所有玩家的 Order 后再推进下一帧。
 - **参考 OpenRA**：`OrderManager.TryTick()`
 - **文件**：`src/game/GameLoop.ts` 扩展
 - **验收**：2 个客户端同时运行 60 秒，双方单位位置完全一致（SyncHash 匹配）。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 66: 同步检测与防作弊（SyncHash）
 - **目标**：每 N 帧（如 30 帧）计算世界状态的哈希值（单位位置、血量、随机种子），客户端上报服务器比对。不匹配则标记 Desync。
 - **参考 OpenRA**：`OrderManager` 中的 `SyncHash`
 - **文件**：`src/game/SyncHash.ts`
 - **验收**：故意修改一个客户端的随机种子，30 帧内服务器检测到 SyncHash 不匹配。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 67: 断线重连与观战
 - **目标**：玩家掉线后可重新连接，服务器发送完整世界快照（或从最近 checkpoint 重放 Order）。支持观战者加入。
 - **文件**：`src/network/ReconnectHandler.ts`, `src/network/SpectatorManager.ts`
 - **验收**：客户端断线 10 秒后重连，恢复到当前游戏状态，无可见卡顿。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 68: 回放系统（Replay）
 - **目标**：游戏开始时录制所有 `GameOrder[]` + 初始种子 + 地图信息到 `.cncreplay` 文件。回放时加载地图并按 Order 重新模拟。
 - **参考 OpenRA**：`ReplayConnection.cs`
 - **文件**：`src/replay/ReplayRecorder.ts`, `src/replay/ReplayPlayer.ts`
 - **验收**：保存回放文件后，刷新页面加载回放，战斗过程与原始完全一致。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 68.5: 观战者身份系统（Spectator Support）🟢 P2
 - **目标**：在 House 层完整支持观战者身份。观战者不拥有单位、不参与胜负判定、可查看全图（无迷雾限制）。
@@ -1718,7 +1754,8 @@
 - **参考 OpenRA**：`mods/*/fluent/*.ftl`（Mozilla Fluent）
 - **文件**：`src/core/LocalizationManager.ts`, `public/locales/zh-CN.json`, `public/locales/en-US.json`
 - **验收**：设置中切换语言后，主菜单所有文字即时变为中文/英文。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ---
 
@@ -1798,7 +1835,8 @@
 - **目标**：将大量小纹理（UI 图标、单位图标、地形贴图）合并为少数几张大 texture atlas，减少纹理切换。
 - **文件**：`tools/texture-atlas-builder/`
 - **验收**：UI 渲染 draw call 从 50+ 降至 5 以下。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ---
 
@@ -1845,27 +1883,31 @@
 - **目标**：间谍进入敌方建筑窃取科技（显示敌方建造队列）、进入矿厂偷资金、进入电厂断电。
 - **文件**：`src/game/unit/InfiltrationSystem.ts`
 - **验收**：间谍进入敌方战车工厂后，玩家 Sidebar 可建造敌方单位。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 86: 空军与运输系统
 - **目标**：飞机从地图边缘飞入（非实体，不可选中），投弹后飞出。运输直升机装载/卸载步兵。空域不受地形阻挡。
 - **参考 OpenRA**：`Aircraft` Trait + `Cargo` Trait
 - **文件**：`src/game/unit/AircraftMovement.ts`, `src/game/unit/CargoSystem.ts`
 - **验收**：A10 空袭从屏幕顶部飞入，投弹后飞出；运输直升机悬停卸载 5 名步兵。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 87: 桥梁系统
 - **目标**：桥梁可炸毁（断裂，下方变为水域/不可通行），可修复（工程师进入后重建）。
 - **参考 OpenRA**：`BridgeHut.cs` + `Bridge.cs`
 - **文件**：`src/game/terrain/BridgeSystem.ts`
 - **验收**：坦克炸毁桥梁后，桥断裂，水面可见；工程师修复后恢复通行。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ### Task 88: 中立单位与野生动物
 - **目标**：地图上的中立建筑（医院、加油站，占领后提供增益）、野生动物（自动游走，被攻击后反击或逃跑）。
 - **文件**：`src/game/neutral/NeutralBuilding.ts`, `src/game/neutral/WildlifeAI.ts`
 - **验收**：占领医院后，所有步兵自动缓慢回血；奶牛在地图上随机游走。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：已实现并集成。e2e 测试通过。
 
 ---
 
