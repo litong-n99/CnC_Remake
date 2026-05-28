@@ -233,10 +233,11 @@ world.AddFrameEndTask(w => w.Remove(actor));
 
 ### 4.3 改进任务
 
-- [ ] **Task-F1: FrameEndTask 队列**
-  - `World` 类新增 `frameEndTasks: Array<(world: World) => void>`
-  - `World.tick()` 末尾执行所有 frame-end tasks
+- [x] **Task-F1: FrameEndTask 队列** ✅ 2026-05-28（在 Task-A1 中一并实现）
+  - `World` 类新增 `frameEndActions: (() => void)[]`
+  - `World.tick()` 末尾执行所有 frame-end tasks（FIFO）
   - `World.addFrameEndTask(task)` 注册延迟操作
+  - tick 中途注册的任务可在同一帧末执行
   - 将以下操作改为 frame-end：
     - `GameObjectManager.remove()`（当前直接删除）
     - `ActorMap` 中的 actor 增删
