@@ -6,6 +6,7 @@
  */
 
 import { MeshBuilder, StandardMaterial, Texture, Color3, Mesh, type Scene } from '@babylonjs/core';
+import { RenderLayer, setRenderLayer } from '../RenderLayer';
 
 export interface SpriteRenderableOptions {
   readonly width: number;
@@ -42,6 +43,7 @@ export class SpriteRenderable {
 
     this.mesh.material = this.material;
     this.mesh.billboardMode = Mesh.BILLBOARDMODE_ALL;
+    setRenderLayer(this.mesh, RenderLayer.Sprite);
   }
 
   setPosition(x: number, y: number, z: number): void {

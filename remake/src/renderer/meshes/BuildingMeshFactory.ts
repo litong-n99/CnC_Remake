@@ -1,6 +1,7 @@
 import { Mesh, MeshBuilder, Scene, Color3, StandardMaterial, Vector3 } from '@babylonjs/core';
 import type { BuildingDefinition } from '../../game/rules/BuildingDefinitions';
 import type { House } from '../../game/house/House';
+import { RenderLayer, setRenderLayer } from '../RenderLayer';
 
 /**
  * 建筑占位几何体工厂 — Task 21。
@@ -21,30 +22,44 @@ export class BuildingMeshFactory {
     detailMat.diffuseColor = new Color3(0.25, 0.25, 0.28);
     detailMat.specularColor = Color3.Black();
 
+    let root: Mesh;
     switch (definition.id) {
       case 'STRUCT_CONST':
-        return this.createConstructionYard(name, bodyMat, detailMat, scene);
+        root = this.createConstructionYard(name, bodyMat, detailMat, scene);
+        break;
       case 'STRUCT_POWER':
-        return this.createPowerPlant(name, bodyMat, detailMat, scene);
+        root = this.createPowerPlant(name, bodyMat, detailMat, scene);
+        break;
       case 'STRUCT_ADVANCED_POWER':
-        return this.createAdvancedPower(name, bodyMat, detailMat, scene);
+        root = this.createAdvancedPower(name, bodyMat, detailMat, scene);
+        break;
       case 'STRUCT_BARRACKS':
-        return this.createBarracks(name, bodyMat, detailMat, scene);
+        root = this.createBarracks(name, bodyMat, detailMat, scene);
+        break;
       case 'STRUCT_REFINERY':
-        return this.createRefinery(name, bodyMat, detailMat, scene);
+        root = this.createRefinery(name, bodyMat, detailMat, scene);
+        break;
       case 'STRUCT_WEAP':
-        return this.createWarFactory(name, bodyMat, detailMat, scene);
+        root = this.createWarFactory(name, bodyMat, detailMat, scene);
+        break;
       case 'STRUCT_RADAR':
-        return this.createRadar(name, bodyMat, detailMat, scene);
+        root = this.createRadar(name, bodyMat, detailMat, scene);
+        break;
       case 'STRUCT_HELIPAD':
-        return this.createHelipad(name, bodyMat, detailMat, scene);
+        root = this.createHelipad(name, bodyMat, detailMat, scene);
+        break;
       case 'STRUCT_REPAIR':
-        return this.createRepairFacility(name, bodyMat, detailMat, scene);
+        root = this.createRepairFacility(name, bodyMat, detailMat, scene);
+        break;
       case 'STRUCT_SHIP_YARD':
-        return this.createShipyard(name, bodyMat, detailMat, scene);
+        root = this.createShipyard(name, bodyMat, detailMat, scene);
+        break;
       default:
-        return this.createFallback(name, bodyMat, definition.width, definition.height, scene);
+        root = this.createFallback(name, bodyMat, definition.width, definition.height, scene);
+        break;
     }
+    setRenderLayer(root, RenderLayer.Opaque);
+    return root;
   }
 
   // ── 建造厂 (3×3) ──

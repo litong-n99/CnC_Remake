@@ -7,6 +7,7 @@
 
 import { MeshBuilder, StandardMaterial, Color3, Vector3, type Scene, type Mesh } from '@babylonjs/core';
 import type { Unit } from '../../game/objects/Unit';
+import { RenderLayer, setRenderLayer, setDepthWrite } from '../RenderLayer';
 
 import { getRelationshipColorForLocalPlayer, hexToColor3 } from './RelationshipColors';
 
@@ -104,6 +105,8 @@ export class UnitHealthBarManager {
     bg.material = this.bgMaterial;
     bg.parent = parent;
     bg.position = new Vector3(0, yOffset, 0);
+    setRenderLayer(bg, RenderLayer.Overlay);
+    if (this.bgMaterial) setDepthWrite(this.bgMaterial, false);
 
     const matFg = new StandardMaterial('hb_fg_' + unit.id, scene);
     matFg.disableLighting = true;
@@ -116,6 +119,8 @@ export class UnitHealthBarManager {
     fg.material = matFg;
     fg.parent = parent;
     fg.position = new Vector3(0, yOffset, 0);
+    setRenderLayer(fg, RenderLayer.Overlay);
+    setDepthWrite(matFg, false);
 
     return { bg, fg, matFg };
   }

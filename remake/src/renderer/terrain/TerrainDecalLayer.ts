@@ -1,5 +1,6 @@
 import { Scene, Mesh, StandardMaterial, Texture, Color3, VertexData } from '@babylonjs/core';
 import type { AtlasSlot } from './SheetBuilder';
+import { RenderLayer, setRenderLayer } from '../RenderLayer';
 
 /**
  * TerrainDecalLayer — overlays precise sprite tiles on top of the
@@ -76,6 +77,7 @@ export class TerrainDecalLayer {
 
     mesh.material = this.material;
     mesh.isPickable = false;
+    setRenderLayer(mesh, RenderLayer.Transparent);
 
     this.decals.set(key, mesh);
     return mesh;

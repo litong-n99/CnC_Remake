@@ -2,6 +2,7 @@ import { Mesh, Scene, Matrix, Color3, MeshBuilder, StandardMaterial } from '@bab
 import type { UnitDefinition } from '../game/rules/UnitDefinitions';
 import { Locomotion } from '../game/rules/UnitDefinitions';
 import type { House } from '../game/house/House';
+import { RenderLayer, setRenderLayer } from './RenderLayer';
 
 /**
  * InstancedUnitRenderer — 批量实例化渲染相同类型的单位（Task 77）。
@@ -190,6 +191,7 @@ export class InstancedUnitRenderer {
 
     template.material = mat;
     template.setEnabled(false); // 模板本身不渲染
+    setRenderLayer(template, RenderLayer.Opaque);
 
     // 初始化 thin instance 缓冲区（预分配 4 个槽位）
     template.thinInstanceSetBuffer('matrix', new Float32Array(16 * 4), 16, true);

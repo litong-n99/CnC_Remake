@@ -5,6 +5,7 @@ import { RTSCamera } from './core/RTSCamera';
 import { ViewportCuller } from './renderer/ViewportCuller';
 import { SpriteRenderable } from './renderer/sprites/SpriteRenderable';
 import { ActorSpriteRenderer } from './renderer/sprites/ActorSpriteRenderer';
+import { RenderLayer, setRenderLayer, getRenderLayer, getRenderLayerStats } from './renderer/RenderLayer';
 import { Lighting } from './renderer/Lighting';
 import { TerrainGrid, LandType } from './game/terrain/TerrainGrid';
 import { MapLoader } from './game/terrain/MapLoader';
@@ -822,6 +823,10 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._viewportCuller = new ViewportCuller();
   w._SpriteRenderable = SpriteRenderable;
   w._ActorSpriteRenderer = ActorSpriteRenderer;
+  w._RenderLayer = RenderLayer;
+  w._setRenderLayer = setRenderLayer;
+  w._getRenderLayer = getRenderLayer;
+  w._getRenderLayerStats = getRenderLayerStats;
   w._bulletManager = BulletManager.getInstance();
   w.UNIT_DEFINITIONS = UNIT_DEFINITIONS;
   w.BUILDING_DEFINITIONS = BUILDING_DEFINITIONS;

@@ -1,6 +1,7 @@
 import { Mesh, MeshBuilder, Scene, Color3, StandardMaterial, Vector3, TransformNode } from '@babylonjs/core';
 import { Locomotion, type UnitDefinition } from '../../game/rules/UnitDefinitions';
 import type { House } from '../../game/house/House';
+import { RenderLayer, setRenderLayer } from '../RenderLayer';
 
 /**
  * 单位占位几何体工厂 — 根据 Definition 动态组合程序化 Mesh。
@@ -28,19 +29,20 @@ export class UnitMeshFactory {
     mat.diffuseColor = color;
     mat.specularColor = Color3.Black();
 
+    let result: { body: Mesh; turret?: TransformNode };
     if (definition.locomotion === Locomotion.Foot) {
-      return { body: this.createInfantry(name, mat, scene, definition) };
+      result = { body: this.createInfantry(name, mat, scene, definition) };
+    } else if (definition.locomotion === Locomotion.Track && definition.hasTurret) {
+      result = this.createTank(name, mat, scene);
+    } else if (definition.locomotion === Locomotion.Track) {
+      result = { body: this.createTracked(name, mat, scene) };
+    } else if (definition.locomotion === Locomotion.Wheel && definition.hasTurret) {
+      result = this.createWheeledWithTurret(name, mat, scene);
+    } else {
+      result = { body: this.createWheeled(name, mat, scene) };
     }
-    if (definition.locomotion === Locomotion.Track && definition.hasTurret) {
-      return this.createTank(name, mat, scene);
-    }
-    if (definition.locomotion === Locomotion.Track) {
-      return { body: this.createTracked(name, mat, scene) };
-    }
-    if (definition.locomotion === Locomotion.Wheel && definition.hasTurret) {
-      return this.createWheeledWithTurret(name, mat, scene);
-    }
-    return { body: this.createWheeled(name, mat, scene) };
+    setRenderLayer(result.body, RenderLayer.Opaque);
+    return result;
   }
 
   // ── 坦克型（Track + 炮塔）──

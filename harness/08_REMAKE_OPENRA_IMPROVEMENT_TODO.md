@@ -158,10 +158,11 @@ interface IRenderable {
   - 每逻辑帧生成 `IRenderable[]`，渲染帧只消费不修改
   - 此模式对 3D mesh 意义不大（OpenRA 是 2D sprite 才需要），但 `SpriteRenderable` 适用
 
-- [ ] **Task-R4: 深度排序优化**
-  - Babylon.js 默认 Z-buffer 排序对透明材质不友好
-  - 对 billboard（health bar, selection ring）使用 `RenderingGroupId`
-  - 地形 → 不透明单位 → 透明特效 → UI 的分层渲染
+- [x] **Task-R4: 深度排序优化** ✅ 2026-05-28
+  - `RenderLayer` 枚举四层：Opaque(0) / Transparent(1) / Sprite(2) / Overlay(3)
+  - 所有 mesh 创建时自动分配 `renderingGroupId`
+  - Health bar 使用 Overlay 层 + zOffset 避免深度冲突
+  - `getRenderLayerStats()` 提供各层 mesh 数量统计
 
 ---
 

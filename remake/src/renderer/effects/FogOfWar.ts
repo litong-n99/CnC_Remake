@@ -12,6 +12,7 @@
 
 import { Scene, Mesh, MeshBuilder, DynamicTexture, StandardMaterial, Color3, Texture } from '@babylonjs/core';
 import { ShroudRenderer } from './ShroudRenderer';
+import { RenderLayer, setRenderLayer } from '../RenderLayer';
 
 export enum CellVisibility {
   Shroud = 0, // 未探索 — 黑色
@@ -97,6 +98,7 @@ export class FogOfWar {
     this.fogMaterial.backFaceCulling = false;
 
     this.fogMesh.material = this.fogMaterial;
+    setRenderLayer(this.fogMesh, RenderLayer.Transparent);
 
     // 初始化 ShroudRenderer
     this.shroudRenderer = new ShroudRenderer(this, this.width, this.height);
