@@ -17,6 +17,8 @@
 import { BuildingDefinition } from '../rules/BuildingDefinitions';
 import { UnitDefinition } from '../rules/UnitDefinitions';
 import { House } from '../house/House';
+import type { TechLevel } from '../rules/LobbyOptions';
+import { isTechLevelAllowed } from '../rules/LobbyOptions';
 
 /** 建筑 ID → 所需前提建筑 ID 列表。 */
 const BUILDING_PREREQUISITES: Readonly<Record<string, readonly string[]>> = {
@@ -127,5 +129,30 @@ export class TechTree {
       }
     }
     return missing;
+  }
+
+  // ── Task 136: TechLevel 过滤 ──
+
+  /**
+   * 检查建筑是否在指定科技等级下可建造。
+   * @param lobbyTechLevel — 大厅设置的科技等级
+   */
+  static canBuildBuildingAtTechLevel(
+    def: BuildingDefinition,
+    house: House,
+    lobbyTechLevel: TechLevel,
+    checkConstYard = true
+  ): boolean {
+    if (!isTechLevelAllowed(def.techLevel, lobbyTechLevel)) return false;
+    return TechTree.canBuildBuilding(def, house, checkConstYard);
+  }
+
+  /**
+   * 检查单位是否在指定科技等级下可生产。
+   * @param lobbyTechLevel — 大厅设置的科技等级
+   */
+  static canBuildUnitAtTechLevel(def: UnitDefinition, house: House, lobbyTechLevel: TechLevel): boolean {
+    if (!isTechLevelAllowed(def.techLevel, lobbyTechLevel)) return false;
+    return TechTree.canBuildUnit(def, house);
   }
 }

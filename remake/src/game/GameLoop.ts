@@ -16,10 +16,11 @@ type TickCallback = (dt: number) => void;
 
 export interface GameLoopOptions {
   readonly logicFps?: number; // 默认 25
+  readonly logicIntervalMs?: number; // 替代 logicFps，直接指定间隔
 }
 
 export class GameLoop {
-  private readonly logicIntervalMs: number;
+  private logicIntervalMs: number;
   private logicAccumulator = 0;
   private logicTickCount = 0;
   private logicTickProgress = 0; // 0.0–1.0，用于渲染插值
@@ -34,8 +35,22 @@ export class GameLoop {
   private pendingLogicSteps = 0;
 
   constructor(options: GameLoopOptions = {}) {
-    const fps = options.logicFps ?? 25;
-    this.logicIntervalMs = 1000 / fps;
+    if (options.logicIntervalMs !== undefined) {
+      this.logicIntervalMs = options.logicIntervalMs;
+    } else {
+      const fps = options.logicFps ?? 25;
+      this.logicIntervalMs = 1000 / fps;
+    }
+  }
+
+  /** 运行时修改逻辑帧间隔（Task 136: 游戏速度切换）。 */
+  setLogicIntervalMs(ms: number): void {
+    this.logicIntervalMs = ms;
+  }
+
+  /** 获取当前逻辑帧间隔（毫秒）。 */
+  getLogicIntervalMs(): number {
+    return this.logicIntervalMs;
   }
 
   /** 启动游戏循环 */
@@ -94,11 +109,6 @@ export class GameLoop {
   /** 是否正在运行 */
   isRunning(): boolean {
     return this.running;
-  }
-
-  /** 获取逻辑帧间隔（毫秒） */
-  getLogicIntervalMs(): number {
-    return this.logicIntervalMs;
   }
 
   /** 启用/禁用 Lockstep 模式（Task 65） */

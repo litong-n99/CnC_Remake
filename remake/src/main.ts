@@ -11,6 +11,13 @@ import { GameRules } from './game/rules/GameRules';
 import { RuleRegistry } from './game/rules/RuleRegistry';
 import { convertUnitDefinition, registerUnitRuleConverter } from './game/rules/UnitDefinitions';
 import { BuildLimitTracker, checkBuildLimit } from './game/rules/BuildLimitTracker';
+import { ConditionalTrait, ConditionManager, evaluateConditions } from './game/traits/ConditionalTrait';
+import {
+  GrantConditionOnPrerequisite,
+  getOrCreateConditionManager,
+  getConditionManager,
+} from './game/traits/GrantConditionOnPrerequisite';
+import { PauseOnCondition } from './game/traits/PauseOnCondition';
 import { Faction, houseTypeToFaction, getFactionToken, canFactionBuild } from './game/rules/FactionRules';
 import {
   WEAPON_DEFINITIONS as WeaponInfoDefinitions,
@@ -54,11 +61,28 @@ import { MoveHandler, StopHandler, AttackHandler, GuardHandler } from './game/or
 import { groundOrder, actorOrder, selfOrder } from './game/order/GameOrder';
 import { AttackMoveHandler } from './game/order/handlers/AttackMoveHandler';
 import { PatrolHandler } from './game/order/handlers/PatrolHandler';
+import { Activity, ActivityStatus, IdleActivity, SequenceActivity } from './game/activities/Activity';
+import { MoveActivity, MoveFirstHalf, MoveSecondHalf } from './game/activities/MoveActivity';
+import { AttackMoveActivity } from './game/activities/AttackMoveActivity';
+import { CustomMovementLayer, MovementLayerType } from './game/terrain/CustomMovementLayer';
 import { BulletManager } from './game/weapon/Bullet';
 import { WEAPON_DEFINITIONS } from './game/weapon/Weapon';
 import { DamageCalculator, WarheadType } from './game/combat/DamageCalculator';
 import { ResourceLayer } from './game/economy/ResourceLayer';
 import { GameLoop } from './game/GameLoop';
+import {
+  GAME_SPEEDS,
+  getGameSpeed,
+  getAllGameSpeeds,
+  getSpeedRatio,
+  DEFAULT_GAME_SPEED,
+} from './game/rules/GameSpeeds';
+import {
+  DEFAULT_LOBBY_OPTIONS,
+  createLobbyOptions,
+  isTechLevelAllowed,
+  isUnitBuildableAtTechLevel,
+} from './game/rules/LobbyOptions';
 import { FogOfWar } from './renderer/effects/FogOfWar';
 import { ParticleManager } from './renderer/effects/ParticleManager';
 import { AudioManager } from './core/AudioManager';
@@ -732,6 +756,7 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
     return inputManager.worldToScreen(new Vector3(worldX, worldY, worldZ));
   };
   w._gameLoop = gameLoop;
+  w._GameLoopClass = GameLoop;
   w._bulletManager = BulletManager.getInstance();
   w.UNIT_DEFINITIONS = UNIT_DEFINITIONS;
   w.BUILDING_DEFINITIONS = BUILDING_DEFINITIONS;
@@ -827,8 +852,38 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._registerUnitRuleConverter = registerUnitRuleConverter;
   // ── Task 98: Weapon Rules ──
   w._WeaponDefinitions = WeaponInfoDefinitions;
+  // ── Task 136: Game Speeds & Lobby Options ──
+  w._GameSpeeds = GAME_SPEEDS;
+  w._getGameSpeed = getGameSpeed;
+  w._getAllGameSpeeds = getAllGameSpeeds;
+  w._getSpeedRatio = getSpeedRatio;
+  w._DefaultGameSpeed = DEFAULT_GAME_SPEED;
+  w._DefaultLobbyOptions = DEFAULT_LOBBY_OPTIONS;
+  w._createLobbyOptions = createLobbyOptions;
+  w._isTechLevelAllowed = isTechLevelAllowed;
+  w._isUnitBuildableAtTechLevel = isUnitBuildableAtTechLevel;
   // ── Task 135: Faction Rules & Build Limits ──
   w._BuildLimitTracker = BuildLimitTracker;
+  // ── Task 125: Activity Tree ──
+  w._Activity = Activity;
+  w._ActivityStatus = ActivityStatus;
+  w._IdleActivity = IdleActivity;
+  w._SequenceActivity = SequenceActivity;
+  w._MoveActivity = MoveActivity;
+  w._MoveFirstHalf = MoveFirstHalf;
+  w._MoveSecondHalf = MoveSecondHalf;
+  w._AttackMoveActivity = AttackMoveActivity;
+  // ── Task 126: Custom Movement Layer ──
+  w._CustomMovementLayer = CustomMovementLayer;
+  w._MovementLayerType = MovementLayerType;
+  // ── Task 137: Conditional Trait System ──
+  w._ConditionalTrait = ConditionalTrait;
+  w._ConditionManager = ConditionManager;
+  w._evaluateConditions = evaluateConditions;
+  w._GrantConditionOnPrerequisite = GrantConditionOnPrerequisite;
+  w._getOrCreateConditionManager = getOrCreateConditionManager;
+  w._getConditionManager = getConditionManager;
+  w._PauseOnCondition = PauseOnCondition;
   w._checkBuildLimit = checkBuildLimit;
   w._Faction = Faction;
   w._houseTypeToFaction = houseTypeToFaction;
