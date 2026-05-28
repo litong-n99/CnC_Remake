@@ -528,10 +528,11 @@ class WithSpriteBody : ITick, IRender {
 
 ### 10.2 战役脚本
 
-- [ ] **Task-SCR1: Lua 运行时**
-  - 集成 `fengari`（Lua 5.3 WebAssembly）
-  - `ScriptGlobal` API：`Media`, `Map`, `Player`, `Actor`, `Trigger`
-  - 沙箱：内存限制、执行时间限制
+- [x] **Task-SCR1: Lua 运行时** ✅ 2026-05-28
+  - 集成 `fengari-web`（Lua 5.3 for Browser）
+  - `LuaRuntime`：execute / setGlobal / getGlobal，禁用 io/os/debug/package/load
+  - 沙箱：脚本长度限制（64KB）+ 执行时间限制（1s）
+  - `ScriptGlobal` API：`Media`, `Map`, `Player`, `Actor`, `Trigger`（预留接口）
 
 - [ ] **Task-SCR2: 触发器系统**
   - `Trigger.OnEnteredFootprint`：区域进入

@@ -171,6 +171,8 @@ import { Aircraft } from './game/unit/AircraftMovement';
 import { AircraftTrait, Reservable } from './game/unit/AircraftTrait';
 import { WaterPathGraph } from './game/terrain/WaterPathGraph';
 import { ShipTrait } from './game/unit/ShipTrait';
+import { LuaRuntime } from './game/script/LuaRuntime';
+import { createScriptGlobal } from './game/script/ScriptGlobal';
 import { CargoSystem } from './game/unit/CargoSystem';
 import { BridgeSystem } from './game/terrain/BridgeSystem';
 import { NeutralBuildingManager, NeutralBuilding } from './game/neutral/NeutralBuilding';
@@ -869,6 +871,8 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._WaterPathGraph = WaterPathGraph;
   w._ShipTrait = ShipTrait;
   w._LandType = LandType;
+  w._LuaRuntime = LuaRuntime;
+  w._ScriptGlobal = createScriptGlobal();
   w.CargoSystem = CargoSystem;
   w.BridgeSystem = BridgeSystem;
   w._terrainGrid = terrain;
