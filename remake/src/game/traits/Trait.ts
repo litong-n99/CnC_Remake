@@ -28,6 +28,32 @@ export interface ITrait {
   onRemoved(_actor: Actor): void;
 }
 
+// ── Task-A3: 生命周期接口 ──
+
+/** 所有 Trait 构造完成后调用（Actor 创建完毕）。
+ * 对应 OpenRA: `INotifyCreated` */
+export interface INotifyCreated {
+  onCreated(actor: Actor): void;
+}
+
+/** World 加载完成后调用（地图/规则就绪）。
+ * 对应 OpenRA: `IWorldLoaded` */
+export interface IWorldLoaded {
+  onWorldLoaded(world: unknown): void;
+}
+
+/** Actor 被添加到 World 时调用。
+ * 对应 OpenRA: `INotifyAddedToWorld` */
+export interface INotifyAddedToWorld {
+  onAddedToWorld(actor: Actor, world: unknown): void;
+}
+
+/** Actor 从 World 移除时调用。
+ * 对应 OpenRA: `INotifyRemovedFromWorld` */
+export interface INotifyRemovedFromWorld {
+  onRemovedFromWorld(actor: Actor, world: unknown): void;
+}
+
 /** Trait 抽象基类 — 提供默认空实现和状态管理。 */
 export abstract class Trait implements ITrait {
   status = TraitStatus.Idle;

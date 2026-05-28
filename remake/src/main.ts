@@ -145,6 +145,7 @@ import { NeutralBuildingManager, NeutralBuilding } from './game/neutral/NeutralB
 import { WildlifeAI } from './game/neutral/WildlifeAI';
 import { SpatialTriggerSystem } from './game/world/TriggerSystem';
 import { ActorMap } from './game/world/ActorMap';
+import { World } from './game/world/World';
 import { SubCell, getSubCellOffset, INFANTRY_SUBCELLS } from './game/terrain/SubCell';
 import { SupportPowerManager } from './game/combat/SupportPowers';
 import { ActorPlacer } from './editor/ActorPlacer';
@@ -692,6 +693,9 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
 
   // worldToScreen 通过 inputManager.worldToScreen 暴露给 e2e 测试
 
+  // ── Task-A1: World — Actor 主循环化 ──
+  const world = World.getInstance();
+
   // ── Task 141: GameLoop — 逻辑帧与渲染帧分离 ──
   // 当前保持 60 FPS 逻辑帧以兼容现有单位移动系统；
   // 后续 Task 65（Lockstep）时统一降至 25 FPS 并更新单位插值逻辑。
@@ -701,6 +705,7 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   // 逻辑帧（25 FPS）：所有游戏状态更新
   gameLoop.onLogicTick((dt: number) => {
     queue.tick(dt);
+    world.tick(dt); // Task-A1: Actor 主循环化
     GameObjectManager.getInstance().update(dt);
     terrain.update(dt);
     BulletManager.getInstance().updateAll();
@@ -767,6 +772,7 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
     inputManager.dispose();
     sidebar.dispose();
     placer.dispose();
+    world.dispose();
     GameObjectManager.getInstance().dispose();
     houseManager.dispose();
     fogOfWar.dispose();
@@ -808,6 +814,8 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w.CargoSystem = CargoSystem;
   w.BridgeSystem = BridgeSystem;
   w._terrainGrid = terrain;
+  w._World = World;
+  w._world = world;
   w.NeutralBuildingManager = NeutralBuildingManager;
   w.NeutralBuilding = NeutralBuilding;
   w.WildlifeAI = WildlifeAI;
