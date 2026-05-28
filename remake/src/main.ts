@@ -77,6 +77,8 @@ import { CustomMovementLayer, MovementLayerType } from './game/terrain/CustomMov
 import { BulletManager } from './game/weapon/Bullet';
 import { WEAPON_DEFINITIONS } from './game/weapon/Weapon';
 import { DamageCalculator, WarheadType } from './game/combat/DamageCalculator';
+import { ReloadState } from './game/combat/ReloadState';
+import { TargetScanner } from './game/combat/TargetScanner';
 import { ResourceLayer } from './game/economy/ResourceLayer';
 import { GameLoop } from './game/GameLoop';
 import {
@@ -836,6 +838,8 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w.WEAPON_DEFINITIONS = WEAPON_DEFINITIONS;
   w.DamageCalculator = DamageCalculator;
   w.WarheadType = WarheadType;
+  w._ReloadState = ReloadState;
+  w._TargetScanner = TargetScanner;
   w.ArmorType = ArmorType;
   w._resourceLayer = resourceLayer;
   w._fogOfWar = fogOfWar;
