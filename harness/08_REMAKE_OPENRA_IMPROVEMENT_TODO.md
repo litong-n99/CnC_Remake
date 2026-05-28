@@ -503,10 +503,11 @@ class WithSpriteBody : ITick, IRender {
   - `WithTurretSprite` Trait：炮塔独立序列
   - 移动时播放 `move` 序列，空闲时 `idle`，攻击时 `attack`
 
-- [ ] **Task-SPR3: SHP 格式解析（远期）**
-  - WebAssembly 解析器或 JS 解析器
-  - 加载 Westwood SHP 文件 → 纹理图集
-  - 与 `SequenceProvider` 集成
+- [x] **Task-SPR3: SHP 格式解析** ✅ 2026-05-28
+  - `ShpTextureBuilder`：JS 解析器，TS/RA1 双格式支持
+  - RLE 解压 + 256 色调色板映射 → Canvas 纹理图集
+  - UV 坐标生成，与 `SequenceProvider` 帧索引对齐
+  - 多行图集自动排列（maxWidth=2048），透明背景
 
 ---
 

@@ -190,6 +190,7 @@ import { MusicPlayer } from './core/MusicPlayer';
 import { VideoPlayer } from './core/VideoPlayer';
 import { MixLoader } from './assets/loaders/MixLoader';
 import { ShpLoader } from './assets/loaders/ShpLoader';
+import { ShpTextureBuilder } from './assets/loaders/ShpTextureBuilder';
 import { BriefingScreen } from './ui/shell/BriefingScreen';
 import {
   getAllCampaigns,
@@ -908,6 +909,7 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._videoPlayer = new VideoPlayer();
   w._MixLoader = MixLoader;
   w._ShpLoader = ShpLoader;
+  w._ShpTextureBuilder = ShpTextureBuilder;
   w._BriefingScreen = BriefingScreen;
   w._CampaignData = {
     getAllCampaigns,
