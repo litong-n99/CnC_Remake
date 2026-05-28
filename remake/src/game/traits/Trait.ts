@@ -54,6 +54,19 @@ export interface INotifyRemovedFromWorld {
   onRemovedFromWorld(actor: Actor, world: unknown): void;
 }
 
+// ── Task-C2: 条件感知 Trait ──
+
+/** 条件变化观察者接口。
+ * 当 Actor 的条件被授予或撤销时，通知所有实现了此接口的 Trait。
+ * 对应 OpenRA: `IObservesVariables` */
+export interface IObservesVariables {
+  /** 条件变化时调用。
+   * @param actor 条件所属的 Actor
+   * @param condition 条件名
+   * @param active 条件当前是否激活（计数 > 0） */
+  onConditionChanged(actor: Actor, condition: string, active: boolean): void;
+}
+
 /** Trait 抽象基类 — 提供默认空实现和状态管理。 */
 export abstract class Trait implements ITrait {
   status = TraitStatus.Idle;
@@ -176,7 +189,7 @@ export class TraitRegistry {
 
     const result: string[] = [];
     while (queue.length > 0) {
-      const t = queue.shift()!;
+      const t = queue.shift() ?? ''; // queue non-empty by loop condition
       result.push(t);
       const tAdj = adj.get(t);
       if (!tAdj) continue;

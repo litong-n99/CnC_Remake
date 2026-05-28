@@ -40,6 +40,12 @@ export abstract class ConditionalTrait extends Trait {
     this.status = TraitStatus.Idle;
   }
 
+  /** Task-C2: 条件变化回调 — Actor 条件系统通知时调用。
+   * 子类可覆盖以响应特定条件变化。 */
+  onConditionChanged(_actor: Actor, _condition: string, _active: boolean): void {
+    // no-op base
+  }
+
   /** 子类覆盖此方法实现 Tick 逻辑；基类在 enabled 为 false 时自动跳过。 */
   abstract onTick(actor: Actor, deltaTime: number): void;
 
@@ -107,4 +113,38 @@ export class ConditionManager {
 export function evaluateConditions(required: readonly string[], manager: ConditionManager): boolean {
   if (required.length === 0) return true;
   return required.every((c) => manager.has(c));
+}
+
+/** UpgradeableTrait — 条件满足时升级到高级值的 Trait 基类。
+ * Task-C2: 对应 OpenRA `UpgradeableTrait<T>`
+ * 与 ConditionalTrait 配合使用：ConditionalTrait 控制启用/禁用，
+ * UpgradeableTrait 控制数值升级。 */
+export abstract class UpgradeableTrait<T> extends Trait {
+  private baseValue: T;
+  private upgradedValue: T;
+  private upgradeCondition: string | null = null;
+
+  constructor(baseValue: T, upgradedValue: T) {
+    super();
+    this.baseValue = baseValue;
+    this.upgradedValue = upgradedValue;
+  }
+
+  /** 设置升级条件。条件满足时返回升级值，否则返回基础值。 */
+  setUpgradeCondition(condition: string | null): void {
+    this.upgradeCondition = condition;
+  }
+
+  /** 获取当前值（根据条件状态自动选择基础值或升级值）。 */
+  getCurrentValue(actor: Actor): T {
+    if (this.upgradeCondition && actor.hasCondition(this.upgradeCondition)) {
+      return this.upgradedValue;
+    }
+    return this.baseValue;
+  }
+
+  /** 条件变化回调 — 子类可覆盖以响应条件变化。 */
+  onConditionChanged(_actor: Actor, _condition: string, _active: boolean): void {
+    // no-op base
+  }
 }

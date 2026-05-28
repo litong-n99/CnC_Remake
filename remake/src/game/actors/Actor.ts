@@ -14,7 +14,9 @@ import type {
   INotifyAddedToWorld,
   INotifyRemovedFromWorld,
   IWorldLoaded,
+  IObservesVariables,
 } from '../traits/Trait';
+import { ConditionalTrait, UpgradeableTrait } from '../traits/ConditionalTrait';
 import { GameObjectType } from '../objects/GameObject';
 
 /** Actor 信息引用（简化版，未来扩展为 ActorInfo）。 */
@@ -43,6 +45,8 @@ export class Actor {
   private tickTraits: Trait[] = [];
   /** Task-C1: 条件 token 计数器。条件名 → 激活该条件的 token 数量。 */
   private conditions = new Map<string, number>();
+  /** Task-C2: token → condition 映射，用于精确撤销。 */
+  private tokenToCondition = new Map<number, string>();
   private nextConditionToken = 1;
   private destroyed = false;
 
@@ -149,15 +153,30 @@ export class Actor {
     const token = this.nextConditionToken++;
     const count = this.conditions.get(condition) ?? 0;
     this.conditions.set(condition, count + 1);
+    this.tokenToCondition.set(token, condition);
+    // Task-C2: 通知条件观察者
+    this.notifyConditionChanged(condition, true);
     return token;
   }
 
   /** 撤销一个条件 token。如果该条件的所有 token 都被撤销，条件失效。
    * 对应 OpenRA: `RevokeCondition(int token)` */
-  revokeCondition(_token: number): void {
-    // 简化版：token 仅用于标识，不追踪具体 token→condition 映射。
-    // 实际撤销由条件源（如 GrantConditionOnPrerequisite）通过条件名管理。
-    // 完整实现需维护 token→condition 映射表。
+  revokeCondition(token: number): boolean {
+    const condition = this.tokenToCondition.get(token);
+    if (!condition) return false;
+    this.tokenToCondition.delete(token);
+    const count = this.conditions.get(condition) ?? 0;
+    if (count > 1) {
+      this.conditions.set(condition, count - 1);
+    } else {
+      this.conditions.delete(condition);
+    }
+    // Task-C2: 通知条件观察者（如果条件已完全撤销）
+    const stillActive = (this.conditions.get(condition) ?? 0) > 0;
+    if (!stillActive) {
+      this.notifyConditionChanged(condition, false);
+    }
+    return true;
   }
 
   /** 获取某条件的当前 token 计数。 */
@@ -184,6 +203,20 @@ export class Actor {
     return result;
   }
 
+  /** Task-C2: 通知所有条件观察者。
+   * 遍历所有 Trait，对实现了 IObservesVariables 的 Trait 调用回调。 */
+  private notifyConditionChanged(condition: string, active: boolean): void {
+    for (const trait of this.traits) {
+      if (isObservesVariables(trait)) {
+        trait.onConditionChanged(this, condition, active);
+      }
+      // 也通知 ConditionalTrait 和 UpgradeableTrait 子类
+      if (trait instanceof ConditionalTrait || trait instanceof UpgradeableTrait) {
+        trait.onConditionChanged(this, condition, active);
+      }
+    }
+  }
+
   /** 是否已销毁。 */
   isDestroyed(): boolean {
     return this.destroyed;
@@ -206,4 +239,8 @@ function isNotifyRemovedFromWorld(trait: Trait): trait is Trait & INotifyRemoved
 
 function isWorldLoaded(trait: Trait): trait is Trait & IWorldLoaded {
   return typeof (trait as unknown as IWorldLoaded).onWorldLoaded === 'function';
+}
+
+function isObservesVariables(trait: Trait): trait is Trait & IObservesVariables {
+  return typeof (trait as unknown as IObservesVariables).onConditionChanged === 'function';
 }

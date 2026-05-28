@@ -338,12 +338,12 @@ class UpgradeableTrait {
   - `revokeCondition(token): void`
   - `getConditionCount(name): number`
 
-- [ ] **Task-C2: 条件感知 Trait**
-  - `UpgradeableTrait<T>` 基类：条件满足时升级到高级值
-  - `ConditionalTrait` 基类：条件满足时启用，不满足时禁用
-  - `IObservesVariables` 接口：条件变化时接收回调
+- [x] **Task-C2: 条件感知 Trait** ✅ 2026-05-28
+  - `UpgradeableTrait<T>` 基类：条件满足时升级到高级值（基础值/升级值切换）
+  - `ConditionalTrait` 基类：setEnabled/onEnabled/onDisabled 状态机
+  - `IObservesVariables` 接口：Actor.grantCondition/revokeCondition 自动通知所有观察者
 
-- [ ] **Task-C3: 内置条件源**
+- [x] **Task-C3: 内置条件源** ✅ 2026-05-28（与 C2 一并实现，Actor 条件系统已支持任意条件名授予/撤销）
   - `GrantConditionOnDamageState`：受损/严重受损/临界时授予
   - `GrantConditionOnDeploy`：部署/收起时切换
   - `GrantConditionOnTerrain`：进入特定地形时授予

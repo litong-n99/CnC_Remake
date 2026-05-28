@@ -15,7 +15,12 @@ import { GameRules } from './game/rules/GameRules';
 import { RuleRegistry } from './game/rules/RuleRegistry';
 import { convertUnitDefinition, registerUnitRuleConverter } from './game/rules/UnitDefinitions';
 import { BuildLimitTracker, checkBuildLimit } from './game/rules/BuildLimitTracker';
-import { ConditionalTrait, ConditionManager, evaluateConditions } from './game/traits/ConditionalTrait';
+import {
+  ConditionalTrait,
+  ConditionManager,
+  evaluateConditions,
+  UpgradeableTrait,
+} from './game/traits/ConditionalTrait';
 import {
   GrantConditionOnPrerequisite,
   getOrCreateConditionManager,
@@ -996,6 +1001,7 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._FogOfWar = FogOfWar;
   // ── Task 137: Conditional Trait System ──
   w._ConditionalTrait = ConditionalTrait;
+  w._UpgradeableTrait = UpgradeableTrait;
   w._ConditionManager = ConditionManager;
   w._evaluateConditions = evaluateConditions;
   w._GrantConditionOnPrerequisite = GrantConditionOnPrerequisite;
