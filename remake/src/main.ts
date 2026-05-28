@@ -137,7 +137,18 @@ import * as OrderSerializer from './network/OrderSerializer';
 import { RoomClient } from './network/RoomClient';
 import { LockstepAdapter } from './network/LockstepAdapter';
 import { SyncHash } from './game/SyncHash';
-import { registerSyncFields, hashSyncObject, runUnsynced, isUnsynced, getUnsyncedDepth } from './game/world/Sync';
+import {
+  registerSyncFields,
+  hashSyncObject,
+  runUnsynced,
+  isUnsynced,
+  getUnsyncedDepth,
+  murmurHash3,
+  SharedRandom,
+  LocalRandom,
+  sharedRandom,
+  localRandom,
+} from './game/world/Sync';
 import { ReconnectHandler } from './network/ReconnectHandler';
 import { SpectatorManager } from './network/SpectatorManager';
 import { ReplayRecorder } from './replay/ReplayRecorder';
@@ -817,6 +828,11 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._runUnsynced = runUnsynced;
   w._isUnsynced = isUnsynced;
   w._getUnsyncedDepth = getUnsyncedDepth;
+  w._murmurHash3 = murmurHash3;
+  w._SharedRandom = SharedRandom;
+  w._LocalRandom = LocalRandom;
+  w._sharedRandom = sharedRandom;
+  w._localRandom = localRandom;
   w.ReconnectHandler = ReconnectHandler;
   w.SpectatorManager = SpectatorManager;
   w.ReplayRecorder = ReplayRecorder;
