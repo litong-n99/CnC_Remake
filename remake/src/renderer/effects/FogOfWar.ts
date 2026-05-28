@@ -11,6 +11,7 @@
  */
 
 import { Scene, Mesh, MeshBuilder, DynamicTexture, StandardMaterial, Color3, Texture } from '@babylonjs/core';
+import { ShroudRenderer } from './ShroudRenderer';
 
 export enum CellVisibility {
   Shroud = 0, // 未探索 — 黑色
@@ -48,6 +49,7 @@ export class FogOfWar {
   /** 2D Canvas context for pixel manipulation. */
   private ctx: CanvasRenderingContext2D | null = null;
   private imageData: ImageData | null = null;
+  private shroudRenderer: ShroudRenderer | null = null;
 
   constructor(options: FogOfWarOptions) {
     this.width = options.width;
@@ -58,6 +60,11 @@ export class FogOfWar {
     // 初始全部为 Shroud
     this.visibility = new Uint8Array(this.width * this.height);
     this.visibility.fill(CellVisibility.Shroud);
+  }
+
+  /** 获取关联的 ShroudRenderer（Task 9.7）。 */
+  getShroudRenderer(): ShroudRenderer | null {
+    return this.shroudRenderer;
   }
 
   /** 在场景中创建迷雾覆盖层。 */
@@ -91,6 +98,10 @@ export class FogOfWar {
 
     this.fogMesh.material = this.fogMaterial;
 
+    // 初始化 ShroudRenderer
+    this.shroudRenderer = new ShroudRenderer(this, this.width, this.height);
+    this.shroudRenderer.markAllDirty();
+
     // 初始绘制全黑
     this.fullRedraw();
   }
@@ -115,7 +126,8 @@ export class FogOfWar {
       this.revealCircle(cx, cy, this.sightRadius);
     }
 
-    // 第三步：更新纹理
+    // 第三步：标记 changed cells dirty 并更新纹理
+    this.shroudRenderer?.markAllDirty();
     this.updateTexture();
   }
 
@@ -209,8 +221,12 @@ export class FogOfWar {
       }
     }
 
+    // Task 9.7: 应用边缘贴图效果
+    this.shroudRenderer?.applyEdgesToImageData(this.imageData);
+
     this.ctx.putImageData(this.imageData, 0, 0);
     this.fogTexture?.update();
+    this.shroudRenderer?.clearDirty();
   }
 
   /** 全量重绘（初始化用）。 */

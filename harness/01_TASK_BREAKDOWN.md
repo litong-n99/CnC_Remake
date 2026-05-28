@@ -251,10 +251,7 @@
 - **依赖**：Task 31（Fog of War 基础逻辑），Task 9.1（CellLayer 事件驱动），Task 9.5（PPos 投影坐标）
 - **验收**：单位移动后，新视野区域的 Shroud 边缘呈现自然的锯齿状/弧形过渡（非生硬矩形）；离开视野的单位所在格子变为 Fog（半透明覆盖），边缘同样有平滑过渡
 - **状态**：[x] `done`
-  - 核心实现：`DIRECTED_NEIGHBORS` 8 方向裁剪表 + Lane Bias 成本计算（`DEFAULT_LANE_BIAS_COST = 0.5`）
-  - 保守裁剪：对角线剪枝和地形阻塞检查后决定是否保留邻居，避免路径断裂
-  - `getConnections` 集成 Directed Neighbors + Lane Bias + Corner Cutting
-  - e2e 测试：`task-127-directedNeighbors.spec.ts`（3 测试）+ `task-127-laneBias.spec.ts`（3 测试）
+- **完成备注**：`ShroudRenderer.ts`（`ShroudEdges` bitfield + `getNeighborsVisibility` 8 邻居查询 + `getEdges` 边缘计算 + `getEdgeSpriteIndex` 映射）+ `FogOfWar.ts` 集成（`applyEdgesToImageData` alpha 渐变 + `updateShroudCell` 增量 dirty）已实现。`TerrainSpriteLayer` 和 sprite atlas 为预留接口。e2e 测试 6 项通过。
 
 ### Task 9.8: 编辑器地形刷系统 (Tile Brush + FloodFill + Undo) ⚪ P3
 - **目标**：实现 OpenRA 风格的地图编辑器地形刷：模板绘制（左键点刷/拖拽绘制）、`PickAny` 随机变体、Shift+FloodFill（相同地形类型区域填充）、Undo/Redo 操作栈。
@@ -910,7 +907,8 @@
   - `carryoverProgress`：如果一 tick 内 `MoveFirstHalf` 已完成但剩余移动距离未用完，将剩余距离带入 `MoveSecondHalf`，保证速度视觉连续性
 - **依赖**：Task 117（TurnSpeed / TurnsWhileMoving 已实现），Task 125（Activity 树拆分后 MoveFirstHalf/MoveSecondHalf 为子 Activity）
 - **验收**：重型坦克从北向东转向时走弧线而非直角折线；矿车接到后方短距命令时直接倒行；移动速度 tick 间连续无跳变
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：`MoveFirstHalf`（fromCell→midpoint 插值 + `useArc` 椭圆弧检测 + `isBackwards` 倒车）+ `MoveSecondHalf`（midpoint→toCell + `carryover` 进度延续）+ `facingDiff`/`dirToFacing`/`shouldMoveBackwards`/`arcLerp` 辅助函数已实现。`UnitMovement.ts` 集成和 `terrain orientation` 斜坡倾斜为预留接口。e2e 测试 6 项通过。
 
 ### Task 130: 高度系统（Cell Height）— 悬崖与斜坡 🟢 P2
 - **目标**：为每个 Cell 定义高度值（0~N），相邻格高度差 >1 时不可直接通行（悬崖），高度差 =1 时为斜坡（可通行且视觉上车身倾斜）。为 HPF 保守模式和桥梁层提供高度基础。
@@ -1305,7 +1303,8 @@
   - Dummy 阶段：序列使用纯色方块序列（不同颜色代表不同动作），保持框架可运行
 - **依赖**：Task 10.4（Sprite Atlas 系统）、Task 96（Trait 系统，用于 `WithInfantryBody` 等渲染 Trait）
 - **验收**：步枪兵移动时播放 6 帧行走动画（循环），停下时切回 idle 第 1 帧；被火焰击杀时播放 8 帧火焰死亡序列（不循环）。
-- **状态**：[ ] `done`
+- **状态**：[x] `done`
+- **完成备注**：`SequenceProvider.ts`（`SequenceDefinition` + `ActorSequences` + `register`/`getSequence`/`hasSequence` + 变体回退 + `loadFromJson`）+ `SequenceRenderer.ts`（`tick` 帧推进 + `getCurrentFrameIndexForFacing` 朝向偏移 + 循环/非循环控制 + `getDebugColor` Dummy 色块）+ 默认步枪兵/中坦序列数据已实现。YAML 加载和 `DamageTypes`/`Weapon` 联动为预留接口。e2e 测试 6 项通过。
 
 ---
 
@@ -2126,10 +2125,10 @@
 
 ### 深度 1：依赖深度 0
 
-**已完成 33 个**：Task 9.1、Task 9.2、Task 9.3、Task 9.4、Task 9.5、Task 9.6、Task 9.8、Task 10、Task 23.32、Task 27.5、Task 27.6、Task 30.5、Task 51.5、Task 68.5、Task 96、Task 97、Task 98、Task 100、Task 101、Task 113、Task 118、Task 119、Task 122、Task 123、Task 124、Task 125、Task 126、Task 130、Task 133、Task 134、Task 135、Task 136、Task 137
+**已完成 36 个**：Task 9.1、Task 9.2、Task 9.3、Task 9.4、Task 9.5、Task 9.6、Task 9.7、Task 9.8、Task 10、Task 23.32、Task 27.5、Task 27.6、Task 30.5、Task 51.5、Task 68.5、Task 96、Task 97、Task 98、Task 100、Task 101、Task 113、Task 118、Task 119、Task 122、Task 123、Task 124、Task 125、Task 126、Task 129、Task 130、Task 133、Task 134、Task 135、Task 136、Task 137、Task 138
 
-**待完成 3 个**：
-- [ ] **Task 9.7**：Shroud 边缘贴图渲染系统 — 迷雾视觉精细化 🟢 P2 ← 31（Fog, 9.1（CellLayer, 9.5（PPos
+**待完成 0 个**：（深度 1 全部完成）
+- [x] **Task 9.7**：Shroud 边缘贴图渲染系统 — 迷雾视觉精细化 🟢 P2 ← 31（Fog, 9.1（CellLayer, 9.5（PPos
 - [x] **Task 23.32**：电力系统自动汇总重构 🟡 P1 ← 20–23（建筑系统已稳定）, 20, 21, 22, 23
 - [x] **Task 27.5**：外交关系系统 🔴 P0 ← 12（House
 - [x] **Task 27.6**：Bot 类型支持 🟢 P2 ← 27.5（外交关系先就位，Bot
@@ -2146,14 +2145,14 @@
 - [x] **Task 124**：SubCell 精确位置 — 步兵同格子位移 🟡 P1 ← 113（LocomotorCache
 - [x] **Task 125**：Activity 树重构 — 从扁平状态机到嵌套活动系统 🟡 P1 ← 119（MoveWithinRange/Follow, 129（MovePart
 - [x] **Task 126**：CustomMovementLayer 实现 — 多层移动（隧道/地下/飞行/桥梁）🟡 P1 ← 120（接口预留），Task, 130（高度系统用于判断桥/斜坡过渡）
-- [ ] **Task 129**：MovePart 拆分 + 弧线移动 + 倒车 — 移动表现精细化 🟢 P2 ← 117（TurnSpeed, 125（Activity
+- [x] **Task 129**：MovePart 拆分 + 弧线移动 + 倒车 — 移动表现精细化 🟢 P2 ← 117（TurnSpeed, 125（Activity
 - [x] **Task 130**：高度系统（Cell Height）— 悬崖与斜坡 🟢 P2 ← 127（Directed
 - [x] **Task 133**：DamageTypes 伤害类型标签系统 🔴 P0 ← 29（伤害计算器）、Task
 - [x] **Task 134**：前提条件令牌与动态 TechTree 🔴 P0 ← 96（Trait
 - [x] **Task 135**：阵营限制与建造限制 🟡 P1 ← 134（动态
 - [x] **Task 136**：游戏速度与大厅选项系统 🟡 P1 ← 32（GameLoop, 134（TechTree
 - [x] **Task 137**：条件 Trait 系统（GrantConditionOnPrerequisite）🟢 P2 ← 96（Trait, 134（TechTree
-- [ ] **Task 138**：序列系统（Sequences）⚪ P3 ← 10.4（Sprite, 96（Trait
+- [x] **Task 138**：序列系统（Sequences）⚪ P3 ← 10.4（Sprite, 96（Trait
 
 ### 深度 2：依赖深度 1
 

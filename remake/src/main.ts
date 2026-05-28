@@ -62,7 +62,15 @@ import { groundOrder, actorOrder, selfOrder } from './game/order/GameOrder';
 import { AttackMoveHandler } from './game/order/handlers/AttackMoveHandler';
 import { PatrolHandler } from './game/order/handlers/PatrolHandler';
 import { Activity, ActivityStatus, IdleActivity, SequenceActivity } from './game/activities/Activity';
-import { MoveActivity, MoveFirstHalf, MoveSecondHalf } from './game/activities/MoveActivity';
+import {
+  MoveActivity,
+  MoveFirstHalf,
+  MoveSecondHalf,
+  facingDiff,
+  dirToFacing,
+  shouldMoveBackwards,
+  arcLerp,
+} from './game/activities/MoveActivity';
 import { AttackMoveActivity } from './game/activities/AttackMoveActivity';
 import { CustomMovementLayer, MovementLayerType } from './game/terrain/CustomMovementLayer';
 import { BulletManager } from './game/weapon/Bullet';
@@ -83,7 +91,23 @@ import {
   isTechLevelAllowed,
   isUnitBuildableAtTechLevel,
 } from './game/rules/LobbyOptions';
-import { FogOfWar } from './renderer/effects/FogOfWar';
+import { FogOfWar, CellVisibility } from './renderer/effects/FogOfWar';
+import {
+  ShroudRenderer,
+  ShroudEdges,
+  getNeighborsVisibility,
+  getEdges,
+  getEdgeSpriteIndex,
+} from './renderer/effects/ShroudRenderer';
+import {
+  SequenceProvider,
+  getSequenceProvider,
+  resetSequenceProvider,
+  loadDefaultSequences,
+  DEFAULT_RIFLE_INFANTRY_SEQUENCES,
+  DEFAULT_MEDIUM_TANK_SEQUENCES,
+} from './game/rules/SequenceProvider';
+import { SequenceRenderer } from './renderer/sprites/SequenceRenderer';
 import { ParticleManager } from './renderer/effects/ParticleManager';
 import { AudioManager } from './core/AudioManager';
 import { getLocalization } from './core/Localization';
@@ -873,9 +897,30 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._MoveFirstHalf = MoveFirstHalf;
   w._MoveSecondHalf = MoveSecondHalf;
   w._AttackMoveActivity = AttackMoveActivity;
+  // ── Task 129: MovePart Refinement ──
+  w._facingDiff = facingDiff;
+  w._dirToFacing = dirToFacing;
+  w._shouldMoveBackwards = shouldMoveBackwards;
+  w._arcLerp = arcLerp;
+  // ── Task 138: Sequence System ──
+  w._SequenceProvider = SequenceProvider;
+  w._getSequenceProvider = getSequenceProvider;
+  w._resetSequenceProvider = resetSequenceProvider;
+  w._loadDefaultSequences = loadDefaultSequences;
+  w._DEFAULT_RIFLE_INFANTRY_SEQUENCES = DEFAULT_RIFLE_INFANTRY_SEQUENCES;
+  w._DEFAULT_MEDIUM_TANK_SEQUENCES = DEFAULT_MEDIUM_TANK_SEQUENCES;
+  w._SequenceRenderer = SequenceRenderer;
   // ── Task 126: Custom Movement Layer ──
   w._CustomMovementLayer = CustomMovementLayer;
   w._MovementLayerType = MovementLayerType;
+  // ── Task 9.7: Shroud Renderer ──
+  w._ShroudRenderer = ShroudRenderer;
+  w._ShroudEdges = ShroudEdges;
+  w._getNeighborsVisibility = getNeighborsVisibility;
+  w._getEdges = getEdges;
+  w._getEdgeSpriteIndex = getEdgeSpriteIndex;
+  w._CellVisibility = CellVisibility;
+  w._FogOfWar = FogOfWar;
   // ── Task 137: Conditional Trait System ──
   w._ConditionalTrait = ConditionalTrait;
   w._ConditionManager = ConditionManager;
