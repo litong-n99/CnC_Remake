@@ -12,6 +12,11 @@
 
 import type { Scene, Engine } from '@babylonjs/core';
 
+/** Task-R2: ITickRender 接口 — 逻辑帧后更新渲染状态（动画帧、屏幕位置）。 */
+export interface ITickRender {
+  tickRender(progress: number): void;
+}
+
 type TickCallback = (dt: number) => void;
 
 export interface GameLoopOptions {
@@ -27,6 +32,7 @@ export class GameLoop {
   private running = false;
   private renderCallbacks: TickCallback[] = [];
   private logicCallbacks: TickCallback[] = [];
+  private tickRenderCallbacks: ITickRender[] = [];
   private lastTimestamp = 0;
   private engine: Engine | null = null;
   private scene: Scene | null = null;
@@ -86,6 +92,11 @@ export class GameLoop {
     this.renderCallbacks.push(cb);
   }
 
+  /** Task-R2: 注册 ITickRender（逻辑帧后更新渲染状态）。 */
+  onTickRender(cb: ITickRender): void {
+    this.tickRenderCallbacks.push(cb);
+  }
+
   /** 移除逻辑帧回调 */
   offLogicTick(cb: TickCallback): void {
     this.logicCallbacks = this.logicCallbacks.filter((c) => c !== cb);
@@ -94,6 +105,11 @@ export class GameLoop {
   /** 移除渲染帧回调 */
   offRenderTick(cb: TickCallback): void {
     this.renderCallbacks = this.renderCallbacks.filter((c) => c !== cb);
+  }
+
+  /** Task-R2: 移除 ITickRender。 */
+  offTickRender(cb: ITickRender): void {
+    this.tickRenderCallbacks = this.tickRenderCallbacks.filter((c) => c !== cb);
   }
 
   /** 当前逻辑帧计数 */
@@ -131,6 +147,10 @@ export class GameLoop {
     this.logicTickCount++;
     for (const cb of this.logicCallbacks) {
       cb(dt);
+    }
+    // Task-R2: 逻辑帧后调用 ITickRender
+    for (const cb of this.tickRenderCallbacks) {
+      cb.tickRender(this.logicTickProgress);
     }
   }
 
