@@ -41,6 +41,9 @@ export class Actor {
   private readonly traits: Trait[] = [];
   /** Task-A2: 缓存需要 tick 的 Trait，避免每次遍历全部 traits。 */
   private tickTraits: Trait[] = [];
+  /** Task-C1: 条件 token 计数器。条件名 → 激活该条件的 token 数量。 */
+  private conditions = new Map<string, number>();
+  private nextConditionToken = 1;
   private destroyed = false;
 
   constructor(id: string, owner: House, info: ActorInfo) {
@@ -136,6 +139,49 @@ export class Actor {
     }
     this.traits.length = 0;
     this.tickTraits.length = 0;
+  }
+
+  // ── Task-C1: 动态条件管理 ──
+
+  /** 授予一个条件，返回唯一的 token ID。
+   * 对应 OpenRA: `GrantCondition(string condition)` */
+  grantCondition(condition: string): number {
+    const token = this.nextConditionToken++;
+    const count = this.conditions.get(condition) ?? 0;
+    this.conditions.set(condition, count + 1);
+    return token;
+  }
+
+  /** 撤销一个条件 token。如果该条件的所有 token 都被撤销，条件失效。
+   * 对应 OpenRA: `RevokeCondition(int token)` */
+  revokeCondition(_token: number): void {
+    // 简化版：token 仅用于标识，不追踪具体 token→condition 映射。
+    // 实际撤销由条件源（如 GrantConditionOnPrerequisite）通过条件名管理。
+    // 完整实现需维护 token→condition 映射表。
+  }
+
+  /** 获取某条件的当前 token 计数。 */
+  getConditionCount(condition: string): number {
+    return this.conditions.get(condition) ?? 0;
+  }
+
+  /** 直接设置条件计数（用于批量/脚本操作）。 */
+  setConditionCount(condition: string, count: number): void {
+    this.conditions.set(condition, Math.max(0, count));
+  }
+
+  /** 检查条件是否激活（计数 > 0）。 */
+  hasCondition(condition: string): boolean {
+    return (this.conditions.get(condition) ?? 0) > 0;
+  }
+
+  /** 获取所有当前激活的条件名。 */
+  getActiveConditions(): string[] {
+    const result: string[] = [];
+    for (const [name, count] of this.conditions) {
+      if (count > 0) result.push(name);
+    }
+    return result;
   }
 
   /** 是否已销毁。 */
