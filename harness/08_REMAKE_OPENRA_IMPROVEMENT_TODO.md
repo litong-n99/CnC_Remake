@@ -153,10 +153,10 @@ interface IRenderable {
   - 在 `GameLoop.stepLogic()` 后调用所有 `ITickRender`
   - 动画帧推进、mesh 位置预计算在此阶段完成
 
-- [ ] **Task-R3: 渲染器值对象化（可选）**
-  - `IRenderable` 抽象：`pos`, `zOffset`, `prepareRender()`
-  - 每逻辑帧生成 `IRenderable[]`，渲染帧只消费不修改
-  - 此模式对 3D mesh 意义不大（OpenRA 是 2D sprite 才需要），但 `SpriteRenderable` 适用
+- [x] **Task-R3: 渲染器值对象化（可选）** ✅ 2026-05-28
+  - `IRenderable` 接口：`pos`, `zOffset`, `renderLayer`, `prepareRender()`
+  - `RenderCollector`：每逻辑帧收集、按 renderLayer→zOffset 排序、渲染帧批量输出
+  - `SpriteRenderableVO`：SpriteRenderable 的值对象适配器
 
 - [x] **Task-R4: 深度排序优化** ✅ 2026-05-28
   - `RenderLayer` 枚举四层：Opaque(0) / Transparent(1) / Sprite(2) / Overlay(3)

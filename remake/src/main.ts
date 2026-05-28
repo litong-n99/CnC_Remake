@@ -4,6 +4,8 @@ import { SceneManager } from './core/SceneManager';
 import { RTSCamera } from './core/RTSCamera';
 import { ViewportCuller } from './renderer/ViewportCuller';
 import { SpriteRenderable } from './renderer/sprites/SpriteRenderable';
+import { SpriteRenderableVO } from './renderer/sprites/SpriteRenderableVO';
+import { RenderCollector } from './renderer/IRenderable';
 import { ActorSpriteRenderer } from './renderer/sprites/ActorSpriteRenderer';
 import { RenderLayer, setRenderLayer, getRenderLayer, getRenderLayerStats } from './renderer/RenderLayer';
 import { Lighting } from './renderer/Lighting';
@@ -831,6 +833,8 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._ViewportCuller = ViewportCuller;
   w._viewportCuller = new ViewportCuller();
   w._SpriteRenderable = SpriteRenderable;
+  w._SpriteRenderableVO = SpriteRenderableVO;
+  w._RenderCollector = RenderCollector;
   w._ActorSpriteRenderer = ActorSpriteRenderer;
   w._RenderLayer = RenderLayer;
   w._setRenderLayer = setRenderLayer;
