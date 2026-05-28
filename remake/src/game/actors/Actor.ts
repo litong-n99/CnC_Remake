@@ -39,6 +39,8 @@ export class Actor {
   y = 0;
 
   private readonly traits: Trait[] = [];
+  /** Task-A2: 缓存需要 tick 的 Trait，避免每次遍历全部 traits。 */
+  private tickTraits: Trait[] = [];
   private destroyed = false;
 
   constructor(id: string, owner: House, info: ActorInfo) {
@@ -53,6 +55,7 @@ export class Actor {
   addTrait(trait: Trait): void {
     if (this.destroyed) return;
     this.traits.push(trait);
+    this.tickTraits.push(trait);
     trait.onCreated(this);
   }
 
@@ -115,10 +118,10 @@ export class Actor {
     return this.traits;
   }
 
-  /** 转发 tick 到所有 Trait。 */
+  /** 转发 tick 到所有需要 tick 的 Trait（使用缓存数组，O(n) 无需类型检查）。 */
   tick(deltaTime: number): void {
     if (this.destroyed) return;
-    for (const trait of this.traits) {
+    for (const trait of this.tickTraits) {
       trait.tick(this, deltaTime);
     }
   }
@@ -132,6 +135,7 @@ export class Actor {
       this.traits[i].onRemoved(this);
     }
     this.traits.length = 0;
+    this.tickTraits.length = 0;
   }
 
   /** 是否已销毁。 */

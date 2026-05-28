@@ -15,6 +15,7 @@
  */
 
 import type { Actor } from '../actors/Actor';
+import type { Trait } from '../traits/Trait';
 
 type FrameEndTask = (world: World) => void;
 
@@ -24,6 +25,8 @@ export class World {
   private frameEndTasks: FrameEndTask[] = [];
   private worldTick = 0;
   private destroyed = false;
+  /** Task-W1: WorldActor — 承载全局系统 Trait 的特殊 Actor。 */
+  private worldActor: Actor | null = null;
 
   private constructor() {}
 
@@ -81,6 +84,31 @@ export class World {
     return this.worldTick;
   }
 
+  // ── Task-W1: WorldActor ──
+
+  /** 设置 WorldActor（应在世界初始化时调用一次）。 */
+  setWorldActor(actor: Actor): void {
+    this.worldActor = actor;
+    this.addActor(actor);
+  }
+
+  /** 获取 WorldActor。 */
+  getWorldActor(): Actor | null {
+    return this.worldActor;
+  }
+
+  /** 向 WorldActor 挂载一个全局系统 Trait。 */
+  addWorldTrait(trait: Trait): void {
+    if (this.worldActor) {
+      this.worldActor.addTrait(trait);
+    }
+  }
+
+  /** 按类型从 WorldActor 查询 Trait。 */
+  worldTrait<T extends Trait>(_type: new (...args: unknown[]) => T): T | undefined {
+    return this.worldActor?.trait(_type);
+  }
+
   /** Actor 数量。 */
   getActorCount(): number {
     return this.actors.size;
@@ -88,17 +116,24 @@ export class World {
 
   /**
    * 推进一帧逻辑。
-   * 按 ActorID 排序遍历所有 Actor，调用 tick()，然后执行 frame-end 任务。
+   * 先 tick WorldActor（全局系统），再按 ActorID 排序遍历其他 Actor，
+   * 然后执行 frame-end 任务。
    */
   tick(deltaTime: number): void {
     if (this.destroyed) return;
     this.worldTick++;
 
+    // Task-W1: WorldActor 先 tick（全局系统优先）
+    if (this.worldActor && !this.worldActor.isDestroyed()) {
+      this.worldActor.tick(deltaTime);
+    }
+
     // 按 ID 排序遍历，保证确定性（Lockstep 需要）
     const sortedIds = Array.from(this.actors.keys()).sort();
     for (const id of sortedIds) {
       const actor = this.actors.get(id);
-      if (actor && !actor.isDestroyed()) {
+      // 跳过已销毁和 WorldActor（已先 tick）
+      if (actor && !actor.isDestroyed() && actor !== this.worldActor) {
         actor.tick(deltaTime);
       }
     }
