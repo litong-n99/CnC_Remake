@@ -173,6 +173,7 @@ import { WaterPathGraph } from './game/terrain/WaterPathGraph';
 import { ShipTrait } from './game/unit/ShipTrait';
 import { LuaRuntime } from './game/script/LuaRuntime';
 import { createScriptGlobal } from './game/script/ScriptGlobal';
+import { TriggerManager } from './game/script/TriggerManager';
 import { CargoSystem } from './game/unit/CargoSystem';
 import { BridgeSystem } from './game/terrain/BridgeSystem';
 import { NeutralBuildingManager, NeutralBuilding } from './game/neutral/NeutralBuilding';
@@ -873,6 +874,7 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._LandType = LandType;
   w._LuaRuntime = LuaRuntime;
   w._ScriptGlobal = createScriptGlobal();
+  w._TriggerManager = TriggerManager;
   w.CargoSystem = CargoSystem;
   w.BridgeSystem = BridgeSystem;
   w._terrainGrid = terrain;
