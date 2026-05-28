@@ -166,6 +166,7 @@ import { SpectatorManager } from './network/SpectatorManager';
 import { ReplayRecorder } from './replay/ReplayRecorder';
 import { ReplayPlayer } from './replay/ReplayPlayer';
 import { Aircraft } from './game/unit/AircraftMovement';
+import { AircraftTrait, Reservable } from './game/unit/AircraftTrait';
 import { CargoSystem } from './game/unit/CargoSystem';
 import { BridgeSystem } from './game/terrain/BridgeSystem';
 import { NeutralBuildingManager, NeutralBuilding } from './game/neutral/NeutralBuilding';
@@ -857,6 +858,10 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w.ReplayRecorder = ReplayRecorder;
   w.ReplayPlayer = ReplayPlayer;
   w.Aircraft = Aircraft;
+  w._AircraftTrait = AircraftTrait;
+  w._Reservable = Reservable;
+  w._AircraftTrait = AircraftTrait;
+  w._Reservable = Reservable;
   w.CargoSystem = CargoSystem;
   w.BridgeSystem = BridgeSystem;
   w._terrainGrid = terrain;

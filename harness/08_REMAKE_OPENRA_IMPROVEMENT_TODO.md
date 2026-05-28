@@ -515,10 +515,10 @@ class WithSpriteBody : ITick, IRender {
 
 ### 10.1 空军与海军
 
-- [ ] **Task-VEH1: Aircraft 集成**
-  - `AircraftMovement.ts` 已存在但未接入主循环
-  - 需要 `Aircraft` Trait：`CruiseAltitude`, `LandAltitude`, `CanHover`
-  - 机场停泊逻辑：`Reservable` Trait，飞机降落后占用停机位
+- [x] **Task-VEH1: Aircraft 集成** ✅ 2026-05-28
+  - `AircraftTrait`：CruiseAltitude/LandAltitude/CanHover，状态机（Idle→TakeOff→Cruise→Landing→Docked）
+  - `Reservable` Trait：机场停机位管理，reserve/release 槽位分配
+  - 接入 Actor.tick，高度自动插值，方向计算
 
 - [ ] **Task-VEH2: 海军**
   - `WaterPathGraph`：仅水格可通行
