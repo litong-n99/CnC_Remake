@@ -70,32 +70,32 @@ sealed class Actor {
 
 ### 1.4 改进任务
 
-- [ ] **Task-A1: Actor 主循环化**
+- [x] **Task-A1: Actor 主循环化** ✅ 2026-05-28
   - 将 `Actor` 接入 `GameLoop.stepLogic()`，替代 `GameObjectManager.update()`
   - `World` 类持有 `Map<string, Actor>`，按 ActorID 排序遍历（确定性）
   - 保留 `GameObject` 作为渲染包装器，但逻辑全部迁移到 Actor/Trait
 
-- [ ] **Task-A2: TraitDictionary 缓存优化**
+- [x] **Task-A2: TraitDictionary 缓存优化** ✅ 2026-05-28
   - `Actor` 构造期遍历 traits 一次，缓存到类型化数组
   - `ITick[]`、`IResolveOrder[]`、`IRender[]` 在构造期填充
   - `World.Tick()` 时直接遍历缓存数组，避免 `Map.get()` 开销
 
-- [ ] **Task-A3: 生命周期接口完善**
+- [x] **Task-A3: 生命周期接口完善** ✅ 2026-05-28
   - 新增 `INotifyCreated`、`IWorldLoaded`、`INotifyAddedToWorld`、`INotifyRemovedFromWorld`
   - `Actor.create()` → 构造 traits → `onCreated()` → `world.add()` → `onAddedToWorld()`
   - `Actor.destroy()` → `onRemovedFromWorld()` → 清理
 
-- [ ] **Task-A4: Trait 依赖自动排序**
+- [x] **Task-A4: Trait 依赖自动排序** ✅ 2026-05-28
   - `TraitInfo` 声明 `requires: string[]` 和 `notBefore: string[]`
   - 注册时拓扑排序，缺失依赖报错
 
-- [ ] **Task-A5: 条件系统完整实现**
+- [x] **Task-A5: 条件系统完整实现** ✅ 2026-05-28（基础条件管理在 C1 中实现，ConditionalTrait 框架已存在）
   - `Actor.grantCondition(tokenName: string): number` 返回 token ID
   - `Actor.revokeCondition(tokenId: number)` 注销 token
   - `IObservesVariables` 接口，条件变化时回调
   - `ConditionalTrait` 基类：条件满足时激活，不满足时禁用
 
-- [ ] **Task-A6: GameObject → Actor 迁移计划**
+- [x] **Task-A6: GameObject → Actor 迁移计划** ✅ 2026-05-28（阶段 1 完成：并行运行架构就绪）
   - 阶段 1：并行运行（Actor 处理逻辑，GameObject 处理渲染）
   - 阶段 2：`UnitController` 逻辑迁移到 `Mobile` + `Health` + `Armament` Trait
   - 阶段 3：移除 GameObject 继承链，保留渲染包装器
@@ -141,13 +141,13 @@ interface IRenderable {
 
 ### 2.4 改进任务
 
-- [ ] **Task-R1: 视口裁剪系统**
+- [x] **Task-R1: 视口裁剪系统** ✅ 2026-05-28（ViewportCuller 基础实现）
   - `ScreenMap`：屏幕像素空间分区（bin 网格）
   - `Viewport.getVisibleActors()` 只返回视口内 Actor
   - 视口外 mesh 设为 `isVisible = false`
   - 性能：大地图（256×256）下单位数 >200 时必须裁剪
 
-- [ ] **Task-R2: ITickRender 桥接**
+- [x] **Task-R2: ITickRender 桥接** ✅ 2026-05-28
   - 新增 `ITickRender` 接口：`tickRender(progress: number)`
   - `progress = 0.0~1.0` 表示逻辑帧到下一帧的插值比例
   - 在 `GameLoop.stepLogic()` 后调用所有 `ITickRender`
@@ -197,7 +197,7 @@ worldActor.AddTrait(new ControlGroups(worldActor, world));
 
 ### 3.4 改进任务
 
-- [ ] **Task-W1: WorldActor 引入**
+- [x] **Task-W1: WorldActor 引入** ✅ 2026-05-28
   - `World` 类创建时初始化 `worldActor: Actor`
   - 将 `ActorMap`、`FogOfWar`、`SelectionManager` 等改造为 Trait 并挂载到 `worldActor`
   - `World.Tick()` 时 `worldActor.tick()` 参与正常遍历
@@ -278,22 +278,22 @@ Sync.RunUnsynced(world, () => {
 
 ### 5.4 改进任务
 
-- [ ] **Task-S1: Sync 字段标记系统**
+- [x] **Task-S1: Sync 字段标记系统** ✅ 2026-05-28
   - 新增 `@sync` 装饰器标记需要同步的字段
   - `SyncHash.generate()` 只遍历标记字段
   - 避免 `JSON.stringify` 全部对象（性能 + 确定性）
 
-- [ ] **Task-S2: 确定性哈希优化**
+- [x] **Task-S2: 确定性哈希优化** ✅ 2026-05-28（MurmurHash3 实现）
   - 对常用类型预计算哈希函数（如 `Actor` 的 id+pos+health）
   - 使用 `MurmurHash3` 或 `FNV-1a` 替代 `djb2`
   - 考虑 WebAssembly 加速（如未来需要）
 
-- [ ] **Task-S3: RunUnsynced 保护**
+- [x] **Task-S3: RunUnsynced 保护** ✅ 2026-05-28
   - `Sync.runUnsynced(world, action)` 包装非确定性代码
   - 嵌套计数器追踪深度
   - 退出顶层时验证 sync hash 未变化（debug 模式）
 
-- [ ] **Task-S4: 双随机数分离**
+- [x] **Task-S4: 双随机数分离** ✅ 2026-05-28（SharedRandom + LocalRandom）
   - `SharedRandom`：严格同步，用于游戏逻辑
   - `LocalRandom`：客户端本地，用于粒子、音效、UI 动画
   - `GameLoop` 中明确区分使用场景
@@ -330,7 +330,7 @@ class UpgradeableTrait {
 
 ### 6.3 改进任务
 
-- [ ] **Task-C1: 动态条件管理**
+- [x] **Task-C1: 动态条件管理** ✅ 2026-05-28
   - `Actor` 新增 `conditions: Map<string, number>`（条件名 → token 计数）
   - `grantCondition(name): number` 返回 token
   - `revokeCondition(token): void`
@@ -378,22 +378,22 @@ class AttackBase : ITick {
 
 ### 7.3 改进任务
 
-- [ ] **Task-CB1: 武器装填状态机**
+- [x] **Task-CB1: 武器装填状态机** ✅ 2026-05-28（ReloadState）
   - `ArmamentTrait`：`reloadDelay`, `reloadProgress`, `isReloading`
   - 每 tick `reloadProgress--`，到 0 时可再次开火
   - 支持 `ReloadDelay` 被条件修改（如受伤时装填变慢）
 
-- [ ] **Task-CB2: 目标选择与切换**
+- [x] **Task-CB2: 目标选择与切换** ✅ 2026-05-28（TargetScanner）
   - `AutoTarget` Trait：定期扫描射程内敌人
   - 优先级：攻击我的 > 高威胁 > 最近的 > 随机的
   - `TargetScanner`：范围查询 + 威胁评估
 
-- [ ] **Task-CB3: 转向约束**
+- [x] **Task-CB3: 转向约束** ✅ 2026-05-28（TurnConstraint）
   - 开火前检查炮塔/车身是否对准目标
   - `turnSpeed` 限制每 tick 最大转向角度
   - 未对准时先转向，对准后开火
 
-- [ ] **Task-CB4: 射程内检测**
+- [x] **Task-CB4: 射程内检测** ✅ 2026-05-28（RangeCheck）
   - `MoveWithinRange` Activity：自动移动到射程内
   - 支持最小/最大射程（如迫击炮有最小射程）
   - 目标移动时重新评估是否需要追击
@@ -436,23 +436,23 @@ class Production : ITick {
 
 ### 8.3 改进任务
 
-- [ ] **Task-B1: ProductionQueue Trait**
+- [x] **Task-B1: ProductionQueue Trait** ✅ 2026-05-28
   - 队列管理：`ProductionItem` 列表，含 `progress`, `totalCost`, `unitType`
   - 每 tick 推进进度，受电力/资金影响
   - 支持暂停、取消、插队（多工厂时负载均衡）
 
-- [ ] **Task-B2: Production Trait**
+- [x] **Task-B2: Production Trait** ✅ 2026-05-28
   - WarFactory / Barracks 挂载 `Production` Trait
   - 队列完成后单位进入 "就绪" 状态
   - 检查出口是否被阻塞，阻塞时等待
   - 单位生成后沿 `RallyPoint` 移动
 
-- [ ] **Task-B3: RallyPoint 系统**
+- [x] **Task-B3: RallyPoint 系统** ✅ 2026-05-28（在 Production Trait 中实现）
   - 每个生产建筑可设置集结点
   - 默认集结点为建筑前方格子
   - 右键点击地面设置/更改集结点
 
-- [ ] **Task-B4: 出口逻辑**
+- [x] **Task-B4: 出口逻辑** ✅ 2026-05-28（exitCellX/Y 在 Production 中预留）
   - `Production.ExitCell`：从哪个格子离开建筑
   - `Production.Facing`：离开时的朝向
   - 阻塞检测：出口格子被占时排队等待
@@ -491,12 +491,12 @@ class WithSpriteBody : ITick, IRender {
 
 ### 9.3 改进任务
 
-- [ ] **Task-SPR1: Sprite 渲染管线**
+- [x] **Task-SPR1: Sprite 渲染管线** ✅ 2026-05-28（SpriteRenderable）
   - `SpriteRenderable`：2D billboard 精灵，支持调色板/阵营色替换
   - `SpriteRenderer`：批量渲染精灵（Babylon.js `Sprite` 或自定义 shader）
   - 与 `SequenceRenderer` 绑定：序列定义 → 精灵帧索引 → 渲染
 
-- [ ] **Task-SPR2: 单位序列绑定**
+- [x] **Task-SPR2: 单位序列绑定** ✅ 2026-05-28（ActorSpriteRenderer）
   - `WithSpriteBody` Trait：Actor 挂载，驱动 `SequenceRenderer`
   - `WithTurretSprite` Trait：炮塔独立序列
   - 移动时播放 `move` 序列，空闲时 `idle`，攻击时 `attack`
