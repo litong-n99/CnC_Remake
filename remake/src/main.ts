@@ -53,6 +53,8 @@ import { SelectionManager } from './game/SelectionManager';
 import { InputManager } from './core/InputManager';
 import { Unit } from './game/objects/Unit';
 import { ConstructionQueue } from './game/building/ConstructionQueue';
+import { ProductionQueue } from './game/building/ProductionQueue';
+import { Production } from './game/building/Production';
 import { BuildingPlacer } from './game/building/BuildingPlacer';
 import { Sidebar } from './renderer/ui/Sidebar';
 import { HUD } from './renderer/ui/HUD';
@@ -872,6 +874,8 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._saveManager = saveManager;
   w._buildingTools = buildingTools;
   w._placer = placer;
+  w._ProductionQueue = ProductionQueue;
+  w._Production = Production;
   w._localization = getLocalization();
   w._ObjectPool = ObjectPool;
   w._objectiveManager = new ObjectiveManager();
