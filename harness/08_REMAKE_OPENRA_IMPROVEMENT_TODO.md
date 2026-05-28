@@ -520,10 +520,11 @@ class WithSpriteBody : ITick, IRender {
   - `Reservable` Trait：机场停机位管理，reserve/release 槽位分配
   - 接入 Actor.tick，高度自动插值，方向计算
 
-- [ ] **Task-VEH2: 海军**
-  - `WaterPathGraph`：仅水格可通行
-  - `Ship` Trait：转向慢、惯性大
-  - 船坞建筑、登陆艇
+- [x] **Task-VEH2: 海军** ✅ 2026-05-28
+  - `WaterPathGraph`：仅 Water/Beach/River 可通行，复用 GroundPathGraph 优化
+  - `ShipTrait`：转向慢（turnSpeed 低）、惯性大（指数平滑加速）
+  - 海军单位定义：Gunboat / Destroyer / Submarine / Transport（Locomotion.Float）
+  - Pathfinder 集成 waterGraph
 
 ### 10.2 战役脚本
 

@@ -53,7 +53,7 @@ import { DamageType } from './game/combat/DamageTypes';
 import { ScriptRuntime } from './game/scripting/ScriptRuntime';
 import { MapGlobal, PlayerGlobal, ActorGlobal, MediaGlobal, UIGlobal } from './game/scripting/ScriptGlobals';
 import { TriggerSystem, TriggerGlobal } from './game/scripting/TriggerSystem';
-import { HouseType } from './game/house/House';
+import { House, HouseType } from './game/house/House';
 import { GameObjectFactory } from './game/objects/GameObjectFactory';
 import { GameObjectManager } from './game/objects/GameObjectManager';
 import { GameObjectType } from './game/objects/GameObject';
@@ -167,6 +167,8 @@ import { ReplayRecorder } from './replay/ReplayRecorder';
 import { ReplayPlayer } from './replay/ReplayPlayer';
 import { Aircraft } from './game/unit/AircraftMovement';
 import { AircraftTrait, Reservable } from './game/unit/AircraftTrait';
+import { WaterPathGraph } from './game/terrain/WaterPathGraph';
+import { ShipTrait } from './game/unit/ShipTrait';
 import { CargoSystem } from './game/unit/CargoSystem';
 import { BridgeSystem } from './game/terrain/BridgeSystem';
 import { NeutralBuildingManager, NeutralBuilding } from './game/neutral/NeutralBuilding';
@@ -860,8 +862,9 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w.Aircraft = Aircraft;
   w._AircraftTrait = AircraftTrait;
   w._Reservable = Reservable;
-  w._AircraftTrait = AircraftTrait;
-  w._Reservable = Reservable;
+  w._WaterPathGraph = WaterPathGraph;
+  w._ShipTrait = ShipTrait;
+  w._LandType = LandType;
   w.CargoSystem = CargoSystem;
   w.BridgeSystem = BridgeSystem;
   w._terrainGrid = terrain;
@@ -931,6 +934,7 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
     clearAllCampaignProgress,
     getSavedCampaignIds,
   };
+  w._House = House;
   w._HouseType = HouseType;
   w._BotRegistry = BotRegistry;
   w._RushBot = RushBot;

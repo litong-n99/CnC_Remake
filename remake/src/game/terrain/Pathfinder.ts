@@ -1,7 +1,8 @@
 import { BlockedByActor } from '../unit/BlockedByActor';
-import type { LandType } from './TerrainGrid';
+import { LandType } from './TerrainGrid';
 import { HierarchicalPathfinder } from './HierarchicalPathfinder';
 import { GroundPathGraph } from './GroundPathGraph';
+import { WaterPathGraph } from './WaterPathGraph';
 import type { PathNode, PathGraphContext } from './IPathGraph';
 import { BinaryHeap } from './BinaryHeap';
 import { CellInfoLayerPool } from './CellInfoLayerPool';
@@ -55,6 +56,9 @@ export class Pathfinder {
   /** Ground layer path graph — Task 23.19 抽象后的邻居生成器。 */
   readonly groundGraph: GroundPathGraph;
 
+  /** Water layer path graph — Task-VEH2: 海军水面寻路。 */
+  readonly waterGraph: WaterPathGraph;
+
   /** Task 128: CellInfo 搜索层对象池 */
   readonly cellInfoPool: CellInfoLayerPool;
 
@@ -74,6 +78,7 @@ export class Pathfinder {
     this.getHeight = getHeight;
     this.hierarchical = new HierarchicalPathfinder(width, height, isPassable);
     this.groundGraph = new GroundPathGraph(width, height, isPassable, getBlockedCells, getHeight);
+    this.waterGraph = new WaterPathGraph(width, height, getTerrainType ?? (() => LandType.Clear), getBlockedCells);
     this.cellInfoPool = new CellInfoLayerPool(width, height, 4);
   }
 
