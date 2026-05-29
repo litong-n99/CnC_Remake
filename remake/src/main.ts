@@ -257,7 +257,6 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
 
   // ── Terrain Grid ──
   const terrain = new TerrainGrid(scene, 64, 64);
-  terrain.enableLOD(scene);
 
   // ── Load map from JSON ──
   // Vite base path: import.meta.env.BASE_URL handles both dev (/CnC_Remake/) and prod
@@ -359,6 +358,8 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
     }
   }
 
+  // 在所有地形数据就绪后再启用 LOD，避免 LOD 网格基于默认草地数据创建
+  terrain.enableLOD(scene);
   // ── Pathfinder ──
   // 动态阻塞回调：每帧查询建筑 footprint，让 A* 自动绕开建筑
   const getBuildingBlockedCells = (): ReadonlySet<string> => {

@@ -699,7 +699,12 @@ export class TerrainGrid {
 
   /** Enable LOD for the terrain mesh. Creates simplified meshes for distant views. */
   enableLOD(scene: Scene): void {
-    if (this.terrainLOD || !this.terrainMesh) return;
+    if (!this.terrainMesh) return;
+    // 若 LOD 已存在则重建（防御性：允许在地图数据更新后重新生成）
+    if (this.terrainLOD) {
+      this.terrainLOD.dispose();
+      this.terrainLOD = null;
+    }
     this.terrainLOD = new TerrainLOD(scene, this.cellLayer, (type) => this.getColorForLandType(type));
     this.terrainLOD.setupLODs(this.terrainMesh, [
       { step: 2, distance: 40 },
