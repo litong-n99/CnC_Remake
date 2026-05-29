@@ -4,7 +4,7 @@
  * Compact binary serialization for GameOrder.
  * MoveOrder serializes to < 32 bytes.
  *
- * Source: harness/01_TASK_BREAKDOWN.md — Task 62
+ * Source: harness/TASK_BREAKDOWN.md — Task 62
  * OpenRA 对标: Order.Serialize / Order.Deserialize
  */
 

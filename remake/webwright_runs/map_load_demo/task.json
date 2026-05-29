@@ -1,0 +1,8 @@
+{
+  "id": "map_load_demo",
+  "title": "Map Load Demo",
+  "description": "Demonstration scaffold for loading and verifying a map in the remake UI.",
+  "created": "2026-05-29T00:00:00Z",
+  "entry_script": "final_script.py",
+  "report": null
+}

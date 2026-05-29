@@ -1,6 +1,6 @@
 /**
  * 测试用命令生成器 —— 验证 OrderGenerator 框架生命周期
- * Source: harness/07_DEPTH0_OPENRA_GAP_ANALYSIS.md — Task 139
+ * Source: harness/DEPTH0_OPENRA_GAP_ANALYSIS.md — Task 139
  */
 
 import { OrderGenerator, type OrderGeneratorInput, type OrderGeneratorResult } from '../OrderGenerator';

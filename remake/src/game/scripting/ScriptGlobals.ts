@@ -1,6 +1,6 @@
 /**
  * 脚本全局 API — Task 56
- * Source: harness/01_TASK_BREAKDOWN.md — Task 56
+ * Source: harness/TASK_BREAKDOWN.md — Task 56
  * OpenRA 对标: ScriptGlobal 子类（MediaGlobal, MapGlobal, PlayerGlobal）
  *
  * 核心设计：

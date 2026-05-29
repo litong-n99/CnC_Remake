@@ -1,7 +1,9 @@
 # C&C Remastered → Babylon.js 3D 重构项目总览
 
 > **角色设定**：高级游戏开发工程师，精通《命令与征服：重制版》原始 C++ 源码（TiberianDawn.dll / RedAlert.dll）与 Babylon.js ^9 最新特性。
-> **核心原则**：数值与设定 100% 沿用 C++ 版本，仅做 3D 化呈现与 Web 平台适配。
+> **核心原则**：我们只从 `origin/` 获取数值与规则参数，不对其进行直接代码移植。`origin/` 是参考来源，而不是实现目标。
+> 
+> OpenRA 和 `ra2-web` 提供必要的性能优化、浏览器适配和架构实现经验，是 Web 端交付的关键参考。
 
 ---
 
@@ -39,12 +41,12 @@ CnC_Remake/                          ← GitHub 仓库根目录
 ├── .github/
 │   └── workflows/                     ← CI/CD 工作流（仓库级）
 ├── harness/                           ← 设计文档与 Harness
-│   ├── 00_PROJECT_HARNESS.md
-│   ├── 01_TASK_BREAKDOWN.md
-│   ├── 02_RESOURCE_REQUIREMENTS.md
-│   ├── 03_SETUP_AND_DEPLOYMENT.md
-│   └── 04_CPP_TO_TS_MAPPING.md
-├── origin/                            ← 原始 C++ 源码（学习用，不修改）
+│   ├── PROJECT_HARNESS.md
+│   ├── TASK_BREAKDOWN.md
+│   ├── RESOURCE_REQUIREMENTS.md
+│   ├── SETUP_AND_DEPLOYMENT.md
+│   └── CPP_TO_TS_MAPPING.md
+├── origin/                            ← 原始 C++ 源码（仅用于数值与规则参数参考）
 │   ├── REDALERT/
 │   ├── TIBERIANDAWN/
 │   ├── CnCTDRAMapEditor/
@@ -61,7 +63,7 @@ CnC_Remake/                          ← GitHub 仓库根目录
 
 **职责边界**：
 - `harness/`：只存放设计文档、任务清单、资源清单。编码前必须先阅读并更新此处文档。
-- `origin/`：只存放原始 C++ 源码。开发前需先查看对应 `.CPP/.H` 文件，理解逻辑后，将提取的数值、状态机、算法更新到 `harness/04_CPP_TO_TS_MAPPING.md`，再开始 `remake/` 的编码。
+- `origin/`：只存放原始 C++ 源码。作为数值与规则参数参考，避免直接移植 C++ 源码；必要时优先参考 OpenRA / ra2-web 的架构实现。
 - `remake/`：只存放新生成的 Web 端代码。所有路径、配置、CI 均以此目录为工程根目录。
 
 
@@ -106,13 +108,13 @@ src/
 
 > 每个 Task 完成后必须严格按以下顺序执行，缺一不可。
 
-1. **更新任务看板** — 修改 `harness/01_TASK_BREAKDOWN.md`：
+1. **更新任务看板** — 修改 `docs/tasks.md`：
    - 将对应 Task 的 `- **状态**：[ ] done` 改为 `[x] done`；
    - 更新附录 B「快速状态看板」的完成数与总计。
 2. **请求审核** — 向用户提交完整的变更摘要（新增/修改文件、设计要点、`type-check`/`lint`/`build` 结果），等待用户显式回复「**审核通过**」。
 3. **Git 提交** — 仅在用户审核通过后执行 `git add -A && git commit`。
 
-**禁止行为**：未经审核直接提交；忘记更新 `01_TASK_BREAKDOWN.md`。
+**禁止行为**：未经审核直接提交；忘记更新 `docs/tasks.md`。
 
 ---
 

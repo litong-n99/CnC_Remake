@@ -1,6 +1,6 @@
 /**
  * 外交关系系统 — Task 27.5
- * Source: harness/01_TASK_BREAKDOWN.md — Task 27.5
+ * Source: harness/TASK_BREAKDOWN.md — Task 27.5
  * OpenRA 对标: OpenRA.Game/Player.cs 中 AlliedPlayersMask / EnemyPlayersMask / RelationshipWith()
  *
  * 核心设计：

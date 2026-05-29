@@ -1,6 +1,6 @@
 /**
  * 脚本运行时集成 — Task 55
- * Source: harness/01_TASK_BREAKDOWN.md — Task 55
+ * Source: harness/TASK_BREAKDOWN.md — Task 55
  * OpenRA 对标: ScriptContext.cs + MemoryConstrainedLuaRuntime
  *
  * 设计要点：

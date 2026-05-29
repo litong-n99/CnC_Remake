@@ -8,6 +8,7 @@ pnpm-lock.yaml
 dist/
 build/
 *.tsbuildinfo
+remake/webwright_runs/outputs/
 
 # IDE
 .vscode/*

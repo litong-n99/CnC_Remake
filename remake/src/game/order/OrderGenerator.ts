@@ -1,6 +1,6 @@
 /**
  * 命令生成器框架
- * Source: harness/07_DEPTH0_OPENRA_GAP_ANALYSIS.md — Task 139
+ * Source: harness/DEPTH0_OPENRA_GAP_ANALYSIS.md — Task 139
  * OpenRA 对标: OpenRA.Mods.Common/Orders/OrderGenerator.cs
  *
  * 将建筑放置、攻击移动、Sell/Repair/Power 工具等交互模式统一为 OrderGenerator：

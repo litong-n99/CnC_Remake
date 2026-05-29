@@ -9,6 +9,8 @@
 
 ### 1.1 创建项目
 
+> **说明**：本仓库已包含 `remake/` 目录。请仅在重建或复盘时参考以下初始化步骤，日常开发可直接进入 `remake/` 并运行 `npm install`。
+
 ```bash
 # 使用 Vite 官方模板
 npm create vite@latest CnC_Remake -- --template vanilla-ts

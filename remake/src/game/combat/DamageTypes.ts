@@ -1,6 +1,6 @@
 /**
  * 伤害类型标签系统 — Task 133
- * Source: harness/01_TASK_BREAKDOWN.md — Task 133
+ * Source: harness/TASK_BREAKDOWN.md — Task 133
  * OpenRA 对标: Warhead 中的 DamageTypes 字段 + TakeCover Trait 响应逻辑
  *
  * 核心设计：

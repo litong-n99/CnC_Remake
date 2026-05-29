@@ -6,11 +6,13 @@
 
 ## 项目概述
 
-本项目目标是将 EA 开源的《命令与征服：重制版》原始 C++ 源码（`TiberianDawn.dll` / `RedAlert.dll`）中的**游戏逻辑层**迁移至 Web 平台，使用 Babylon.js 作为 3D 渲染引擎，Vite 作为构建工具，TypeScript 作为开发语言，最终通过 GitHub Pages 发布为浏览器可运行的单页 RTS 应用。
+本项目目标是将 EA 开源的《命令与征服：重制版》原始 C++ 源码（`TiberianDawn.dll` / `RedAlert.dll`）中的数值与游戏规则迁移至 Web 平台，使用 Babylon.js 渲染、Vite 构建、TypeScript 开发，最终通过 GitHub Pages 发布为浏览器可运行的单页 RTS 应用。
 
-**核心原则**：数值与设定 100% 沿用 C++ 版本，仅做 3D 化呈现与 Web 平台适配。
+**核心原则**：我们只从 `origin/` 获取数值数据和规则参数，不对其进行直接代码移植。`origin/` 是参考来源，而不是实现目标。
 
-**当前阶段**：项目处于 **Phase 0（Pre-coding）**。`harness/` 设计文档已完备，`origin/` 原始 C++ 源码已就位，但 **`remake/` 目录尚未创建**。任何编码工作都必须先阅读对应 harness 文档，再创建 `remake/` 中的文件。
+OpenRA 和 `ra2-web` 项目提供了必要的性能优化、浏览器适配和实际运行经验，是我们实现稳定 Web 端交付的关键参考。
+
+**当前阶段**：项目已进入 `remake/` 开发阶段。任何编码工作应优先参考 `harness/` 和 `docs/` 中的分析与任务文档。
 
 ---
 
@@ -22,8 +24,8 @@
 | 构建工具 | Vite | ^8 | `base: '/CnC_Remake/'` 已预定，适配 GitHub Pages |
 | 语言 | TypeScript | strict mode | `noImplicitAny: true`，路径别名已规划 |
 | UI 覆盖层 | HTML5 + CSS3 | - | HUD、Sidebar、小地图等 |
-| 状态管理 | 轻量级 Observable / EventBus | 自建 | 替代 C++ 消息队列 |
-| 网络 | WebSocket | Phase 8 预留 | 替代 `IPXCONN.CPP` |
+| 状态管理 | 轻量级 Observable / EventBus | 自建 | 替代原始消息队列 |
+| 网络 | WebSocket | Phase 8 预留 | 替代原始网络层 |
 | CI/CD | GitHub Actions | - | 类型检查 + Lint + 自动部署 |
 | 部署 | GitHub Pages | - | `main` 分支合并后自动发布 |
 
@@ -37,20 +39,29 @@ CnC_Remake/                          ← GitHub 仓库根目录
 │   └── workflows/
 │       ├── ci.yml
 │       └── deploy.yml
+├── docs/                            ← 额外文档与分析（`docs/bugs.md` 仅可阅读，不可修改）
+│   ├── bugs.md
+│   └── tasks.md                    ← 后续任务文档
 ├── harness/                         ← 设计文档与 Harness（只读参考，编码前必读）
-│   ├── 00_PROJECT_HARNESS.md        ← 项目总览与技术栈
-│   ├── 01_TASK_BREAKDOWN.md         ← 35 个任务的分解表与状态看板
-│   ├── 02_RESOURCE_REQUIREMENTS.md  ← 资源需求清单（Dummy / 真实）
-│   ├── 03_SETUP_AND_DEPLOYMENT.md   ← 环境搭建、CI/CD、部署指南
-│   └── 04_CPP_TO_TS_MAPPING.md      ← C++ → TS 代码翻译规范与映射指南
-├── origin/                          ← 原始 C++ 源码（学习用，禁止修改）
+│   ├── PROJECT_HARNESS.md        ← 项目总览与技术栈
+│   ├── NETWORK_PROTOCOL.md          ← 网络协议设计文档
+│   ├── TASK_BREAKDOWN.md         ← 归档任务分解表，已不再作为当前主流程
+│   ├── RESOURCE_REQUIREMENTS.md  ← 资源需求清单（Dummy / 真实）
+│   ├── SETUP_AND_DEPLOYMENT.md   ← 环境搭建、CI/CD、部署指南
+│   ├── CPP_TO_TS_MAPPING.md      ← TS 实现映射与规范
+│   ├── OPENRA_ANALYSIS.md        ← OpenRA 优化与实现分析
+│   ├── RA2WEB_ANALYSIS.md       ← ra2-web 网页适配分析
+│   ├── DEBUG_CONSOLE.md         ← 调试控制台设计
+│   ├── DEPTH0_OPENRA_GAP_ANALYSIS.md ← OpenRA 改进差距分析
+│   ├── PATHFINDING_OPENRA_GAP_ANALYSIS.md ← 路径寻路改进分析
+├── origin/                          ← 原始 C++ 源码（仅用于数值与规则参数参考）
 │   ├── REDALERT/                    ← 红警 DLL 完整源码
 │   ├── TIBERIANDAWN/                ← 泰伯利亚黎明 DLL 完整源码
 │   ├── CnCTDRAMapEditor/            ← C# 地图编辑器源码
 │   ├── SCRIPTS/                     ← 辅助脚本
 │   ├── CnCRemastered.sln
 │   └── CnCTDRAMapEditor.sln
-└── remake/                          ← 【尚未创建】新生成的 Web 端代码
+└── remake/                          ← 新生成的 Web 端代码
     ├── src/
     ├── public/
     ├── package.json
@@ -67,7 +78,7 @@ CnC_Remake/                          ← GitHub 仓库根目录
 
 ## 构建与开发命令
 
-> 以下命令需在 `remake/` 目录下执行（该目录尚不存在，创建后才能使用）。
+> 以下命令需在 `remake/` 目录下执行。
 
 ```bash
 # 启动开发服务器（带实时类型检查）
@@ -85,44 +96,50 @@ npm run lint:fix
 
 # 本地预览生产构建
 npm run preview
+
+# 代码格式化
+npm run format
+
+# 端到端验证
+npm run test:e2e
 ```
 
 **关键约束**：
-- 日常开发只需 `npm run dev` + `npm run type-check`，**不强制每次 build**。
+- 日常开发首要命令是 `npm run dev` 和 `npm run type-check`。
 - 但**提交前必须 `npm run type-check` 通过**，CI 会阻断合并。
-- `build` 仅在 CI/CD 流水线中自动执行。
+- `build` 主要用于 CI/CD 和生产验证。
 
 ---
 
 ## 代码组织与模块划分
 
-`remake/src/` 的架构分层（对应 C++ 结构）：
+`remake/src/` 的架构分层：
 
 ```
 src/
-├── core/                    ← 引擎封装（替代 WIN32LIB/）
+├── core/                    ← 引擎封装与平台适配
 │   ├── EngineManager.ts     ← 引擎初始化
 │   ├── SceneManager.ts      ← 场景生命周期
-│   ├── InputManager.ts      ← 鼠标/键盘（替代 MOUSE.CPP / KEYBOARD.CPP）
-│   ├── RTSCamera.ts         ← RTS 俯视角相机（替代 DISPLAY.CPP 视角逻辑）
+│   ├── InputManager.ts      ← 鼠标/键盘输入与事件处理
+│   ├── RTSCamera.ts         ← RTS 俯视角相机与视角控制
 │   ├── AudioManager.ts      ← 音效事件系统（预留）
 │   └── EventBus.ts          ← 轻量级事件总线
-├── game/                    ← 游戏逻辑层（核心翻译区）
-│   ├── rules/               ← RULES.CPP 数值配置
-│   ├── house/               ← HOUSE.CPP 阵营管理
-│   ├── terrain/             ← TERRAIN.CPP / CELL.CPP 地形格子
-│   ├── unit/                ← UNIT.CPP 单位系统
-│   ├── building/            ← BUILDING.CPP 建筑系统
-│   ├── weapon/              ← WEAPON.CPP / BULLET.CPP 弹道与伤害
+├── game/                    ← 游戏逻辑层
+│   ├── rules/               ← 数值配置与规则定义
+│   ├── house/               ← 阵营与玩家管理
+│   ├── terrain/             ← 地形与格子系统
+│   ├── unit/                ← 单位行为与状态机
+│   ├── building/            ← 建筑系统与建造逻辑
+│   ├── weapon/              ← 武器、弹道与伤害计算
 │   ├── economy/             ← 采矿与经济系统
-│   ├── combat/              ← 伤害计算与装甲系统
-│   ├── tiberiandawn/        ← TIBERIANDAWN 模式入口（WIP，Phase 8 后开发）
+│   ├── combat/              ← 伤害与装甲交互
+│   ├── tiberiandawn/        ← Tiberian Dawn 模式入口（WIP，Phase 8 后开发）
 │   │   └── TiberianDawnGame.ts
 │   ├── GameLoop.ts          ← 60FPS 固定步长主循环
 │   ├── GameObjectFactory.ts ← 统一工厂
 │   ├── SelectionManager.ts  ← 选择系统
 │   └── CommandDispatcher.ts ← 命令分发器
-├── renderer/                ← 3D 表现层（新增）
+├── renderer/                ← 3D 表现层
 │   ├── meshes/              ← Dummy / 真实模型加载
 │   ├── materials/           ← 地形/单位/建筑材质
 │   ├── effects/             ← 粒子、弹道轨迹、爆炸
@@ -137,47 +154,32 @@ src/
 
 ---
 
-## C++ → TypeScript 开发规范
+## 代码规范
 
-### 1. 翻译原则
-- **C++ 是设计文档**：不直接编译 C++，而是阅读其逻辑后，用 TS 重新实现。
-- **Dummy 优先**：所有美术资源先用 Babylon.js 程序化几何体（Box/Sphere/Cylinder）替代，功能跑通后再替换为真实模型。
-- **类型即文档**：所有从 C++ 翻译的类必须保留原始注释与数值来源，例如：
-  ```typescript
-  // Source: REDALERT/UNIT.CPP, Line 412
-  ```
-- **增量验证**：每个 Task 完成后应可独立运行调试，无需等待后续 Task。
+### 1. 实现原则
+- `origin/` 提供数值、规则和行为参考，但不做直接代码移植。
+- `OpenRA` 和 `ra2-web` 提供浏览器适配、性能优化和运行经验，是实现稳定 Web 端交付的重要参考。
+- Dummy 资源优先：先用 Babylon.js 程序化几何体（Box/Sphere/Cylinder）替代真实模型，功能跑通后再替换。
+- 类型即文档：所有规则和数据结构应保持清晰、严格的 TypeScript 类型。
+- 增量验证：每个 Task 完成后应可独立运行调试，无需等待后续 Task。
 
 ### 2. 禁止直译清单
 
-| C++ 特性 | 禁止做法 | 正确做法 |
-|---------|---------|---------|
-| `new/delete` 手动内存管理 | 直译 `new` | 使用 TS 对象引用，依赖 GC |
-| `Win32 API` (`CreateWindow`, `BitBlt`) | 任何 Win32 调用 | 由 Babylon.js Engine/Scene 替代 |
-| `IPX/TCP Socket` 原生网络 | 直译 Socket 代码 | 使用 WebSocket / WebRTC |
-| `MFC` 界面 | 直译对话框/菜单 | 使用 HTML/CSS 覆盖层 |
-| `__asm` 内联汇编 | 直译 | 删除，Babylon.js 用 Shader |
-| `union` 内存共用体 | 直译 | 使用 TS Discriminated Union 类型 |
-| 多继承 | 直译 | 使用 Mixin 模式或组合替代 |
-| `#define` 宏常量 | 直译 | 使用 `const` / `enum` / `readonly` |
+| 禁止做法 | 正确做法 |
+|---------|---------|
+| 手动内存管理模式 | 使用 TS 对象引用，依赖 GC |
+| 任何 Win32 API 调用 | 由 Babylon.js 引擎与浏览器平台替代 |
+| 原生 Socket 代码 | 使用 WebSocket / WebRTC 或浏览器网络层 |
+| 直接移植 MFC 界面 | 使用 HTML/CSS 覆盖层 |
+| 内联汇编或平台专用指令 | 删除或改用可移植 TS/Shader |
+| 直接使用 `#define` 宏 | 使用 `const` / `enum` / `readonly` |
+| 多继承直译 | 使用 Mixin 模式或组合替代 |
 
 ### 3. 坐标系统映射
-- C++ 使用 **Cell 格子坐标** (x, y)。
-- Babylon.js 使用 **Vector3 世界坐标** (x, y, z)。
+- C&C 游戏逻辑使用 **Cell 格子坐标** (x, y) 作为内部地图单位。
+- Babylon.js 在世界空间中使用 **Vector3** (x, y, z)。
 - 双向映射由 `TerrainGrid.cellToWorld()` 与 `TerrainGrid.worldToCell()` 负责。
 - `CELL_SIZE` 预定为 `1.5`（世界单位），需根据模型比例校准。
-
-### 4. 代码注释规范
-翻译时必须保留原始 C++ 源码引用：
-```typescript
-/**
- * 计算对目标的伤害值
- * Source: REDALERT/UNIT.CPP, Line ~1840
- * Original: int UnitClass::Take_Damage(int damage, WarheadType warhead, ...)
- */
-```
-
----
 
 ## 代码风格指南
 
@@ -278,7 +280,7 @@ feature/xx  ← 单个 Task 分支（如 feature/task-09-terrain-grid）
 
 ## CI/CD 与部署
 
-### GitHub Actions 工作流（尚未创建，配置见 `harness/03_SETUP_AND_DEPLOYMENT.md`）
+### GitHub Actions 工作流（尚未创建，配置见 `harness/SETUP_AND_DEPLOYMENT.md`）
 
 1. **CI 工作流** (`ci.yml`)：
    - 触发条件：`push` 到 `main` / `dev`，或 `pull_request` 到 `main`
@@ -298,27 +300,13 @@ feature/xx  ← 单个 Task 分支（如 feature/task-09-terrain-grid）
 
 ---
 
-## 如何阅读 C++ 源码（给 AI Agent 的指引）
+## 如何查阅项目参考文档（给 AI Agent 的指引）
 
-1. **先看头文件**：`REDALERT/UNIT.H`、`BUILDING.H` 等，快速理解类结构与继承关系。
-2. **提取常量**：关注 `.CPP` 文件顶部的 `#define` 与 `const` 数值（如 `ARMOR_LIGHT=1`）。
-3. **理解坐标系**：C&C 原始逻辑使用格子坐标 (Cell X,Y)，Babylon 使用世界坐标 (Vector3)，需在 `Terrain` 层做双向映射。
-4. **状态机模式**：C++ 中大量 `if (State == STATE_IDLE)` 的写法，在 TS 中改用 `StatePattern` 或 `Behavior` 组件。
-5. **忽略平台代码**：`WIN32LIB/`、`IPXCONN.CPP` 中的 Win32 API 调用无需翻译，由 Babylon.js 引擎层替代。
-
-### 关键 C++ 源码文件速查
-
-| C++ 源码文件 | 核心类/概念 | TS 对应模块 | 备注 |
-|-------------|------------|------------|------|
-| `UNIT.CPP` | `UnitClass` | `src/game/unit/Unit.ts` | 状态机、移动、寻路 |
-| `BUILDING.CPP` | `BuildingClass` | `src/game/building/Building.ts` | 建造队列、电力 |
-| `TERRAIN.CPP` | `CellClass` | `src/game/terrain/Cell.ts` | 格子属性、通行性 |
-| `RULES.CPP` | `RulesClass` | `src/game/rules/GameRules.ts` | 全局常量配置 |
-| `HOUSE.CPP` | `HouseClass` | `src/game/house/House.ts` | 玩家/AI 阵营 |
-| `WEAPON.CPP` | `WeaponTypeClass` | `src/game/weapon/Weapon.ts` | 武器参数 |
-| `BULLET.CPP` | `BulletClass` | `src/game/weapon/Bullet.ts` | 弹道飞行、碰撞 |
-| `DISPLAY.CPP` | 视角/渲染 | `src/core/RTSCamera.ts` | 相机控制 |
-| `MOUSE.CPP` | 鼠标输入 | `src/core/InputManager.ts` | 框选、点击 |
+1. 阅读 `harness/PROJECT_HARNESS.md` 和 `harness/CPP_TO_TS_MAPPING.md`，确认项目目标与数据/规则映射规范。
+2. 阅读 `harness/OPENRA_ANALYSIS.md` 和 `harness/RA2WEB_ANALYSIS.md`，理解 OpenRA 性能优化与 ra2-web 浏览器适配的重要性。
+3. `harness/TASK_BREAKDOWN.md` 已归档，不再作为当前主流程；后续任务请参考 `docs/tasks.md`。
+4. 查阅 `docs/bugs.md` 与 `harness/NETWORK_PROTOCOL.md`，了解当前已知问题与网络协议设计思路。
+5. `origin/` 仅用于查数值和规则参数，不作为直接实现蓝图；避免将其视为完整源码译本。
 
 ---
 
@@ -360,12 +348,13 @@ feature/xx  ← 单个 Task 分支（如 feature/task-09-terrain-grid）
 
 如果你是接到本项目的编码任务，请按以下顺序执行：
 
-1. **阅读 Harness**：先读 `harness/00_PROJECT_HARNESS.md` 和 `harness/01_TASK_BREAKDOWN.md`，确认当前 Task 编号。
-2. **阅读映射规范**：再读 `harness/04_CPP_TO_TS_MAPPING.md`，理解如何从 C++ 翻译到 TS。
-3. **查阅 C++ 源码**：到 `origin/REDALERT/` 或 `origin/TIBERIANDAWN/` 找到对应的 `.CPP/.H` 文件。
-4. **创建/修改 remake/ 文件**：在 `remake/` 中编写 TS 代码，遵循本文件中的风格指南。
-5. **运行类型检查**：`cd remake && npm run type-check`。
-6. **更新 Harness**：在 `harness/01_TASK_BREAKDOWN.md` 中标记任务完成状态。
+1. **阅读 Harness**：先读 `harness/PROJECT_HARNESS.md` 和 `harness/CPP_TO_TS_MAPPING.md`，确认项目目标与映射规范。
+2. **理解 Web 端参考**：阅读 `harness/OPENRA_ANALYSIS.md` 和 `harness/RA2WEB_ANALYSIS.md`，理解 OpenRA 性能优化与 ra2-web 浏览器适配的重要性。
+3. **查阅辅助文档**：查看 `docs/bugs.md` 与 `harness/NETWORK_PROTOCOL.md`，了解当前已知问题与网络协议设计思路。
+4. **注意任务档案**：`harness/TASK_BREAKDOWN.md` 已归档，不再作为当前主流程；后续任务请参考 `docs/tasks.md`。
+5. **创建/修改 remake/ 文件**：在 `remake/` 中编写 TS 代码，遵循本文件中的风格指南。
+6. **运行类型检查**：`cd remake && npm run type-check`。
+7. **更新状态**：在 `docs/tasks.md` 或相关文档中记录任务进展。
 
 ---
 
@@ -374,3 +363,28 @@ feature/xx  ← 单个 Task 分支（如 feature/task-09-terrain-grid）
 > **本次更新记录**：
 > - 新增 `src/game/tiberiandawn/` 与 `src/editor/` 目录结构说明
 > - 新增「多模块入口预留说明」章节，记录 Tiberian Dawn 与 MapEditor 的 WIP 设计原则
+
+## Webwright Skill（新增）
+
+- **目标**：在仓库内支持基于 Microsoft Webwright 的“代码即动作”工作流——生成可重跑的 Python+Playwright 脚本、收集运行产物（trajectory、screenshots、report），并生成可供 Claude Code / Codex 等宿主使用的插件 scaffold。
+- **何时使用**：需要把复杂浏览器任务表达为可复现脚本、希望将 LLM 生成的交互封装为参数化 CLI（`craft`）或一次性脚本（`run`）、需要我在工作中帮你调用该 skill 以方便开发验证和测试回测、或需要将运行产物转换为可读报告/issue 描述时。
+- **能力要点**：
+  - 生成 Webwright 风格的 scaffold（`plan.md`、`final_script.py` / 参数化 wrapper）、并放入指定工作目录（例如 `remake/webwright_runs/<id>/`）。
+  - 生成运行命令示例与环境说明（Python 3.10+、Playwright chromium、模型 API key），并给出可复制的本地/CI 步骤。
+  - 解析 `outputs/<run>/trajectory.json`、`report.json` 与 screenshots，生成 Markdown 摘要、失败重现步骤和可提交的 issue/PR 草稿。
+  - 可生成 `skills/webwright/` 插件结构（manifest、commands），以便在 Claude Code / Codex 中安装并调用。
+- **安装/运行参考**（摘自 Webwright README）：
+
+```bash
+pip install -e .
+playwright install chromium
+
+python -m webwright.run.cli -c base.yaml -c model_openai.yaml \
+  -t "Search for flights from SEA to JFK on 2026-08-15" \
+  --start-url https://www.google.com/flights \
+  --task-id demo_openai -o outputs/default
+```
+
+- **注意事项**：运行需要模型 API key（`OPENAI_API_KEY` / `ANTHROPIC_API_KEY` 等），Webwright 会在磁盘写入轨迹与截图，注意清理敏感数据；skill 不会在未授权情况下注入或泄露密钥。
+
+如需我把 scaffold 生成到仓库（例如 `remake/webwright_runs/map_load_demo/`）或将该小节同步回 `skills/` 索引，请告诉我下一个目标。
