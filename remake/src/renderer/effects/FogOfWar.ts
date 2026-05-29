@@ -133,6 +133,18 @@ export class FogOfWar {
     this.updateTexture();
   }
 
+  /**
+   * 获取指定格子在纹理上的像素颜色（RGBA）。
+   * 用于 e2e 测试验证迷雾纹理与地形坐标对齐。
+   */
+  getPixelColor(x: number, y: number): { r: number; g: number; b: number; a: number } | null {
+    if (!this.ctx || x < 0 || x >= this.width || y < 0 || y >= this.height) return null;
+    const pixelY = this.height - 1 - y;
+    const imageData = this.ctx.getImageData(x, pixelY, 1, 1);
+    const d = imageData.data;
+    return { r: d[0], g: d[1], b: d[2], a: d[3] };
+  }
+
   /** 获取指定格子的可见性状态。 */
   getVisibility(x: number, y: number): CellVisibility {
     if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
@@ -198,28 +210,33 @@ export class FogOfWar {
     }
 
     const data = this.imageData.data;
-    for (let i = 0; i < w * h; i++) {
-      const state = this.visibility[i];
-      const offset = i * 4;
-      switch (state) {
-        case CellVisibility.Shroud:
-          data[offset] = 0;
-          data[offset + 1] = 0;
-          data[offset + 2] = 0;
-          data[offset + 3] = 255; // 完全不透明黑色
-          break;
-        case CellVisibility.Fog:
-          data[offset] = 20;
-          data[offset + 1] = 20;
-          data[offset + 2] = 25;
-          data[offset + 3] = 160; // 半透明灰蓝
-          break;
-        case CellVisibility.Visible:
-          data[offset] = 0;
-          data[offset + 1] = 0;
-          data[offset + 2] = 0;
-          data[offset + 3] = 0; // 完全透明
-          break;
+    // DynamicTexture 的 Canvas Y 轴（0=顶部）与地形 Y 轴（0=底部，Z=-h/2）反向。
+    // 需要将地形坐标 y 翻转为像素坐标 pixelY = h - 1 - y。
+    for (let y = 0; y < h; y++) {
+      const pixelY = h - 1 - y;
+      for (let x = 0; x < w; x++) {
+        const state = this.visibility[y * w + x];
+        const offset = (pixelY * w + x) * 4;
+        switch (state) {
+          case CellVisibility.Shroud:
+            data[offset] = 0;
+            data[offset + 1] = 0;
+            data[offset + 2] = 0;
+            data[offset + 3] = 255; // 完全不透明黑色
+            break;
+          case CellVisibility.Fog:
+            data[offset] = 20;
+            data[offset + 1] = 20;
+            data[offset + 2] = 25;
+            data[offset + 3] = 160; // 半透明灰蓝
+            break;
+          case CellVisibility.Visible:
+            data[offset] = 0;
+            data[offset + 1] = 0;
+            data[offset + 2] = 0;
+            data[offset + 3] = 0; // 完全透明
+            break;
+        }
       }
     }
 
@@ -236,3 +253,4 @@ export class FogOfWar {
     this.updateTexture();
   }
 }
+// test change 1780017427

@@ -188,6 +188,7 @@ export class ShroudRenderer {
   applyEdgesToImageData(imageData: ImageData): void {
     const data = imageData.data;
     const w = this.width;
+    const h = this.height;
 
     for (const idx of this.dirtyCells) {
       const x = idx % w;
@@ -195,7 +196,9 @@ export class ShroudRenderer {
       const edges = this.getCellEdges(x, y);
       if (edges === ShroudEdges.None) continue;
 
-      const offset = (y * w + x) * 4;
+      // Canvas Y 轴与地形 Y 轴反向，需要翻转
+      const pixelY = h - 1 - y;
+      const offset = (pixelY * w + x) * 4;
       const self = this.fog.getVisibility(x, y);
 
       // Dummy 阶段：根据边缘方向调整 alpha，模拟平滑过渡

@@ -149,4 +149,72 @@ test.describe('Task 31: Fog of War', () => {
     });
     expect(visGdi).toBe(2);
   });
+
+  test('task-31.4: texture pixel aligns with unit cell coordinate (Y-flip fix)', async ({ page }) => {
+    // Vite dev server may reuse an old instance with stale module cache.
+    // Retry page load until the new getPixelColor method is available.
+    let hasMethod = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await page.goto('/', { force: true, waitUntil: 'networkidle' });
+      await page.waitForFunction(() => {
+        const cnc = (window as unknown as Record<string, unknown>).cnc;
+        return typeof cnc === 'object' && cnc !== null;
+      });
+      await page.waitForTimeout(500);
+
+      hasMethod = await page.evaluate(() => {
+        const fog = (window as unknown as Record<string, unknown>)._fogOfWar as {
+          getPixelColor?: (x: number, y: number) => { r: number; g: number; b: number; a: number } | null;
+        };
+        return typeof fog.getPixelColor === 'function';
+      });
+
+      if (hasMethod) break;
+      await page.waitForTimeout(1000);
+    }
+    expect(hasMethod).toBe(true);
+
+    // Spawn a GDI tank at (30, 30) — 非对称位置，容易检测 Y 轴翻转
+    await page.evaluate(() => {
+      const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+      cnc.unit?.('MediumTank', 'gdi', 30, 30);
+    });
+    await page.waitForTimeout(300);
+
+    // Unit cell should be transparent (Visible)
+    const pixelAtUnit = await page.evaluate(() => {
+      const fog = (window as unknown as Record<string, unknown>)._fogOfWar as {
+        getPixelColor: (x: number, y: number) => { r: number; g: number; b: number; a: number } | null;
+      };
+      return fog.getPixelColor(30, 30);
+    });
+    expect(pixelAtUnit).not.toBeNull();
+    expect(pixelAtUnit!.a).toBe(0); // Visible = fully transparent
+
+    // Far away cell should be opaque black (Shroud)
+    const pixelFar = await page.evaluate(() => {
+      const fog = (window as unknown as Record<string, unknown>)._fogOfWar as {
+        getPixelColor: (x: number, y: number) => { r: number; g: number; b: number; a: number } | null;
+      };
+      return fog.getPixelColor(5, 5);
+    });
+    expect(pixelFar).not.toBeNull();
+    expect(pixelFar!.a).toBe(255); // Shroud = fully opaque
+
+    // Verify another non-symmetric location (10, 50) to ensure general correctness
+    await page.evaluate(() => {
+      const cnc = (window as unknown as Record<string, ((...args: unknown[]) => unknown) | undefined>).cnc;
+      cnc.unit?.('MediumTank', 'gdi', 10, 50);
+    });
+    await page.waitForTimeout(300);
+
+    const pixelAtSecondUnit = await page.evaluate(() => {
+      const fog = (window as unknown as Record<string, unknown>)._fogOfWar as {
+        getPixelColor: (x: number, y: number) => { r: number; g: number; b: number; a: number } | null;
+      };
+      return fog.getPixelColor(10, 50);
+    });
+    expect(pixelAtSecondUnit).not.toBeNull();
+    expect(pixelAtSecondUnit!.a).toBe(0);
+  });
 });
