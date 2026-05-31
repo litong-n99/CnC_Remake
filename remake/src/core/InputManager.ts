@@ -60,11 +60,17 @@ export class InputManager {
   private setupKeyboard(): void {
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Shift') this.isShiftDown = true;
-      if (e.key === 'Control') this.isCtrlDown = true;
+      if (e.key === 'Control' || e.key === 'Meta') this.isCtrlDown = true;
 
       // Squad hotkeys: 0-9 (Task 49)
       if (/^[0-9]$/.test(e.key)) {
         const index = parseInt(e.key, 10);
+        const shouldInterceptHotkey = e.ctrlKey || e.metaKey || this.isCtrlDown;
+        if (shouldInterceptHotkey) {
+          // Prevent browser Ctrl/Meta+number from switching tabs or triggering browser shortcuts.
+          e.preventDefault();
+        }
+
         if (this.isCtrlDown) {
           this.selectionManager.saveSquad(index);
           console.warn(`Squad ${index} saved (${this.selectionManager.getSelected().length} units)`);
