@@ -10,7 +10,8 @@ import type { GuiScreen } from './GuiScreen';
 export type GuiPage = 'menu' | 'loading' | 'game' | 'settings' | 'pause' | 'campaign' | 'skirmish' | 'lobby';
 
 export class GuiRouter {
-  private current: GuiPage = 'menu';
+  /** 初始为 'game'，确保第一次 navigate('menu') 能正确触发 show()。 */
+  private current: GuiPage = 'game';
   private readonly screens = new Map<GuiPage, GuiScreen>();
   private readonly listeners = new Set<(page: GuiPage, prev: GuiPage) => void>();
   private gameVisible = false;
