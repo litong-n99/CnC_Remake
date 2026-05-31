@@ -1,6 +1,6 @@
 /**
  * 游戏主循环 —— 逻辑帧与渲染帧分离
- * Source: harness/DEPTH0_OPENRA_GAP_ANALYSIS.md — Task 141
+ * Source: docs/DEPTH0_OPENRA_GAP_ANALYSIS.md — Task 141
  * OpenRA 对标: OpenRA.Game/Game.cs（LogicTick vs RenderTick）
  *
  * 设计要点：

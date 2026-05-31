@@ -11,7 +11,7 @@ emits one JSON-wrapped `bash_command` per turn against a local terminal +
 Playwright workspace. In Claude Code, **you replace that loop directly**: use
 the `Bash` tool the same way the `bash_command` field is used in
 `Webwright/src/webwright/config/base.yaml`. You do NOT need to wrap your
-output in JSON — that constraint only existed because the original harness
+output in JSON — that constraint only existed because the original TASK_BREAKDOWN
 parsed model output.
 
 This skill keeps the *workspace contract* (plan.md, `final_runs/run_<id>/`

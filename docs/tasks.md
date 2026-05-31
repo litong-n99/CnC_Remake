@@ -607,9 +607,9 @@ class WithSpriteBody : ITick, IRender {
 
 | 文档 | 内容 |
 |------|------|
-| `harness/OPENRA_ANALYSIS.md` | OpenRA 架构总览与借鉴指南 |
-| `harness/DEPTH0_OPENRA_GAP_ANALYSIS.md` | 深度 0 任务差距分析 |
-| `harness/PATHFINDING_OPENRA_GAP_ANALYSIS.md` | 寻路系统详细对比 |
+| `docs/OPENRA_ANALYSIS.md` | OpenRA 架构总览与借鉴指南 |
+| `docs/DEPTH0_OPENRA_GAP_ANALYSIS.md` | 深度 0 任务差距分析 |
+| `docs/PATHFINDING_OPENRA_GAP_ANALYSIS.md` | 寻路系统详细对比 |
 | `OpenRA/OpenRA.Game/Actor.cs` | Actor 容器 |
 | `OpenRA/OpenRA.Game/World.cs` | World 类 |
 | `OpenRA/OpenRA.Game/TraitDictionary.cs` | Trait 字典 |

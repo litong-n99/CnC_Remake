@@ -1,6 +1,6 @@
 /**
  * 触发器系统 — Task 57
- * Source: harness/TASK_BREAKDOWN.md — Task 57
+ * Source: docs/(ARCHIVED)TASK_BREAKDOWN.md — Task 57
  * OpenRA 对标: Trigger.OnEnteredFootprint, Trigger.AfterDelay, Trigger.OnKilled
  *
  * 核心设计：

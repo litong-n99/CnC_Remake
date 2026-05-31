@@ -1,6 +1,6 @@
 /**
  * 统一的命令抽象层
- * Source: harness/DEPTH0_OPENRA_GAP_ANALYSIS.md — Task 140
+ * Source: docs/DEPTH0_OPENRA_GAP_ANALYSIS.md — Task 140
  * OpenRA 对标: OpenRA.Game/Network/Order.cs
  *
  * 所有玩家输入（移动、攻击、建造、出售等）都封装为 GameOrder，

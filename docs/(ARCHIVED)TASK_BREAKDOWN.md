@@ -29,14 +29,14 @@
 
 ---
 
-## Phase 0: 原始代码学习与 Harness 更新（Pre-coding）
+## Phase 0: 原始代码学习与 Docs 更新（Pre-coding）
 
 > **参考文档**：
-> - `harness/CPP_TO_TS_MAPPING.md` — C++ → TS 代码翻译规范
-> - `harness/OPENRA_ANALYSIS.md` — OpenRA 架构分析
-> - `harness/RA2WEB_ANALYSIS.md` — RA2-Web（React + Three.js 红警2网页版）架构与组件分析，含数据解析器、渲染系统、音频系统、Trait/ECS 设计、触发器系统、任务系统、虚拟文件系统的详细映射
+> - `docs/CPP_TO_TS_MAPPING.md` — C++ → TS 代码翻译规范
+> - `docs/OPENRA_ANALYSIS.md` — OpenRA 架构分析
+> - `docs/RA2WEB_ANALYSIS.md` — RA2-Web（React + Three.js 红警2网页版）架构与组件分析，含数据解析器、渲染系统、音频系统、Trait/ECS 设计、触发器系统、任务系统、虚拟文件系统的详细映射
 >
-> **本地参考项目**：`ra2-web/` 目录已移出 git 跟踪（`.gitignore`），仅保留本地副本作为架构参考。如需更新其分析内容，修改 `harness/RA2WEB_ANALYSIS.md` 即可。
+> **本地参考项目**：`ra2-web/` 目录已移出 git 跟踪（`.gitignore`），仅保留本地副本作为架构参考。如需更新其分析内容，修改 `docs/RA2WEB_ANALYSIS.md` 即可。
 
 ### Task 0: 获取原始 C++ 源码并放置到 origin/
 - **目标**：将 EA 开源的 `CnC_Remastered_Collection` 源码下载并解压到 `origin/` 目录，保持原始目录结构不变。
@@ -46,31 +46,31 @@
 
 ### Task 0.1: 阅读 REDALERT/UNIT.CPP 与 UNIT.H，提取核心状态机
 - **目标**：理解 `UnitClass` 的继承链（`TechnoClass` → `FootClass` → `UnitClass`）、核心属性（Speed, Health, Armor, Mission）、状态机（Idle/Moving/Attacking/Dying）。
-- **输出**：将提取的类结构、关键常量、状态转换条件更新到 `harness/CPP_TO_TS_MAPPING.md` 的 §1.1 节。
+- **输出**：将提取的类结构、关键常量、状态转换条件更新到 `docs/CPP_TO_TS_MAPPING.md` 的 §1.1 节。
 - **验收**：`CPP_TO_TS_MAPPING.md` 中包含与源码一致的 UnitClass 字段列表及行号引用。
 - **状态**：[x] `done`
 
 ### Task 0.2: 阅读 REDALERT/BUILDING.CPP 与 BUILDING.H，提取建筑核心逻辑
 - **目标**：理解 `BuildingClass` 的电力、建造队列、科技树、放置逻辑。
-- **输出**：更新 `harness/CPP_TO_TS_MAPPING.md` §1.2 节。
+- **输出**：更新 `docs/CPP_TO_TS_MAPPING.md` §1.2 节。
 - **验收**：`CPP_TO_TS_MAPPING.md` 中包含 BuildingClass 的 `PowerDrain`、`IsFactory`、`Begin_Construction` 等核心方法映射。
 - **状态**：[x] `done`
 
 ### Task 0.3: 阅读 REDALERT/RULES.CPP，提取全局数值常量
 - **目标**：提取单位造价、建造时间、伤害倍率、视野范围等全局常量。
-- **输出**：更新 `harness/CPP_TO_TS_MAPPING.md` §2.3 的 `UNIT_DEFINITIONS` 与 `BUILDING_DEFINITIONS`。
+- **输出**：更新 `docs/CPP_TO_TS_MAPPING.md` §2.3 的 `UNIT_DEFINITIONS` 与 `BUILDING_DEFINITIONS`。
 - **验收**：`GameRules.ts` 设计文档中的数值与 `RULES.CPP` 源码一致。
 - **状态**：[x] `done`
 
 ### Task 0.4: 阅读 REDALERT/TERRAIN.CPP / CELL.CPP，提取地图与格子系统
 - **目标**：理解 `CellClass` 属性、地形类型枚举、通行性规则。
-- **输出**：更新 `harness/CPP_TO_TS_MAPPING.md` §3 坐标系统与地形通行性。
+- **输出**：更新 `docs/CPP_TO_TS_MAPPING.md` §3 坐标系统与地形通行性。
 - **验收**：`TerrainGrid.ts` 设计文档中的 `CELL_SIZE` 换算逻辑与 C++ 坐标系一致。
 - **状态**：[x] `done`
 
 ### Task 0.5: 阅读 REDALERT/WEAPON.CPP / BULLET.CPP，提取弹道与伤害公式
 - **目标**：理解武器定义、弹道飞行、命中判定、伤害计算公式。
-- **输出**：更新 `harness/CPP_TO_TS_MAPPING.md` §2.2 弹头修正表与 §1.x 弹道系统。
+- **输出**：更新 `docs/CPP_TO_TS_MAPPING.md` §2.2 弹头修正表与 §1.x 弹道系统。
 - **验收**：`DamageCalculator.ts` 设计文档中的公式与 `UNIT.CPP` 中 `Take_Damage()` 一致。
 - **状态**：[x] `done`
 
@@ -98,7 +98,7 @@
 - **已完成（本地）**：
   - Git 仓库初始化，`master` 重命名为 `main`
   - `dev` 分支已创建
-  - 操作手册已写入 `harness/SETUP_AND_DEPLOYMENT.md` §5
+  - 操作手册已写入 `docs/SETUP_AND_DEPLOYMENT.md` §5
 - **待手动完成（需你的 GitHub 账号）**：
   1. 在 https://github.com/new 创建 `CnC_Remake` 空仓库
   2. `git remote add origin https://github.com/<USER>/CnC_Remake.git`
@@ -682,7 +682,7 @@
 ## Phase 5.5 续：寻路碰撞系统深度对齐（OpenRA 核心能力缺口）
 
 > 以下任务基于 OpenRA 源码 Cross Check 结果，将当前项目尚未实现的寻路/移动核心能力补齐。按**优先级**排序：性能层（113–116）→ 机动性层（117–118）→ 活动变体层（119–120）→ **OpenRA 核心能力缺口回填（121–132）**。
-> 参考：`harness/OPENRA_ANALYSIS.md` §移动系统深度分析、§地形系统深度分析。
+> 参考：`docs/OPENRA_ANALYSIS.md` §移动系统深度分析、§地形系统深度分析。
 >
 > **缺口回填优先级**：🔴 P0（性能/数据核心，100+单位或地图数据瓶颈）→ 🟡 P1（架构/表现，50+单位体验或地形真实感）→ 🟢 P2（细节优化/渲染升级）→ ⚪ P3（扩展性/调参/编辑器）。
 
@@ -1618,7 +1618,7 @@
 ### Task 61: 网络架构设计与协议定义
 - **OpenRA 对标**：`OpenRA.Game/Network/OrderManager.cs`, `OpenRA.Game/Network/UnitOrders.cs`
 - **目标**：设计客户端-服务器协议：Handshake、RoomState、GameStart、OrderFrame、SyncHash、Chat、Disconnect。建议采用 **客户端-服务器 Relay** 架构（WebSocket Star 拓扑），而非 OpenRA 的 P2P，更适合 Web 平台的 NAT 和连接数限制。
-- **文件**：`harness/NETWORK_PROTOCOL.md`, `src/network/NetworkProtocol.ts`
+- **文件**：`docs/NETWORK_PROTOCOL.md`, `src/network/NetworkProtocol.ts`
 - **验收**：文档包含完整的消息格式（TypeScript interface + 二进制序列化方案）。
 - **状态**：[x] `done`
 - **完成备注**：已实现并集成。e2e 测试通过。
@@ -1952,7 +1952,7 @@
 
 ## 补充任务（深度 0 OpenRA 差距填补）
 
-> 以下任务来源于 `harness/DEPTH0_OPENRA_GAP_ANALYSIS.md` 的对比分析，用于填补 C&C Remake 与 OpenRA 在基础架构上的差距。所有任务均为深度 0（无显式前置依赖），可立即启动。
+> 以下任务来源于 `docs/DEPTH0_OPENRA_GAP_ANALYSIS.md` 的对比分析，用于填补 C&C Remake 与 OpenRA 在基础架构上的差距。所有任务均为深度 0（无显式前置依赖），可立即启动。
 
 ### Task 139: 统一 OrderGenerator 框架
 - **目标**：为建筑放置（Task 45）、Sell/Repair/Power 工具（Task 51）、攻击移动（Task 47）等提供统一的命令生成器抽象。

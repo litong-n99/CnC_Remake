@@ -1,6 +1,6 @@
 /**
  * 命令分发器 —— 接收 GameOrder 并路由到对应处理器
- * Source: harness/DEPTH0_OPENRA_GAP_ANALYSIS.md — Task 140
+ * Source: docs/DEPTH0_OPENRA_GAP_ANALYSIS.md — Task 140
  * OpenRA 对标: OpenRA.Mods.Common/Orders/
  *
  * 与 Task 26（命令分发器）的关系：

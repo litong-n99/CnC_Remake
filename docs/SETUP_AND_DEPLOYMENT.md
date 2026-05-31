@@ -224,26 +224,7 @@ jobs:
 
 ## 3. 开发工作流约定
 
-### 3.1 分支策略
-
-```
-main        ← 仅接受 PR，自动部署到 GitHub Pages
-  ↑
-dev         ← 日常开发分支
-  ↑
-feature/xx  ← 单个 Task 分支（如 feature/task-09-terrain-grid）
-```
-
-### 3.2 提交规范（Commit Message）
-
-```
-feat(task-09): 地形网格系统基础实现
-type(task-11): 修复 Rules 模块中坦克血量类型错误
-docs(harness): 更新任务分解表，标记 task-1 完成
-asset(resource): 添加 u_mtank.glb 真实模型，替换 Dummy
-```
-
-### 3.3 日常开发命令
+### 3.1 日常开发命令
 
 ```bash
 # 启动开发服务器（带实时类型检查）
@@ -394,7 +375,7 @@ A: 检查 `vite.config.ts` 中的 `base` 是否与仓库名完全一致（区分
 A: GitHub Pages 支持同源加载，确保 GLB 放在 `remake/public/assets/` 下，使用相对路径 `/CnC_Remake/assets/units/xxx.glb`。**  
 A: GitHub Pages 支持同源加载，确保 GLB 放在 `public/assets/` 下，使用相对路径 `/CnC_Remake/assets/units/xxx.glb`。
 
-**Q: 如何更新 Harness 文件？**  
+**Q: 如何更新 Docs 文件？**  
 A: 直接修改 `/mnt/agents/output/` 中的 MD 文件，或在项目根目录创建 `docs/` 文件夹存放这些文档，随代码一起提交。
 
 ---

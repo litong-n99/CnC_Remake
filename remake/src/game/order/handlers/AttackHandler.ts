@@ -1,6 +1,6 @@
 /**
  * Attack 命令处理器 — Task 26
- * Source: harness/TASK_BREAKDOWN.md — Task 26
+ * Source: docs/(ARCHIVED)TASK_BREAKDOWN.md — Task 26
  * OpenRA 对标: OpenRA.Mods.Common/Orders/AttackOrderTargeter
  */
 

@@ -1,6 +1,6 @@
 /**
  * Stop 命令处理器
- * Source: harness/DEPTH0_OPENRA_GAP_ANALYSIS.md — Task 140
+ * Source: docs/DEPTH0_OPENRA_GAP_ANALYSIS.md — Task 140
  */
 
 import type { GameOrder, OrderHandler, OrderResult } from '../GameOrder';

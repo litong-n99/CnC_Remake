@@ -12,7 +12,7 @@
 
 OpenRA 和 `ra2-web` 项目提供了必要的性能优化、浏览器适配和实际运行经验，是我们实现稳定 Web 端交付的关键参考。
 
-**当前阶段**：项目已进入 `remake/` 开发阶段。任何编码工作应优先参考 `harness/` 和 `docs/` 中的分析与任务文档。
+**当前阶段**：项目已进入 `remake/` 开发阶段。任何编码工作应优先参考 `docs/` 中的分析与任务文档。
 
 ---
 
@@ -41,11 +41,10 @@ CnC_Remake/                          ← GitHub 仓库根目录
 │       └── deploy.yml
 ├── docs/                            ← 额外文档与分析（`docs/bugs.md` 仅可阅读，不可修改）
 │   ├── bugs.md
-│   └── tasks.md                    ← 后续任务文档
-├── harness/                         ← 设计文档与 Harness（只读参考，编码前必读）
+│   ├── tasks.md                    ← 后续任务文档
 │   ├── PROJECT_HARNESS.md        ← 项目总览与技术栈
 │   ├── NETWORK_PROTOCOL.md          ← 网络协议设计文档
-│   ├── TASK_BREAKDOWN.md         ← 归档任务分解表，已不再作为当前主流程
+│   ├── (ARCHIVED)TASK_BREAKDOWN.md         ← 归档任务分解表，已不再作为当前主流程
 │   ├── RESOURCE_REQUIREMENTS.md  ← 资源需求清单（Dummy / 真实）
 │   ├── SETUP_AND_DEPLOYMENT.md   ← 环境搭建、CI/CD、部署指南
 │   ├── CPP_TO_TS_MAPPING.md      ← TS 实现映射与规范
@@ -71,8 +70,8 @@ CnC_Remake/                          ← GitHub 仓库根目录
 ```
 
 **绝对禁止**：
-- 修改 `origin/` 中的任何文件。
-- 在 `harness/` 中放置可执行代码。
+- 修改 `origin/` `OpenRA/` `ra2-web` 中的任何文件。
+- 在 `docs/` 中放置可执行代码。
 
 ---
 
@@ -200,23 +199,6 @@ src/
 }
 ```
 
-### 提交规范（Commit Message）
-```
-feat(task-09): 地形网格系统基础实现
-type(task-11): 修复 Rules 模块中坦克血量类型错误
-docs(harness): 更新任务分解表，标记 task-1 完成
-asset(resource): 添加 u_mtank.glb 真实模型，替换 Dummy
-```
-
-### 分支策略
-```
-main        ← 仅接受 PR，自动部署到 GitHub Pages
-  ↑
-dev         ← 日常开发分支
-  ↑
-feature/xx  ← 单个 Task 分支（如 feature/task-09-terrain-grid）
-```
-
 ---
 
 ## 测试策略
@@ -280,7 +262,7 @@ feature/xx  ← 单个 Task 分支（如 feature/task-09-terrain-grid）
 
 ## CI/CD 与部署
 
-### GitHub Actions 工作流（尚未创建，配置见 `harness/SETUP_AND_DEPLOYMENT.md`）
+### GitHub Actions 工作流（尚未创建，配置见 `docs/SETUP_AND_DEPLOYMENT.md`）
 
 1. **CI 工作流** (`ci.yml`)：
    - 触发条件：`push` 到 `main` / `dev`，或 `pull_request` 到 `main`
@@ -302,10 +284,10 @@ feature/xx  ← 单个 Task 分支（如 feature/task-09-terrain-grid）
 
 ## 如何查阅项目参考文档（给 AI Agent 的指引）
 
-1. 阅读 `harness/PROJECT_HARNESS.md` 和 `harness/CPP_TO_TS_MAPPING.md`，确认项目目标与数据/规则映射规范。
-2. 阅读 `harness/OPENRA_ANALYSIS.md` 和 `harness/RA2WEB_ANALYSIS.md`，理解 OpenRA 性能优化与 ra2-web 浏览器适配的重要性。
-3. `harness/TASK_BREAKDOWN.md` 已归档，不再作为当前主流程；后续任务请参考 `docs/tasks.md`。
-4. 查阅 `docs/bugs.md` 与 `harness/NETWORK_PROTOCOL.md`，了解当前已知问题与网络协议设计思路。
+1. 阅读 `docs/PROJECT_HARNESS.md` 和 `docs/CPP_TO_TS_MAPPING.md`，确认项目目标与数据/规则映射规范。
+2. 阅读 `docs/OPENRA_ANALYSIS.md` 和 `docs/RA2WEB_ANALYSIS.md`，理解 OpenRA 性能优化与 ra2-web 浏览器适配的重要性。
+3. `docs/(ARCHIVED)TASK_BREAKDOWN.md` 已归档，不再作为当前主流程；后续任务请参考 `docs/tasks.md`。
+4. 查阅 `docs/bugs.md` 与 `docs/NETWORK_PROTOCOL.md`，了解当前已知问题与网络协议设计思路。
 5. `origin/` 仅用于查数值和规则参数，不作为直接实现蓝图；避免将其视为完整源码译本。
 
 ---
@@ -348,10 +330,10 @@ feature/xx  ← 单个 Task 分支（如 feature/task-09-terrain-grid）
 
 如果你是接到本项目的编码任务，请按以下顺序执行：
 
-1. **阅读 Harness**：先读 `harness/PROJECT_HARNESS.md` 和 `harness/CPP_TO_TS_MAPPING.md`，确认项目目标与映射规范。
-2. **理解 Web 端参考**：阅读 `harness/OPENRA_ANALYSIS.md` 和 `harness/RA2WEB_ANALYSIS.md`，理解 OpenRA 性能优化与 ra2-web 浏览器适配的重要性。
-3. **查阅辅助文档**：查看 `docs/bugs.md` 与 `harness/NETWORK_PROTOCOL.md`，了解当前已知问题与网络协议设计思路。
-4. **注意任务档案**：`harness/TASK_BREAKDOWN.md` 已归档，不再作为当前主流程；后续任务请参考 `docs/tasks.md`。
+1. **阅读 Harness**：先读 `docs/PROJECT_HARNESS.md` 和 `docs/CPP_TO_TS_MAPPING.md`，确认项目目标与映射规范。
+2. **理解 Web 端参考**：阅读 `docs/OPENRA_ANALYSIS.md` 和 `docs/RA2WEB_ANALYSIS.md`，理解 OpenRA 性能优化与 ra2-web 浏览器适配的重要性。
+3. **查阅辅助文档**：查看 `docs/bugs.md` 与 `docs/NETWORK_PROTOCOL.md`，了解当前已知问题与网络协议设计思路。
+4. **注意任务档案**：`docs/(ARCHIVED)TASK_BREAKDOWN.md` 已归档，不再作为当前主流程；后续任务请参考 `docs/tasks.md`。
 5. **创建/修改 remake/ 文件**：在 `remake/` 中编写 TS 代码，遵循本文件中的风格指南。
 6. **运行类型检查**：`cd remake && npm run type-check`。
 7. **更新状态**：在 `docs/tasks.md` 或相关文档中记录任务进展。

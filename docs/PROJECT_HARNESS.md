@@ -40,9 +40,9 @@
 CnC_Remake/                          ← GitHub 仓库根目录
 ├── .github/
 │   └── workflows/                     ← CI/CD 工作流（仓库级）
-├── harness/                           ← 设计文档与 Harness
+├── docs/                           ← 设计文档与 Docs
 │   ├── PROJECT_HARNESS.md
-│   ├── TASK_BREAKDOWN.md
+│   ├── (ARCHIVED)TASK_BREAKDOWN.md
 │   ├── RESOURCE_REQUIREMENTS.md
 │   ├── SETUP_AND_DEPLOYMENT.md
 │   └── CPP_TO_TS_MAPPING.md
@@ -62,7 +62,7 @@ CnC_Remake/                          ← GitHub 仓库根目录
 ```
 
 **职责边界**：
-- `harness/`：只存放设计文档、任务清单、资源清单。编码前必须先阅读并更新此处文档。
+- `docs/`：只存放设计文档、任务清单、资源清单。编码前必须先阅读并更新此处文档。
 - `origin/`：只存放原始 C++ 源码。作为数值与规则参数参考，避免直接移植 C++ 源码；必要时优先参考 OpenRA / ra2-web 的架构实现。
 - `remake/`：只存放新生成的 Web 端代码。所有路径、配置、CI 均以此目录为工程根目录。
 
