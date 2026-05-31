@@ -526,19 +526,105 @@ class WithSpriteBody : ITick, IRender {
   - 海军单位定义：Gunboat / Destroyer / Submarine / Transport（Locomotion.Float）
   - Pathfinder 集成 waterGraph
 
-### 10.2 战役脚本
+### 10.2 战役脚本（Allies-01 专项）
 
-- [x] **Task-SCR1: Lua 运行时** ✅ 2026-05-28
-  - 集成 `fengari-web`（Lua 5.3 for Browser）
-  - `LuaRuntime`：execute / setGlobal / getGlobal，禁用 io/os/debug/package/load
-  - 沙箱：脚本长度限制（64KB）+ 执行时间限制（1s）
-  - `ScriptGlobal` API：`Media`, `Map`, `Player`, `Actor`, `Trigger`（预留接口）
+> 详见调研文档：`docs/CAMPAIGN/RESEARCH_CAMPAIGN_ALLIES01.md`
 
-- [ ] **Task-SCR2: 触发器系统**
-  - `Trigger.OnEnteredFootprint`：区域进入
-  - `Trigger.OnKilled`：单位死亡
-  - `Trigger.OnTimer`：计时器
-  - `Trigger.OnDestroyed`：建筑摧毁
+**目标**：跑通 RA1 盟军第一关（Allies-01: In the Thick of It），使用 OpenRA 原数据。
+
+#### Phase A：基础设施
+
+- [ ] **Task-CAM1: MapLoader 增强**
+  - 解析 Actor 的 `Facing`、`SubCell` 字段
+  - Waypoint 类型特殊处理（注册 NamedActor，不创建游戏对象）
+  - 加载时建立 `Map.NamedActors` 字典
+
+- [ ] **Task-CAM2: LuaRuntime 接入主流程**
+  - 将 `LuaRuntime`（fengari-web）接入战役加载流程
+  - 完善 `pushJsValue` 的 function 绑定（支持参数传递、返回值、this 绑定）
+  - 战役模式下用 Lua 替代 JS 运行时执行脚本
+
+- [ ] **Task-CAM3: ActorGlobal 扩展**
+  - `Actor.Create(type, addToWorld, init)` — 支持延迟加入世界
+  - `Actor.Move(loc)` / `Actor.Scatter()` / `Actor.Hunt()` / `Actor.Attack(target)` / `Actor.Destroy()`
+  - `Actor.IsDead` / `Actor.IsInWorld` / `Actor.Type` / `Actor.Stance`
+  - `Actor.HasProperty(name)` / `Actor.CanTarget(target)`
+
+- [ ] **Task-CAM4: PlayerGlobal 扩展**
+  - `Player.GetPlayer(name)` — 名称映射（Greece→GDI, USSR→Nod）
+  - `Player.GetActors()` / `Player.GetGroundAttackers()`
+  - `Player.Resources` / `Player.ResourceCapacity`
+  - `Player.MarkCompletedObjective(id)` / `Player.MarkFailedObjective(id)` / `Player.IsObjectiveFailed(id)`
+
+- [ ] **Task-CAM5: UtilsGlobal**
+  - `Utils.Do(table, func)` — 遍历
+  - `Utils.Random(table)` — 随机选择
+  - `Utils.Where(table, predicate)` — 过滤
+  - `Utils.Any(table, predicate)` — 存在检查
+
+- [ ] **Task-CAM6: MapGlobal 扩展**
+  - `Map.NamedActor(name)` — 按名称获取 Actor 引用
+  - `Map.NamedActors` — 所有命名 Actor 字典
+  - `Map.LobbyOptionOrDefault(key, default)` — 难度等选项
+
+#### Phase B：触发器扩展
+
+- [ ] **Task-CAM7: 复合死亡触发器**
+  - `Trigger.OnAllKilled(actors, func)` — 全部死亡后触发
+  - `Trigger.OnAnyKilled(actors, func)` — 任意一个死亡后触发
+
+- [ ] **Task-CAM8: 空闲触发器**
+  - `Trigger.OnIdle(actor, func)` — Actor 每帧空闲时触发
+
+- [ ] **Task-CAM9: 移除触发器**
+  - `Trigger.OnRemovedFromWorld(actor, func)` — Actor 离开世界时触发
+
+- [ ] **Task-CAM10: 受伤触发器**
+  - `Trigger.OnDamaged(actor, func)` — Actor 受伤时触发（func(self, attacker, damage)）
+
+- [ ] **Task-CAM11: 玩家/目标事件触发器**
+  - `Trigger.OnPlayerLost(player, func)` / `Trigger.OnPlayerWon(player, func)`
+  - `Trigger.OnObjectiveCompleted(player, func)` / `Trigger.OnObjectiveFailed(player, func)`
+
+#### Phase C：游戏机制
+
+- [ ] **Task-CAM12: Objectives 目标系统**
+  - `AddPrimaryObjective(player, description)` / `AddSecondaryObjective(player, description)`
+  - `MarkCompletedObjective(id)` / `MarkFailedObjective(id)`
+  - HUD 目标列表面板（与 BriefingScreen 共享数据）
+
+- [ ] **Task-CAM13: Reinforcements 援军系统**
+  - `Reinforcements.Reinforce(player, types, path, interval)` — 地面援军
+  - `Reinforcements.ReinforceWithTransport(player, transportType, passengerTypes, path)` — 运输机
+  - 援军到达后沿路径移动
+
+- [ ] **Task-CAM14: MediaGlobal 完善**
+  - `Media.DisplayMessage(text, prefix?)` — HUD 消息
+  - `Media.PlaySpeechNotification(player, sound)` — 语音通知
+  - `Media.PlaySoundNotification(player, sound)` — 音效通知
+
+- [ ] **Task-CAM15: 规则覆盖加载**
+  - 解析关卡 `rules.yaml` 和 `weapons.yaml`
+  - 合并到 `UNIT_DEFINITIONS` / `BUILDING_DEFINITIONS` / `WEAPON_DEFINITIONS`
+  - Allies-01 特殊单位：`TRAN.Extraction` / `TRAN.Insertion` / `EINSTEIN` / `e7.noautotarget`
+
+#### Phase D：战役流程
+
+- [ ] **Task-CAM16: 战役菜单适配**
+  - CampaignMenu 改为 Red Alert Allies/Soviet 战役
+  - 点击任务触发加载流程（BriefingScreen → 加载 → 游戏）
+
+- [ ] **Task-CAM17: 战役加载流程**
+  - 点击 SKIP → OpenRAMapLoader 加载地图 → 创建所有 Actor → 执行 Lua `WorldLoaded`
+  - 逻辑帧计数器接入 `Trigger.AfterDelay`（替代真实毫秒）
+
+- [ ] **Task-CAM18: Allies-01 数据搬运**
+  - 将 `OpenRA/mods/ra/maps/allies-01/` 复制到 `remake/public/maps/allies-01/`
+  - 确保 Vite 构建时包含地图文件
+
+- [ ] **Task-CAM19: Allies-01 端到端测试**
+  - 跑通完整流程：Tanya 空降 → 杀死守卫 → Einstein 生成 → 撤离
+  - 胜利/失败判定验证
 
 ### 10.3 高级 AI
 
@@ -601,6 +687,30 @@ class WithSpriteBody : ITick, IRender {
 | Task-S2: 哈希优化 | P2 | S1 | 1 天 |
 | Task-S4: 双随机数 | P2 | — | 1 天 |
 
+### Phase 10（12–14 周）：战役模式（Allies-01）
+
+| 任务 | 优先级 | 依赖 | 预估工作量 |
+|------|--------|------|-----------|
+| Task-CAM1: MapLoader 增强 | P0 | — | 0.5 天 |
+| Task-CAM2: LuaRuntime 接入 | P0 | — | 1 天 |
+| Task-CAM3: ActorGlobal 扩展 | P0 | CAM2 | 1 天 |
+| Task-CAM4: PlayerGlobal 扩展 | P0 | CAM2 | 0.5 天 |
+| Task-CAM5: UtilsGlobal | P0 | CAM2 | 0.25 天 |
+| Task-CAM6: MapGlobal 扩展 | P0 | CAM1 | 0.25 天 |
+| Task-CAM7: 复合死亡触发器 | P0 | — | 0.5 天 |
+| Task-CAM8: 空闲触发器 | P0 | — | 0.25 天 |
+| Task-CAM9: 移除触发器 | P0 | — | 0.25 天 |
+| Task-CAM10: 受伤触发器 | P1 | — | 0.25 天 |
+| Task-CAM11: 玩家/目标事件 | P0 | CAM12 | 0.5 天 |
+| Task-CAM12: Objectives 系统 | P0 | — | 1 天 |
+| Task-CAM13: Reinforcements | P0 | CAM3 | 1 天 |
+| Task-CAM14: MediaGlobal 完善 | P1 | — | 0.5 天 |
+| Task-CAM15: 规则覆盖加载 | P1 | — | 0.5 天 |
+| Task-CAM16: 战役菜单适配 | P0 | — | 0.5 天 |
+| Task-CAM17: 战役加载流程 | P0 | CAM1-16 | 0.5 天 |
+| Task-CAM18: Allies-01 数据搬运 | P0 | — | 0.25 天 |
+| Task-CAM19: Allies-01 端到端测试 | P0 | CAM17 | 1 天 |
+
 ---
 
 ## 12. 参考文件
@@ -610,6 +720,7 @@ class WithSpriteBody : ITick, IRender {
 | `docs/OPENRA_ANALYSIS.md` | OpenRA 架构总览与借鉴指南 |
 | `docs/DEPTH0_OPENRA_GAP_ANALYSIS.md` | 深度 0 任务差距分析 |
 | `docs/PATHFINDING_OPENRA_GAP_ANALYSIS.md` | 寻路系统详细对比 |
+| `docs/CAMPAIGN/RESEARCH_CAMPAIGN_ALLIES01.md` | 战役模式 Allies-01 调研 |
 | `OpenRA/OpenRA.Game/Actor.cs` | Actor 容器 |
 | `OpenRA/OpenRA.Game/World.cs` | World 类 |
 | `OpenRA/OpenRA.Game/TraitDictionary.cs` | Trait 字典 |
@@ -618,7 +729,10 @@ class WithSpriteBody : ITick, IRender {
 | `OpenRA/OpenRA.Game/Sync.cs` | 同步哈希 |
 | `OpenRA/OpenRA.Mods.Common/Traits/ProductionQueue.cs` | 生产队列 |
 | `OpenRA/OpenRA.Mods.Common/Traits/Attack/AttackBase.cs` | 攻击逻辑 |
+| `OpenRA/OpenRA.Mods.Common/Scripting/Global/TriggerGlobal.cs` | 触发器实现 |
+| `OpenRA/OpenRA.Mods.Common/Scripting/Global/ReinforcementsGlobal.cs` | 援军系统 |
+| `OpenRA/OpenRA.Mods.Common/Traits/Player/MissionObjectives.cs` | 目标系统 |
 
 ---
 
-*本文档为活文档，随项目进展更新。最后更新：2026-05-28*
+*本文档为活文档，随项目进展更新。最后更新：2026-05-31*
