@@ -1,8 +1,9 @@
 import type { Unit } from './objects/Unit';
 import { GameObjectManager } from './objects/GameObjectManager';
-import { MeshBuilder, StandardMaterial, Vector3, type Scene } from '@babylonjs/core';
+import { MeshBuilder, StandardMaterial, Vector3, DynamicTexture, Color3, Mesh, type Scene } from '@babylonjs/core';
 import { HouseType } from './house/House';
 import { getRelationshipColorForLocalPlayer, hexToColor3 } from '../renderer/ui/RelationshipColors';
+import { RenderLayer, setRenderLayer, setDepthWrite } from '../renderer/RenderLayer';
 
 /**
  * 选中单位管理器 — 跟踪当前选中的单位列表，并渲染选择环。
@@ -21,6 +22,8 @@ export class SelectionManager {
 
   /** 编组存储：0-9 共 10 个编组槽 */
   private squads = new Map<number, Unit[]>();
+  private groupAssignments = new Map<string, number>();
+  private groupDecorationPlanes: Mesh[] = [];
 
   private constructor() {}
 
@@ -133,6 +136,20 @@ export class SelectionManager {
   /** 将当前选中单位保存到指定编组槽（0-9）。 */
   saveSquad(index: number): void {
     if (index < 0 || index > 9) return;
+    if (this.selected.size === 0) return;
+
+    // OpenRA 风格：当前选择对象只属于一个控制组。
+    for (const [unitId, group] of [...this.groupAssignments]) {
+      if (group === index) {
+        this.groupAssignments.delete(unitId);
+      }
+    }
+
+    for (const unit of this.selected) {
+      this.groupAssignments.delete(unit.id);
+      this.groupAssignments.set(unit.id, index);
+    }
+
     this.squads.set(index, [...this.selected]);
   }
 
@@ -146,6 +163,55 @@ export class SelectionManager {
     if (alive.length > 0) {
       this.selectMultiple(alive, scene);
     }
+  }
+
+  private getGroupForUnit(unit: Unit): number | null {
+    return this.groupAssignments.get(unit.id) ?? null;
+  }
+
+  private createGroupLabel(unit: Unit, groupIndex: number): Mesh {
+    if (!this.scene) {
+      throw new Error('Scene is not initialized for SelectionManager');
+    }
+
+    const size = 0.28;
+    const texture = new DynamicTexture(`groupLabelTex_${unit.id}`, { width: 128, height: 128 }, this.scene, false);
+    texture.hasAlpha = true;
+
+    const ctx = texture.getContext() as CanvasRenderingContext2D | null;
+    if (!ctx) {
+      throw new Error('Failed to create DynamicTexture context');
+    }
+
+    ctx.clearRect(0, 0, 128, 128);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, 0, 128, 128);
+    ctx.font = 'bold 84px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'white';
+    ctx.fillText(String(groupIndex), 64, 64);
+    texture.update();
+
+    const material = new StandardMaterial(`groupLabelMat_${unit.id}`, this.scene);
+    material.diffuseTexture = texture;
+    material.emissiveColor = Color3.White();
+    material.specularColor = Color3.Black();
+    material.backFaceCulling = false;
+    material.useAlphaFromDiffuseTexture = true;
+    setDepthWrite(material, false);
+
+    const label = MeshBuilder.CreatePlane(
+      `groupLabel_${unit.id}`,
+      { width: size, height: size, sideOrientation: Mesh.DOUBLESIDE },
+      this.scene
+    );
+    label.material = material;
+    label.billboardMode = Mesh.BILLBOARDMODE_ALL;
+    setRenderLayer(label, RenderLayer.Overlay);
+    label.isPickable = false;
+
+    return label;
   }
 
   /** 获取指定编组槽的内容（不修改当前选择）。 */
@@ -189,6 +255,14 @@ export class SelectionManager {
       ring.parent = unit.mesh;
       ring.position = new Vector3(0, 0.05, 0);
       this.selectionRings.push(ring);
+
+      const group = this.getGroupForUnit(unit);
+      if (group !== null) {
+        const label = this.createGroupLabel(unit, group);
+        label.parent = unit.mesh;
+        label.position = new Vector3(-0.18, 0.45, -0.08);
+        this.groupDecorationPlanes.push(label);
+      }
     }
   }
 
@@ -197,6 +271,11 @@ export class SelectionManager {
       ring.dispose();
     }
     this.selectionRings = [];
+
+    for (const label of this.groupDecorationPlanes) {
+      label.dispose();
+    }
+    this.groupDecorationPlanes = [];
   }
 
   dispose(): void {

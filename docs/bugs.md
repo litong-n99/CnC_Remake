@@ -8,4 +8,4 @@
 7. 有关初始游戏：初始游戏后的单位似乎与红警对应不上，请cross check openra
 8. 有关游戏中如何回到主菜单：目前在游戏中我没有办法找到回到主菜单或者暂停等等入口，请Cross Check OpenRA并添加
 9. 有关SideBar和MiniMap： 我记得红警游戏中，展开基地车后才展示SideBar; 我记得MiniMap输入SideBar的一部分，并且在SideBar最上方。请Cross Check OpenRA并添加
-10. 单位编队后期望在单位上显示队伍编号，现在无法显示该编号
+10. fixed 单位编队后期望在单位上显示队伍编号，现在无法显示该编号
