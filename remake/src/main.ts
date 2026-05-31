@@ -358,8 +358,9 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
     }
   }
 
-  // 在所有地形数据就绪后再启用 LOD，避免 LOD 网格基于默认草地数据创建
-  terrain.enableLOD(scene);
+  // 自动启用地形 LOD 已临时禁用（只对模型启用 LOD）。
+  // 若需在调试时手动启用，可在 Debug Console 中使用 `terrain.lod(true)`。
+  // terrain.enableLOD(scene);
   // ── Pathfinder ──
   // 动态阻塞回调：每帧查询建筑 footprint，让 A* 自动绕开建筑
   const getBuildingBlockedCells = (): ReadonlySet<string> => {

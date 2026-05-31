@@ -82,12 +82,31 @@ export class TerrainLOD {
         const wz0 = cellY0 - height / 2;
         const wz1 = cellY1 - height / 2;
 
-        // Dominant cell for colour & height (centre of the covered block)
-        const dominantX = Math.floor((cellX0 + cellX1 - 1) / 2);
-        const dominantY = Math.floor((cellY0 + cellY1 - 1) / 2);
-        const dominantCell = this.cellLayer.get(dominantX, dominantY);
-        const color = this.getColorForLandType(dominantCell.landType);
-        const h = (dominantCell.height ?? 0) * TerrainGrid.HEIGHT_SCALE;
+        // Compute averaged colour & height across covered cells so LOD
+        // better preserves narrow features (rivers, roads) when downsampled.
+        let sumR = 0;
+        let sumG = 0;
+        let sumB = 0;
+        let sumH = 0;
+        let count = 0;
+        for (let cy = cellY0; cy < cellY1; cy++) {
+          for (let cx = cellX0; cx < cellX1; cx++) {
+            if (!this.cellLayer.contains(cx, cy)) continue;
+            const cell = this.cellLayer.get(cx, cy);
+            const c = this.getColorForLandType(cell.landType);
+            sumR += c.r;
+            sumG += c.g;
+            sumB += c.b;
+            sumH += cell.height ?? 0;
+            count++;
+          }
+        }
+        const avgR = count > 0 ? sumR / count : 0.5;
+        const avgG = count > 0 ? sumG / count : 0.5;
+        const avgB = count > 0 ? sumB / count : 0.5;
+        const avgH = count > 0 ? sumH / count : 0;
+        const color = { r: avgR, g: avgG, b: avgB } as import('@babylonjs/core').Color3;
+        const h = avgH * TerrainGrid.HEIGHT_SCALE;
 
         const baseIndex = positions.length / 3;
 
