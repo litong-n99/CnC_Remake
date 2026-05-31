@@ -25,6 +25,11 @@ export class SelectionManager {
   private groupAssignments = new Map<string, number>();
   private groupDecorationPlanes: Mesh[] = [];
 
+  /** 控制组标签材质缓存（groupIndex → StandardMaterial），避免每单位创建独立材质 */
+  private groupLabelMaterials = new Map<number, StandardMaterial>();
+  /** 控制组标签纹理缓存（groupIndex → DynamicTexture） */
+  private groupLabelTextures = new Map<number, DynamicTexture>();
+
   private constructor() {}
 
   static getInstance(): SelectionManager {
@@ -139,18 +144,35 @@ export class SelectionManager {
     if (this.selected.size === 0) return;
 
     // OpenRA 风格：当前选择对象只属于一个控制组。
+    // 1. 将选中单位从所有其他编组的 squads 中移除（对标 RemoveActorsFromAllControlGroups）
+    for (const unit of this.selected) {
+      for (const [groupIdx, squad] of [...this.squads]) {
+        if (groupIdx === index) continue;
+        const filtered = squad.filter((u) => u.id !== unit.id);
+        if (filtered.length !== squad.length) {
+          this.squads.set(groupIdx, filtered);
+        }
+      }
+    }
+
+    // 2. 清理目标编组的旧记录
+    this.squads.set(index, []);
     for (const [unitId, group] of [...this.groupAssignments]) {
       if (group === index) {
         this.groupAssignments.delete(unitId);
       }
     }
 
+    // 3. 设置新的归属关系
     for (const unit of this.selected) {
-      this.groupAssignments.delete(unit.id);
       this.groupAssignments.set(unit.id, index);
     }
-
     this.squads.set(index, [...this.selected]);
+
+    // 4. 如果当前有选中单位，刷新选择环以显示新的控制组标签
+    if (this.scene && this.selected.size > 0) {
+      this.showRings();
+    }
   }
 
   /** 从指定编组槽恢复选中。 */
@@ -165,17 +187,110 @@ export class SelectionManager {
     }
   }
 
+  /**
+   * 将当前选中单位追加到指定编组槽（AddSelectionToControlGroup）。
+   * OpenRA 风格：追加前先将这些单位从其他编组中移除（一个单位只属于一个控制组）。
+   */
+  addToSquad(index: number): void {
+    if (index < 0 || index > 9) return;
+    if (this.selected.size === 0) return;
+
+    const currentSquad = this.squads.get(index) ?? [];
+    const merged = new Map<string, Unit>();
+
+    // 保留原编组中的单位
+    for (const u of currentSquad) {
+      if (u.isAlive()) merged.set(u.id, u);
+    }
+
+    // 将当前选择追加进去（先移除这些单位在其他编组中的归属）
+    for (const unit of this.selected) {
+      const oldGroup = this.groupAssignments.get(unit.id);
+      if (oldGroup !== undefined && oldGroup !== index) {
+        const oldSquad = this.squads.get(oldGroup);
+        if (oldSquad) {
+          this.squads.set(
+            oldGroup,
+            oldSquad.filter((u) => u.id !== unit.id)
+          );
+        }
+      }
+      this.groupAssignments.set(unit.id, index);
+      merged.set(unit.id, unit);
+    }
+
+    this.squads.set(index, [...merged.values()]);
+
+    // 刷新显示（如果当前有选中单位）
+    if (this.scene && this.selected.size > 0) {
+      this.showRings();
+    }
+  }
+
+  /**
+   * 将指定编组的内容合并到当前选择（CombineSelectionWithControlGroup）。
+   * 不丢失当前已选择的单位。
+   */
+  combineSquad(index: number, scene: Scene): void {
+    if (index < 0 || index > 9) return;
+    const squad = this.squads.get(index);
+    if (!squad || squad.length === 0) return;
+
+    this.ensureScene(scene);
+    const alive = squad.filter((u) => u.isAlive());
+    if (alive.length === 0) return;
+
+    // 合并到当前选择（去重）
+    for (const u of alive) {
+      this.selected.add(u);
+    }
+    this.showRings();
+    this.notifySelectionChanged();
+  }
+
+  /**
+   * 清理所有编组中的死亡单位。
+   * 应在每逻辑帧调用（对齐 OpenRA ITick.Tick 语义）。
+   */
+  cleanupDeadUnits(): void {
+    for (const [index, squad] of this.squads) {
+      const alive = squad.filter((u) => u.isAlive());
+      if (alive.length !== squad.length) {
+        this.squads.set(index, alive);
+      }
+    }
+
+    // 同步清理 groupAssignments 中已死亡或已移除的单位
+    const aliveIds = new Set<string>();
+    for (const squad of this.squads.values()) {
+      for (const u of squad) {
+        aliveIds.add(u.id);
+      }
+    }
+    for (const unitId of this.groupAssignments.keys()) {
+      if (!aliveIds.has(unitId)) {
+        this.groupAssignments.delete(unitId);
+      }
+    }
+  }
+
   private getGroupForUnit(unit: Unit): number | null {
     return this.groupAssignments.get(unit.id) ?? null;
   }
 
-  private createGroupLabel(unit: Unit, groupIndex: number): Mesh {
+  /**
+   * 获取或创建控制组标签材质（按 groupIndex 缓存）。
+   * 无背景、白色衬线字体。
+   */
+  private getGroupLabelMaterial(groupIndex: number): StandardMaterial {
     if (!this.scene) {
       throw new Error('Scene is not initialized for SelectionManager');
     }
 
-    const size = 0.28;
-    const texture = new DynamicTexture(`groupLabelTex_${unit.id}`, { width: 128, height: 128 }, this.scene, false);
+    let material = this.groupLabelMaterials.get(groupIndex);
+    if (material) return material;
+
+    const texture = new DynamicTexture(`groupLabelTex_${groupIndex}`, { width: 128, height: 128 }, this.scene, false);
     texture.hasAlpha = true;
 
     const ctx = texture.getContext() as CanvasRenderingContext2D | null;
@@ -184,22 +299,45 @@ export class SelectionManager {
     }
 
     ctx.clearRect(0, 0, 128, 128);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    ctx.fillRect(0, 0, 128, 128);
-    ctx.font = 'bold 84px sans-serif';
+    ctx.font = 'bold 110px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+
+    const text = String(groupIndex);
+    const x = 64;
+    const y = 64;
+
+    // 描边（底层，黑色轮廓）
+    ctx.lineWidth = 6;
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'black';
+    ctx.strokeText(text, x, y);
+
+    // 填充（顶层，白色文字）
     ctx.fillStyle = 'white';
-    ctx.fillText(String(groupIndex), 64, 64);
+    ctx.fillText(text, x, y);
     texture.update();
 
-    const material = new StandardMaterial(`groupLabelMat_${unit.id}`, this.scene);
+    material = new StandardMaterial(`groupLabelMat_${groupIndex}`, this.scene);
     material.diffuseTexture = texture;
     material.emissiveColor = Color3.White();
     material.specularColor = Color3.Black();
     material.backFaceCulling = false;
     material.useAlphaFromDiffuseTexture = true;
     setDepthWrite(material, false);
+
+    this.groupLabelMaterials.set(groupIndex, material);
+    this.groupLabelTextures.set(groupIndex, texture);
+    return material;
+  }
+
+  private createGroupLabel(unit: Unit, groupIndex: number): Mesh {
+    if (!this.scene) {
+      throw new Error('Scene is not initialized for SelectionManager');
+    }
+
+    const size = 0.6;
+    const material = this.getGroupLabelMaterial(groupIndex);
 
     const label = MeshBuilder.CreatePlane(
       `groupLabel_${unit.id}`,
@@ -260,7 +398,8 @@ export class SelectionManager {
       if (group !== null) {
         const label = this.createGroupLabel(unit, group);
         label.parent = unit.mesh;
-        label.position = new Vector3(-0.18, 0.45, -0.08);
+        // 左下角：选择框左下外侧
+        label.position = new Vector3(-0.48, 0.45, 0.48);
         this.groupDecorationPlanes.push(label);
       }
     }
@@ -284,6 +423,17 @@ export class SelectionManager {
       mat.dispose();
     }
     this.selectionMaterials.clear();
+
+    for (const mat of this.groupLabelMaterials.values()) {
+      mat.dispose();
+    }
+    this.groupLabelMaterials.clear();
+
+    for (const tex of this.groupLabelTextures.values()) {
+      tex.dispose();
+    }
+    this.groupLabelTextures.clear();
+
     this.scene = null;
     SelectionManager.instance = null;
   }

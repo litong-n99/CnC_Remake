@@ -36,6 +36,8 @@ export class InputManager {
   private lastSquadKey = -1;
   private lastSquadKeyTime = 0;
   private readonly squadDoubleClickMs = 800;
+  private boundKeyDown: ((e: KeyboardEvent) => void) | null = null;
+  private boundKeyUp: ((e: KeyboardEvent) => void) | null = null;
 
   constructor(
     rtsCamera: RTSCamera,
@@ -58,23 +60,47 @@ export class InputManager {
   // ── Keyboard state ──
 
   private setupKeyboard(): void {
-    window.addEventListener('keydown', (e) => {
+    this.boundKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Shift') this.isShiftDown = true;
       if (e.key === 'Control' || e.key === 'Meta') this.isCtrlDown = true;
 
       // Squad hotkeys: 0-9 (Task 49)
-      if (/^[0-9]$/.test(e.key)) {
-        const index = parseInt(e.key, 10);
-        const shouldInterceptHotkey = e.ctrlKey || e.metaKey || this.isCtrlDown;
-        if (shouldInterceptHotkey) {
-          // Prevent browser Ctrl/Meta+number from switching tabs or triggering browser shortcuts.
-          e.preventDefault();
+      // 使用 keyCode 作为主检测（像 ra2-web 一样），不受 Shift/键盘布局影响
+      let index: number | null = null;
+      if (e.keyCode >= 48 && e.keyCode <= 57) {
+        index = e.keyCode - 48; // 主键盘 0-9
+      } else if (e.keyCode >= 96 && e.keyCode <= 105) {
+        index = e.keyCode - 96; // 小键盘 0-9
+      } else {
+        // 回退: e.code / e.key（兼容非标准环境）
+        const digitCodeMatch = e.code.match(/^Digit(\d)$/) || e.code.match(/^Numpad(\d)$/);
+        if (digitCodeMatch) {
+          index = parseInt(digitCodeMatch[1], 10);
+        } else if (/^[0-9]$/.test(e.key)) {
+          index = parseInt(e.key, 10);
         }
+      }
 
-        if (this.isCtrlDown) {
+      if (index !== null && !e.repeat) {
+        // 使用 stopImmediatePropagation 阻止同一元素上的其他监听器（如浏览器扩展）
+        // 并在 capture 阶段拦截，这是 JavaScript 能触及的最早时机
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        if (this.isShiftDown && this.isCtrlDown) {
+          // Shift+Ctrl+数字 = 追加到编组（OpenRA: AddSelectionToControlGroup）
+          this.selectionManager.addToSquad(index);
+          console.warn(`Squad ${index} added (${this.selectionManager.getSelected().length} units appended)`);
+        } else if (this.isShiftDown) {
+          // Shift+数字 = 合并编组到当前选择（OpenRA: CombineSelectionWithControlGroup）
+          this.selectionManager.combineSquad(index, this.scene);
+          console.warn(`Squad ${index} combined into current selection`);
+        } else if (this.isCtrlDown) {
+          // Ctrl+数字 = 创建/覆盖编组（OpenRA: CreateControlGroup）
           this.selectionManager.saveSquad(index);
           console.warn(`Squad ${index} saved (${this.selectionManager.getSelected().length} units)`);
         } else {
+          // 数字 = 选中编组（OpenRA: SelectControlGroup）
           this.selectionManager.restoreSquad(index, this.scene);
           const now = performance.now();
           const isDoubleClick = this.lastSquadKey === index && now - this.lastSquadKeyTime < this.squadDoubleClickMs;
@@ -86,11 +112,18 @@ export class InputManager {
           console.warn(`Squad ${index} restored`);
         }
       }
-    });
-    window.addEventListener('keyup', (e) => {
+    };
+
+    this.boundKeyUp = (e: KeyboardEvent) => {
       if (e.key === 'Shift') this.isShiftDown = false;
-      if (e.key === 'Control') this.isCtrlDown = false;
-    });
+      if (e.key === 'Control' || e.key === 'Meta') this.isCtrlDown = false;
+    };
+
+    // 在 document 和 window 的 capture 阶段都注册，最大化拦截概率
+    // capture 阶段是事件传播的最开始，比浏览器扩展的冒泡监听器更早
+    document.addEventListener('keydown', this.boundKeyDown, { capture: true });
+    window.addEventListener('keydown', this.boundKeyDown, { capture: true });
+    window.addEventListener('keyup', this.boundKeyUp);
   }
 
   /** 将视角跳转到指定编组的中心（Task 49 双击编组键）。 */
@@ -367,6 +400,15 @@ export class InputManager {
   // ── Lifecycle ──
 
   dispose(): void {
+    if (this.boundKeyDown) {
+      document.removeEventListener('keydown', this.boundKeyDown, { capture: true });
+      window.removeEventListener('keydown', this.boundKeyDown, { capture: true });
+      this.boundKeyDown = null;
+    }
+    if (this.boundKeyUp) {
+      window.removeEventListener('keyup', this.boundKeyUp);
+      this.boundKeyUp = null;
+    }
     this.selectionBox.dispose();
     this.selectionManager.clear();
   }

@@ -748,6 +748,9 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
     terrain.update(dt);
     BulletManager.getInstance().updateAll();
 
+    // ── Control Group: 自动清理编组中的死亡单位（对齐 OpenRA ITick.Tick）──
+    selectionManager.cleanupDeadUnits();
+
     // ── Task 31: 更新战争迷雾（仅本地玩家 GDI 的视野）──
     const gdiUnits = GameObjectManager.getInstance()
       .getUnits()
