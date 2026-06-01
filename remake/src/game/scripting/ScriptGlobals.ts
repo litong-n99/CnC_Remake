@@ -52,7 +52,7 @@ export class MapGlobal {
    */
   reveal(player: HouseType, cpos: CPos, radius: number): void {
     // 实际实现需对接 FogOfWar 系统；此处为 API 占位
-    console.info(`[ScriptGlobals] Map.Reveal: ${HouseType[player]} at (${cpos.x},${cpos.y}) r=${radius}`);
+    console.warn(`[ScriptGlobals] Map.Reveal: ${HouseType[player]} at (${cpos.x},${cpos.y}) r=${radius}`);
   }
 }
 
@@ -106,7 +106,7 @@ export interface ActorInfo {
 
 /** 单位/建筑全局 API。 */
 export class ActorGlobal {
-  private scene: Scene | null = null;
+  protected scene: Scene | null = null;
 
   setScene(scene: Scene): void {
     this.scene = scene;
@@ -188,7 +188,23 @@ export class MediaGlobal {
   /** 播放背景音乐。 */
   playMusic(track: string): void {
     // 预留接口，实际对接 MusicPlayer
-    console.info(`[ScriptGlobals] Media.PlayMusic: ${track}`);
+    console.warn(`[ScriptGlobals] Media.PlayMusic: ${track}`);
+  }
+
+  /** 在 HUD 显示消息（CAM-14）。 */
+  DisplayMessage(text: string, _prefix?: string): void {
+    console.warn(`[Media] ${text}`);
+    // TODO: 对接 HUD 消息面板
+  }
+
+  /** 播放语音通知（带玩家参数，CAM-14）。 */
+  PlaySpeechNotification(_player: unknown, sound: string): void {
+    this.playSpeech(sound);
+  }
+
+  /** 播放音效通知（带玩家参数，CAM-14）。 */
+  PlaySoundNotification(_player: unknown, sound: string): void {
+    this.playSound(sound);
   }
 }
 
@@ -202,7 +218,7 @@ export class UIGlobal {
   /** 在屏幕显示消息（预留 HUD 消息接口）。 */
   showMessage(text: string): void {
     this.messageQueue.push(text);
-    console.info(`[ScriptGlobals] UI.Message: ${text}`);
+    console.warn(`[ScriptGlobals] UI.Message: ${text}`);
   }
 
   /** 设置倒计时（秒），到期后触发回调需配合 Trigger.AfterDelay。 */

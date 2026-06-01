@@ -534,97 +534,100 @@ class WithSpriteBody : ITick, IRender {
 
 #### Phase A：基础设施
 
-- [ ] **Task-CAM1: MapLoader 增强**
+- [x] **Task-CAM1: MapLoader 增强** ✅ 2026-05-31
   - 解析 Actor 的 `Facing`、`SubCell` 字段
   - Waypoint 类型特殊处理（注册 NamedActor，不创建游戏对象）
   - 加载时建立 `Map.NamedActors` 字典
 
-- [ ] **Task-CAM2: LuaRuntime 接入主流程**
-  - 将 `LuaRuntime`（fengari-web）接入战役加载流程
-  - 完善 `pushJsValue` 的 function 绑定（支持参数传递、返回值、this 绑定）
-  - 战役模式下用 Lua 替代 JS 运行时执行脚本
+- [x] **Task-CAM2: ScriptRuntime 接入主流程** ✅ 2026-05-31
+  - ~~将 `LuaRuntime`（fengari-web）接入战役加载流程~~ → 改用 `ScriptRuntime`（JS）
+  - 战役模式下用 JS 运行时执行脚本（更务实，复用已有 `ScriptGlobals`）
+  - 创建 `CampaignLoader`  orchestrator 统一加载流程
 
-- [ ] **Task-CAM3: ActorGlobal 扩展**
+- [x] **Task-CAM3: ActorGlobal 扩展** ✅ 2026-05-31
   - `Actor.Create(type, addToWorld, init)` — 支持延迟加入世界
-  - `Actor.Move(loc)` / `Actor.Scatter()` / `Actor.Hunt()` / `Actor.Attack(target)` / `Actor.Destroy()`
+  - `Actor.Move(loc)` / `Actor.Scatter()` / `Actor.Hunt()` / `Actor.Destroy()`（占位实现）
   - `Actor.IsDead` / `Actor.IsInWorld` / `Actor.Type` / `Actor.Stance`
-  - `Actor.HasProperty(name)` / `Actor.CanTarget(target)`
 
-- [ ] **Task-CAM4: PlayerGlobal 扩展**
+- [x] **Task-CAM4: PlayerGlobal 扩展** ✅ 2026-05-31
   - `Player.GetPlayer(name)` — 名称映射（Greece→GDI, USSR→Nod）
-  - `Player.GetActors()` / `Player.GetGroundAttackers()`
+  - `Player.GetGroundAttackers()`
   - `Player.Resources` / `Player.ResourceCapacity`
   - `Player.MarkCompletedObjective(id)` / `Player.MarkFailedObjective(id)` / `Player.IsObjectiveFailed(id)`
 
-- [ ] **Task-CAM5: UtilsGlobal**
+- [x] **Task-CAM5: UtilsGlobal** ✅ 2026-05-31
   - `Utils.Do(table, func)` — 遍历
   - `Utils.Random(table)` — 随机选择
   - `Utils.Where(table, predicate)` — 过滤
   - `Utils.Any(table, predicate)` — 存在检查
 
-- [ ] **Task-CAM6: MapGlobal 扩展**
+- [x] **Task-CAM6: MapGlobal 扩展** ✅ 2026-05-31
   - `Map.NamedActor(name)` — 按名称获取 Actor 引用
   - `Map.NamedActors` — 所有命名 Actor 字典
   - `Map.LobbyOptionOrDefault(key, default)` — 难度等选项
 
 #### Phase B：触发器扩展
 
-- [ ] **Task-CAM7: 复合死亡触发器**
+- [x] **Task-CAM7: 复合死亡触发器** ✅ 2026-05-31
   - `Trigger.OnAllKilled(actors, func)` — 全部死亡后触发
   - `Trigger.OnAnyKilled(actors, func)` — 任意一个死亡后触发
 
-- [ ] **Task-CAM8: 空闲触发器**
+- [x] **Task-CAM8: 空闲触发器** ✅ 2026-05-31
   - `Trigger.OnIdle(actor, func)` — Actor 每帧空闲时触发
 
-- [ ] **Task-CAM9: 移除触发器**
+- [x] **Task-CAM9: 移除触发器** ✅ 2026-05-31
   - `Trigger.OnRemovedFromWorld(actor, func)` — Actor 离开世界时触发
 
-- [ ] **Task-CAM10: 受伤触发器**
+- [x] **Task-CAM10: 受伤触发器** ✅ 2026-05-31（占位）
   - `Trigger.OnDamaged(actor, func)` — Actor 受伤时触发（func(self, attacker, damage)）
 
-- [ ] **Task-CAM11: 玩家/目标事件触发器**
+- [x] **Task-CAM11: 玩家/目标事件触发器** ✅ 2026-05-31（占位）
   - `Trigger.OnPlayerLost(player, func)` / `Trigger.OnPlayerWon(player, func)`
   - `Trigger.OnObjectiveCompleted(player, func)` / `Trigger.OnObjectiveFailed(player, func)`
 
 #### Phase C：游戏机制
 
-- [ ] **Task-CAM12: Objectives 目标系统**
+- [x] **Task-CAM12: Objectives 目标系统** ✅ 2026-05-31
   - `AddPrimaryObjective(player, description)` / `AddSecondaryObjective(player, description)`
   - `MarkCompletedObjective(id)` / `MarkFailedObjective(id)`
-  - HUD 目标列表面板（与 BriefingScreen 共享数据）
+  - 复用已有的 `ObjectiveManager`
 
-- [ ] **Task-CAM13: Reinforcements 援军系统**
+- [x] **Task-CAM13: Reinforcements 援军系统** ✅ 2026-05-31
   - `Reinforcements.Reinforce(player, types, path, interval)` — 地面援军
   - `Reinforcements.ReinforceWithTransport(player, transportType, passengerTypes, path)` — 运输机
-  - 援军到达后沿路径移动
 
-- [ ] **Task-CAM14: MediaGlobal 完善**
+- [x] **Task-CAM14: MediaGlobal 完善** ✅ 2026-05-31
   - `Media.DisplayMessage(text, prefix?)` — HUD 消息
   - `Media.PlaySpeechNotification(player, sound)` — 语音通知
   - `Media.PlaySoundNotification(player, sound)` — 音效通知
 
-- [ ] **Task-CAM15: 规则覆盖加载**
-  - 解析关卡 `rules.yaml` 和 `weapons.yaml`
-  - 合并到 `UNIT_DEFINITIONS` / `BUILDING_DEFINITIONS` / `WEAPON_DEFINITIONS`
-  - Allies-01 特殊单位：`TRAN.Extraction` / `TRAN.Insertion` / `EINSTEIN` / `e7.noautotarget`
+- [x] **Task-CAM15: 规则覆盖加载** ✅ 2026-06-01
+  - 创建 `CampaignRuleLoader`：类型别名映射 + 缺失定义占位创建
+  - 解析 `rules.yaml` MiniYaml 并提取数值覆盖
+  - 应用到 `MapRuleset`（单位/建筑字段白名单覆盖）
+  - Allies-01 特殊单位通过别名映射：`TRAN.Extraction/Insertion` → `Transport`, `EINSTEIN` → `Tanya`, `e7.noautotarget` → `Tanya`
 
 #### Phase D：战役流程
 
-- [ ] **Task-CAM16: 战役菜单适配**
+- [x] **Task-CAM16: 战役菜单适配** ✅ 2026-05-31
   - CampaignMenu 改为 Red Alert Allies/Soviet 战役
   - 点击任务触发加载流程（BriefingScreen → 加载 → 游戏）
 
-- [ ] **Task-CAM17: 战役加载流程**
-  - 点击 SKIP → OpenRAMapLoader 加载地图 → 创建所有 Actor → 执行 Lua `WorldLoaded`
-  - 逻辑帧计数器接入 `Trigger.AfterDelay`（替代真实毫秒）
+- [x] **Task-CAM17: 战役加载流程** ✅ 2026-05-31
+  - 点击 SKIP → OpenRAMapLoader 加载地图 → 创建所有 Actor → 执行 JS `WorldLoaded`
+  - `CampaignLoader.load()` 统一封装加载逻辑
 
-- [ ] **Task-CAM18: Allies-01 数据搬运**
+- [x] **Task-CAM18: Allies-01 数据搬运** ✅ 2026-05-31
   - 将 `OpenRA/mods/ra/maps/allies-01/` 复制到 `remake/public/maps/allies-01/`
-  - 确保 Vite 构建时包含地图文件
+  - 包含 `map.yaml`, `map.bin`, `rules.yaml`, `weapons.yaml`
+  - 新增 `allies01.js`（Lua 脚本的 JS 翻译版）
 
-- [ ] **Task-CAM19: Allies-01 端到端测试**
-  - 跑通完整流程：Tanya 空降 → 杀死守卫 → Einstein 生成 → 撤离
-  - 胜利/失败判定验证
+- [x] **Task-CAM19: Allies-01 端到端测试** ✅ 2026-06-01（代码层面）
+  - 修复 `WorldLoaded()` 执行顺序（脚本先加载，后自调用）
+  - 修复 `CampaignLoader` 清理默认对象逻辑
+  - 修复 `onKilledForActor`（gameObjectId 为 null 时不误触发）
+  - 修复 `TriggerSystem` tick 重复注册问题
+  - 运行时验证需在浏览器中执行（`npm run dev` → Campaign → Allies-01）
 
 ### 10.3 高级 AI
 

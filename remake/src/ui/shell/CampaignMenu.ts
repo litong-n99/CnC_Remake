@@ -1,8 +1,8 @@
 /**
- * 战役选择页面 — Task 38
+ * 战役选择页面 — CAM-16
  *
- * 显示 GDI / Nod 战役列表和任务缩略图。
- * 纯 DOM + CSS，数据硬编码（后续对接 CampaignData 层）。
+ * 显示 Red Alert Allies / Soviet 战役列表。
+ * 点击任务触发加载流程（BriefingScreen → 加载 → 游戏）。
  */
 
 import type { ShellRouter } from './ShellRouter';
@@ -12,6 +12,8 @@ interface MissionInfo {
   name: string;
   locked: boolean;
   completed: boolean;
+  mapFolder: string;
+  scriptUrl?: string;
 }
 
 interface CampaignInfo {
@@ -22,21 +24,27 @@ interface CampaignInfo {
 
 const CAMPAIGNS: CampaignInfo[] = [
   {
-    faction: 'gdi',
-    name: 'GDI 战役',
+    faction: 'allies',
+    name: 'Allies Campaign',
     missions: [
-      { id: 'gdi-01', name: '第一关：初试锋芒', locked: false, completed: true },
-      { id: 'gdi-02', name: '第二关：沙漠风暴', locked: false, completed: false },
-      { id: 'gdi-03', name: '第三关： nuclear dawn', locked: true, completed: false },
+      {
+        id: 'allies-01',
+        name: '01: In the Thick of It',
+        locked: false,
+        completed: false,
+        mapFolder: '/maps/allies-01',
+        scriptUrl: '/maps/allies-01/allies01.js',
+      },
+      { id: 'allies-02', name: '02: (Locked)', locked: true, completed: false, mapFolder: '' },
+      { id: 'allies-03', name: '03: (Locked)', locked: true, completed: false, mapFolder: '' },
     ],
   },
   {
-    faction: 'nod',
-    name: 'Nod 战役',
+    faction: 'soviet',
+    name: 'Soviet Campaign',
     missions: [
-      { id: 'nod-01', name: '第一关：兄弟会崛起', locked: false, completed: false },
-      { id: 'nod-02', name: '第二关：暗影行动', locked: true, completed: false },
-      { id: 'nod-03', name: '第三关：泰伯利亚之日', locked: true, completed: false },
+      { id: 'soviet-01', name: '01: (Locked)', locked: true, completed: false, mapFolder: '' },
+      { id: 'soviet-02', name: '02: (Locked)', locked: true, completed: false, mapFolder: '' },
     ],
   },
 ];
@@ -44,6 +52,7 @@ const CAMPAIGNS: CampaignInfo[] = [
 export class CampaignMenu {
   private readonly container: HTMLElement;
   private readonly router: ShellRouter;
+  private onMissionSelectedCallback: ((mission: MissionInfo) => void) | null = null;
 
   constructor(parent: HTMLElement, router: ShellRouter) {
     this.router = router;
@@ -57,6 +66,11 @@ export class CampaignMenu {
 
   getElement(): HTMLElement {
     return this.container;
+  }
+
+  /** 设置任务选择回调。 */
+  onMissionSelected(cb: (mission: MissionInfo) => void): void {
+    this.onMissionSelectedCallback = cb;
   }
 
   private render(): void {
@@ -105,10 +119,13 @@ export class CampaignMenu {
       const missionEl = target.closest('.cnc-mission') as HTMLElement | null;
       if (missionEl && !missionEl.classList.contains('cnc-mission-locked')) {
         const faction = missionEl.getAttribute('data-faction') ?? '';
-        const mission = missionEl.getAttribute('data-mission') ?? '';
-        // eslint-disable-next-line no-console
-        console.info('Campaign selected:', faction, mission);
-        // TODO: 进入战役加载流程（Task 54+）
+        const missionId = missionEl.getAttribute('data-mission') ?? '';
+        const campaign = CAMPAIGNS.find((c) => c.faction === faction);
+        const mission = campaign?.missions.find((m) => m.id === missionId);
+        if (mission) {
+          console.warn('[CampaignMenu] Selected:', missionId);
+          this.onMissionSelectedCallback?.(mission);
+        }
       }
     });
   }
@@ -117,3 +134,5 @@ export class CampaignMenu {
     this.container.remove();
   }
 }
+
+export type { MissionInfo };

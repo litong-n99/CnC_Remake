@@ -127,6 +127,12 @@ export interface ActorPlacement {
   readonly type: string; // 如 "mcv", "fact"
   readonly location: { x: number; y: number };
   readonly owner: string;
+  /** 朝向（0–255 或 0–1024，取决于游戏版本）。 */
+  readonly facing?: number;
+  /** 步兵子格子（0–4）。 */
+  readonly subCell?: number;
+  /** 是否为 Waypoint（仅注册坐标，不创建游戏对象）。 */
+  readonly isWaypoint: boolean;
 }
 
 /** 将 MiniYaml 节点树转换为结构化的 MapYaml。 */
@@ -181,11 +187,17 @@ function parseActors(nodes: MiniYamlNode[]): ActorPlacement[] {
   return nodes.map((n) => {
     const locStr = getMiniYamlValue(n.children, 'Location') ?? '0,0';
     const [lx, ly] = locStr.split(',').map((s) => parseInt(s.trim(), 10));
+    const facingStr = getMiniYamlValue(n.children, 'Facing');
+    const subCellStr = getMiniYamlValue(n.children, 'SubCell');
+    const type = n.value;
     return {
       id: n.key,
-      type: n.value,
+      type,
       location: { x: lx, y: ly },
       owner: getMiniYamlValue(n.children, 'Owner') ?? 'Neutral',
+      facing: facingStr !== undefined ? parseInt(facingStr, 10) : undefined,
+      subCell: subCellStr !== undefined ? parseInt(subCellStr, 10) : undefined,
+      isWaypoint: type === 'waypoint',
     };
   });
 }

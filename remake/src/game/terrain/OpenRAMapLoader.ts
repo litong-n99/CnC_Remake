@@ -14,11 +14,24 @@ import { type GameMap, type MapCellData } from './GameMap';
 import { LandType } from './TerrainGrid';
 import { parseMiniYaml, mapYamlFromNodes, parseMapBin, type MapYaml, type MapBinData } from './MapFormat';
 
+/** 命名演员条目（供脚本按名称引用）。 */
+export interface NamedActorEntry {
+  readonly id: string;
+  readonly type: string;
+  readonly location: { x: number; y: number };
+  readonly owner: string;
+  readonly facing?: number;
+  readonly subCell?: number;
+  readonly isWaypoint: boolean;
+}
+
 /** OpenRA 地图文件夹加载结果。 */
 export interface OpenRAMapResult {
   readonly gameMap: GameMap;
   readonly mapYaml: MapYaml;
   readonly mapBin: MapBinData;
+  /** 命名演员字典（id → entry），包含 Waypoint。 */
+  readonly namedActors: ReadonlyMap<string, NamedActorEntry>;
 }
 
 export class OpenRAMapLoader {
@@ -61,7 +74,10 @@ export class OpenRAMapLoader {
     // 3. 合并为 GameMap
     const gameMap = convertToGameMap(mapYaml, mapBin);
 
-    return { gameMap, mapYaml, mapBin };
+    // 4. 构建 NamedActors 字典（包含所有 Actor，包括 Waypoint）
+    const namedActors = buildNamedActors(mapYaml);
+
+    return { gameMap, mapYaml, mapBin, namedActors };
   }
 
   /**
@@ -138,4 +154,21 @@ function tileTypeToLandType(tileType: number): LandType {
   // 其他：按奇偶循环
   const types = [LandType.Clear, LandType.Road, LandType.Rock, LandType.Water];
   return types[tileType % types.length];
+}
+
+/** 从 MapYaml 构建 NamedActors 字典。 */
+function buildNamedActors(mapYaml: MapYaml): Map<string, NamedActorEntry> {
+  const map = new Map<string, NamedActorEntry>();
+  for (const a of mapYaml.Actors) {
+    map.set(a.id, {
+      id: a.id,
+      type: a.type,
+      location: a.location,
+      owner: a.owner,
+      facing: a.facing,
+      subCell: a.subCell,
+      isWaypoint: a.isWaypoint,
+    });
+  }
+  return map;
 }

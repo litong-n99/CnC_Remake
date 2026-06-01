@@ -717,6 +717,25 @@ export class TerrainGrid {
     return this.terrainLOD;
   }
 
+  /** Resize the terrain grid to new dimensions (rebuilds mesh). */
+  resize(scene: Scene, width: number, height: number): void {
+    this.dispose();
+    this.cellLayer = new CellLayer<CellData>(width, height, { landType: LandType.Clear, height: 0 });
+    this.mapGrid = new MapGrid();
+    this.terrainMaterial = new TerrainMaterial(scene);
+    this.splatMaterial = null;
+    this.splatMap = null;
+    this.splatMap2 = null;
+    this.decalLayer = null;
+    this.terrainLOD = null;
+    this.dirtySplatCells.clear();
+    this.splatFlushPending = false;
+    this.textureMode = false;
+    this.waterTime = 0;
+    this.createMesh(scene);
+    this.createGridLines(scene);
+  }
+
   /** Dispose terrain mesh, grid lines, material, and LOD meshes. */
   dispose(): void {
     this.terrainMesh?.dispose();

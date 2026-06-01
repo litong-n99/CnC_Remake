@@ -224,10 +224,12 @@ import { LoadScreen } from './ui/shell/LoadScreen';
 import { SettingsMenu } from './ui/shell/SettingsMenu';
 import { PauseMenu } from './ui/shell/PauseMenu';
 import { CampaignMenu } from './ui/shell/CampaignMenu';
+import { BriefingScreen } from './ui/shell/BriefingScreen';
 import { SkirmishSetup } from './ui/shell/SkirmishSetup';
 import { MultiplayerLobby } from './ui/shell/MultiplayerLobby';
 import './ui/styles/shell.css';
 import { loadYamlRulesWithFallback } from './game/rules/YamlLoader';
+import { CampaignLoader } from './game/campaign/CampaignLoader';
 
 const bootstrapGame = async (onReady?: () => void): Promise<void> => {
   // ── Task 95: YAML 规则解析基础设施 ──
@@ -1148,6 +1150,67 @@ const bootstrapGame = async (onReady?: () => void): Promise<void> => {
 
       // Pause / Resume
       pauseMenu.setOnResume(() => router.navigate('game'));
+
+      // ── CAM-16/17: 战役加载流程 ──
+      const briefingScreen = new BriefingScreen();
+      campaignMenu.onMissionSelected((mission) => {
+        // Show briefing
+        briefingScreen.show({
+          id: mission.id,
+          name: mission.name,
+          description: '',
+          mapPath: mission.mapFolder,
+          briefingText:
+            'Commander, your mission is to rescue Einstein from a Soviet research facility. ' +
+            'Tanya will be inserted via helicopter. Eliminate the guards, locate Einstein, ' +
+            'and extract him via the evacuation helicopter.',
+          objectives: [
+            { id: 'find-einstein', description: 'Find Einstein', type: 'primary' },
+            { id: 'tanya-survive', description: 'Tanya must survive', type: 'primary' },
+            { id: 'einstein-survive', description: 'Einstein must survive', type: 'primary' },
+            { id: 'protect-civilians', description: 'Protect civilians', type: 'secondary' },
+          ],
+          prerequisites: [],
+        });
+
+        briefingScreen.onSkip(async () => {
+          router.navigate('loading');
+          loadScreen.setProgress(0);
+          loadScreen.setTip('正在加载战役地图...');
+
+          try {
+            // 加载战役
+            const campaignLoader = CampaignLoader.getInstance();
+            const result = await campaignLoader.load({
+              mapFolderUrl: `${import.meta.env.BASE_URL}${mission.mapFolder}`.replace(/\/+/g, '/'),
+              scene,
+              terrain,
+              gameLoop,
+            });
+
+            // 加载并执行战役脚本（allies01.js 末尾包含 WorldLoaded() 自调用）
+            if (mission.scriptUrl) {
+              try {
+                const scriptResponse = await fetch(mission.scriptUrl);
+                if (scriptResponse.ok) {
+                  const scriptCode = await scriptResponse.text();
+                  result.scriptRuntime.execute(scriptCode);
+                  console.warn('[Campaign] Script executed for', mission.id);
+                }
+              } catch (scriptErr) {
+                console.warn('[Campaign] Failed to load script:', scriptErr);
+              }
+            }
+
+            loadScreen.setProgress(100);
+            router.navigate('game');
+          } catch (err) {
+            console.error('[Campaign] Load failed:', err);
+            loadScreen.setTip('加载失败，请重试');
+            setTimeout(() => router.navigate('campaign'), 2000);
+          }
+        });
+      });
 
       window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
