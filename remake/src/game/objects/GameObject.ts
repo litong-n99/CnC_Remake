@@ -33,8 +33,21 @@ export abstract class GameObject {
   /** Babylon.js 占位 Mesh（子类在 `createMesh` 中初始化）。 */
   mesh: Mesh | null = null;
 
-  protected readonly worldOffsetX: number;
-  protected readonly worldOffsetZ: number;
+  private static _worldOffsetX = 32;
+  private static _worldOffsetZ = 32;
+
+  protected get worldOffsetX(): number {
+    return GameObject._worldOffsetX;
+  }
+
+  protected get worldOffsetZ(): number {
+    return GameObject._worldOffsetZ;
+  }
+
+  static setWorldOffset(width: number, height: number): void {
+    GameObject._worldOffsetX = width / 2;
+    GameObject._worldOffsetZ = height / 2;
+  }
 
   protected constructor(
     id: string,
@@ -43,9 +56,7 @@ export abstract class GameObject {
     house: House,
     x: number,
     y: number,
-    maxHealth: number,
-    mapWidth = 64,
-    mapHeight = 64
+    maxHealth: number
   ) {
     this.id = id;
     this.type = type;
@@ -55,8 +66,6 @@ export abstract class GameObject {
     this.y = y;
     this.maxHealth = maxHealth;
     this.health = maxHealth;
-    this.worldOffsetX = mapWidth / 2;
-    this.worldOffsetZ = mapHeight / 2;
   }
 
   /** 子类必须实现：在 Scene 中创建占位几何体。 */

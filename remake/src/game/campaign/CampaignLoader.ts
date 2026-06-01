@@ -20,6 +20,7 @@ import { HouseManager } from '../house/HouseManager';
 import { House, HouseType } from '../house/House';
 import { GameObjectFactory } from '../objects/GameObjectFactory';
 import { GameObjectManager } from '../objects/GameObjectManager';
+import { GameObject } from '../objects/GameObject';
 // UNIT_DEFINITIONS / BUILDING_DEFINITIONS 现在通过 CampaignRuleLoader.resolveActorType 访问
 import { ScriptRuntime } from '../scripting/ScriptRuntime';
 import { MapGlobal, PlayerGlobal, ActorGlobal, MediaGlobal, UIGlobal } from '../scripting/ScriptGlobals';
@@ -126,6 +127,8 @@ export class CampaignLoader {
       // 同步调整战争迷雾尺寸
       fogOfWar?.resize(mapResult.gameMap.width, mapResult.gameMap.height, scene);
     }
+    // 同步游戏对象世界坐标偏移（确保与地形尺寸一致）
+    GameObject.setWorldOffset(mapResult.gameMap.width, mapResult.gameMap.height);
 
     // 2.5 应用地形
     MapLoader.applyToTerrainGrid(mapResult.gameMap, terrain);
