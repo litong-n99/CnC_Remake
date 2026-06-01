@@ -8,3 +8,6 @@ playwright-report/
 blob-report/
 playwright/.cache/
 *.log
+
+# Diagnostic scripts & screenshots (development only)
+scripts/diagnose-*
