@@ -660,6 +660,13 @@ const bootstrapGame = async (onReady?: () => void): Promise<void> => {
     { name: 'Ore', terrainType: 'clear', maxDensity: 200, growthRate: 0.03, spreadRate: 0.01, value: 50 },
   ]);
 
+  // ── Task-AI1/AI2: 给 AI Bot 注入运行上下文 ──
+  for (const [, bot] of houseManager.getAllBots()) {
+    if (bot.setContext) {
+      bot.setContext({ terrain, scene, pathfinder, resourceLayer });
+    }
+  }
+
   // ── Particle Manager (Task 80) ──
   const particleManager = ParticleManager.getInstance();
   particleManager.init(scene);
@@ -747,6 +754,7 @@ const bootstrapGame = async (onReady?: () => void): Promise<void> => {
     GameObjectManager.getInstance().update(dt);
     terrain.update(dt);
     BulletManager.getInstance().updateAll();
+    houseManager.tickBots(dt); // Task-AI1/AI2: AI 驱动
 
     // ── Control Group: 自动清理编组中的死亡单位（对齐 OpenRA ITick.Tick）──
     selectionManager.cleanupDeadUnits();

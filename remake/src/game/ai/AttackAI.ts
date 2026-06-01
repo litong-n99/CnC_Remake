@@ -43,12 +43,19 @@ export class AttackAI {
     // Maintain scout
     this.updateScout();
 
-    // If not attacking, gather units
-    if (!this.attacking) {
-      this.gatherSquad();
-      if (this.squad.length >= this.attackThreshold && this.attackCooldown <= 0) {
-        this.launchAttack();
+    // If attacking, prune dead units and reset when squad is depleted
+    if (this.attacking) {
+      this.gatherSquad(); // refresh squad to remove dead units
+      if (this.squad.length === 0) {
+        this.attacking = false;
       }
+      return;
+    }
+
+    // Gather units and launch attack when threshold is met
+    this.gatherSquad();
+    if (this.squad.length >= this.attackThreshold && this.attackCooldown <= 0) {
+      this.launchAttack();
     }
   }
 

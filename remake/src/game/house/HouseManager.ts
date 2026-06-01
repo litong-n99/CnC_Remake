@@ -76,6 +76,13 @@ export class HouseManager {
     return this.activeBots;
   }
 
+  /** 每逻辑帧调用所有活跃 Bot 的 tick。 */
+  tickBots(deltaTime: number): void {
+    for (const bot of this.activeBots.values()) {
+      bot.tick(deltaTime);
+    }
+  }
+
   /** 获取所有已注册的阵营。 */
   getAllHouses(): House[] {
     return Array.from(this.houses.values());

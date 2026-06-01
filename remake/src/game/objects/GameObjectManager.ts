@@ -58,17 +58,17 @@ export class GameObjectManager {
   }
 
   /** 获取所有单位。 */
-  getUnits(): GameObject[] {
-    return this.getAll().filter((o) => o.type === GameObjectType.Unit);
+  getUnits(): import('./Unit').Unit[] {
+    return this.getAll().filter((o) => o.type === GameObjectType.Unit) as import('./Unit').Unit[];
   }
 
   /** 获取所有建筑。 */
-  getBuildings(): GameObject[] {
-    return this.getAll().filter((o) => o.type === GameObjectType.Building);
+  getBuildings(): import('./Building').Building[] {
+    return this.getAll().filter((o) => o.type === GameObjectType.Building) as import('./Building').Building[];
   }
 
   /** 获取所有步兵（通过 Unit 的 definition.locomotion 过滤）。 */
-  getInfantry(): GameObject[] {
+  getInfantry(): import('./Unit').Unit[] {
     return this.getUnits().filter((o) => {
       const unit = o as import('./Unit').Unit;
       return unit.definition?.locomotion === 0; // Locomotion.Foot = 0

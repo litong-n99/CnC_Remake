@@ -6,11 +6,28 @@
  */
 
 import type { House } from '../house/House';
+import type { TerrainGrid } from '../terrain/TerrainGrid';
+import type { Pathfinder } from '../terrain/Pathfinder';
+import type { Scene } from '@babylonjs/core';
+import type { ResourceLayer } from '../economy/ResourceLayer';
+import { BaseBuilderAI } from './BaseBuilderAI';
+import { AttackAI } from './AttackAI';
+import { DefenseAI } from './DefenseAI';
+import { ResourceAI } from './ResourceAI';
+
+/** Bot 运行所需的上下文依赖。 */
+export interface BotContext {
+  terrain: TerrainGrid;
+  scene: Scene;
+  pathfinder: Pathfinder;
+  resourceLayer: ResourceLayer;
+}
 
 /** Bot 控制器接口。 */
 export interface BotController {
   readonly type: string;
   activate(house: House): void;
+  setContext?(ctx: BotContext): void;
   tick(deltaTime: number): void;
   deactivate(): void;
 }
@@ -50,41 +67,115 @@ export class NoOpBot implements BotController {
   deactivate(): void {}
 }
 
-/**  Rush 型 Bot — 快速扩张 + 早期攻击。 */
-export class RushBot implements BotController {
-  readonly type = 'bot-rush';
+/** 通用 Bot 实现 — 聚合 BaseBuilderAI / AttackAI / DefenseAI / ResourceAI。 */
+abstract class TacticalBot implements BotController {
+  abstract readonly type: string;
 
-  activate(_house: House): void {}
+  protected house: House | null = null;
+  protected ctx: BotContext | null = null;
+  protected baseBuilder: BaseBuilderAI | null = null;
+  protected attack: AttackAI | null = null;
+  protected defense: DefenseAI | null = null;
+  protected resource: ResourceAI | null = null;
 
-  tick(_deltaTime: number): void {
-    // 由外部 BaseBuilderAI / AttackAI 驱动
+  activate(house: House): void {
+    this.house = house;
   }
 
-  deactivate(): void {}
+  setContext(ctx: BotContext): void {
+    this.ctx = ctx;
+    if (!this.house) return;
+    this.baseBuilder = new BaseBuilderAI(this.house, ctx.terrain, ctx.scene, this.buildOrder());
+    this.attack = new AttackAI(this.house, ctx.pathfinder, this.attackOptions());
+    this.defense = new DefenseAI(this.house, ctx.terrain, ctx.scene, this.defenseOptions());
+    this.resource = new ResourceAI(this.house, ctx.terrain, ctx.pathfinder, ctx.resourceLayer, this.resourceOptions());
+  }
+
+  tick(deltaTime: number): void {
+    this.baseBuilder?.tick(deltaTime);
+    this.attack?.tick(deltaTime);
+    this.defense?.tick(deltaTime);
+    this.resource?.tick(deltaTime);
+  }
+
+  deactivate(): void {
+    this.baseBuilder = null;
+    this.attack = null;
+    this.defense = null;
+    this.resource = null;
+    this.house = null;
+    this.ctx = null;
+  }
+
+  /** 子类可覆盖：建造顺序。 */
+  protected buildOrder(): string[] | undefined {
+    return undefined;
+  }
+
+  /** 子类可覆盖：攻击选项。 */
+  protected attackOptions(): { attackThreshold?: number } | undefined {
+    return undefined;
+  }
+
+  /** 子类可覆盖：防御选项。 */
+  protected defenseOptions(): import('./DefenseAI').DefenseAIOptions | undefined {
+    return undefined;
+  }
+
+  /** 子类可覆盖：资源选项。 */
+  protected resourceOptions(): import('./ResourceAI').ResourceAIOptions | undefined {
+    return undefined;
+  }
+}
+
+/** Rush 型 Bot — 快速扩张 + 早期攻击。 */
+export class RushBot extends TacticalBot {
+  readonly type = 'bot-rush';
+
+  protected override buildOrder(): string[] {
+    return ['PowerPlant', 'OreRefinery', 'Barracks', 'WarFactory', 'WarFactory', 'Turret', 'Turret'];
+  }
+
+  protected override attackOptions(): { attackThreshold?: number } {
+    return { attackThreshold: 3 };
+  }
 }
 
 /** Normal 型 Bot — 标准节奏。 */
-export class NormalBot implements BotController {
+export class NormalBot extends TacticalBot {
   readonly type = 'bot-normal';
 
-  activate(_house: House): void {}
-
-  tick(_deltaTime: number): void {
-    // 由外部 BaseBuilderAI / AttackAI 驱动
+  protected override buildOrder(): string[] {
+    return [
+      'PowerPlant',
+      'OreRefinery',
+      'Barracks',
+      'WarFactory',
+      'Radar',
+      'PowerPlant',
+      'WarFactory',
+      'Turret',
+      'Turret',
+    ];
   }
-
-  deactivate(): void {}
 }
 
 /** Defensive 型 Bot — 重视防御 + 后期反击。 */
-export class DefensiveBot implements BotController {
+export class DefensiveBot extends TacticalBot {
   readonly type = 'bot-defensive';
 
-  activate(_house: House): void {}
-
-  tick(_deltaTime: number): void {
-    // 由外部 BaseBuilderAI / AttackAI 驱动
+  protected override buildOrder(): string[] {
+    return ['PowerPlant', 'OreRefinery', 'PowerPlant', 'Turret', 'Barracks', 'WarFactory', 'Turret', 'Radar', 'Turret'];
   }
 
-  deactivate(): void {}
+  protected override defenseOptions(): import('./DefenseAI').DefenseAIOptions {
+    return {
+      repairThreshold: 0.7,
+      defenseBuildings: ['Turret', 'SAMSite'],
+    };
+  }
+
+  protected override attackOptions(): { attackThreshold?: number } {
+    return { attackThreshold: 8 };
+  }
 }
