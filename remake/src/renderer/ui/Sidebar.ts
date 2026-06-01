@@ -26,6 +26,7 @@ import { GameObjectFactory } from '../../game/objects/GameObjectFactory';
 import { GameObjectManager } from '../../game/objects/GameObjectManager';
 import { GameObjectType } from '../../game/objects/GameObject';
 import { Building } from '../../game/objects/Building';
+import { getRelationshipColorForLocalPlayer, hexToColor3 } from './RelationshipColors';
 
 /** Sidebar 操作模式。 */
 export type SidebarMode = 'normal' | 'repair' | 'sell';
@@ -80,6 +81,11 @@ export class Sidebar {
   private _mode: SidebarMode = 'normal';
   private _activeTab: ProductionTab = 'buildings';
   private flashTimer = 0;
+  private _visible = true;
+
+  /** MiniMap 画布（OpenRA 风格：Radar 位于 Sidebar 顶部）。 */
+  private minimapCanvas: HTMLCanvasElement;
+  private minimapCtx: CanvasRenderingContext2D;
 
   constructor(
     scene: Scene,
@@ -213,26 +219,43 @@ export class Sidebar {
       console.info(`╚══════════════════════════════════════════════════════════════╝\n`);
     });
 
+    // ── MiniMap（OpenRA 风格：Radar 位于 Sidebar 顶部）──
+    this.minimapCanvas = document.createElement('canvas');
+    this.minimapCanvas.id = 'cnc-sidebar-minimap';
+    this.minimapCanvas.width = 170;
+    this.minimapCanvas.height = 170;
+    this.minimapCanvas.style.position = 'fixed';
+    this.minimapCanvas.style.top = '10px';
+    this.minimapCanvas.style.right = '10px';
+    this.minimapCanvas.style.width = '170px';
+    this.minimapCanvas.style.height = '170px';
+    this.minimapCanvas.style.background = 'rgba(0,32,0,0.85)';
+    this.minimapCanvas.style.border = '2px solid rgba(255,255,255,0.4)';
+    this.minimapCanvas.style.zIndex = '1001';
+    document.body.appendChild(this.minimapCanvas);
+    this.minimapCtx = this.minimapCanvas.getContext('2d')!;
+
     // ── 顶部命令按钮（Origin SIDEBAR.CPP 风格）──
-    this.repairBtn = this.createTopButton('repairBtn', 'REPAIR', 0);
+    // 下移以给 MiniMap 留出空间
+    this.repairBtn = this.createTopButton('repairBtn', 'REPAIR', 0, '190px');
     this.repairLabel = this.repairBtn.getChildByName('repairBtn_label') as GUI.TextBlock;
     this.repairBtn.onPointerClickObservable.add(() => this.toggleMode('repair'));
 
-    this.sellBtn = this.createTopButton('sellBtn', 'SELL', 1);
+    this.sellBtn = this.createTopButton('sellBtn', 'SELL', 1, '190px');
     this.sellLabel = this.sellBtn.getChildByName('sellBtn_label') as GUI.TextBlock;
     this.sellBtn.onPointerClickObservable.add(() => this.toggleMode('sell'));
 
     // ── 生产标签页（OpenRA ProductionTabsWidget 风格）──
-    this.tabBuildings = this.createTabButton('tabBuildings', 'B', 0, 'buildings');
-    this.tabInfantry = this.createTabButton('tabInfantry', 'I', 1, 'infantry');
-    this.tabVehicles = this.createTabButton('tabVehicles', 'V', 2, 'vehicles');
+    this.tabBuildings = this.createTabButton('tabBuildings', 'B', 0, 'buildings', '222px');
+    this.tabInfantry = this.createTabButton('tabInfantry', 'I', 1, 'infantry', '222px');
+    this.tabVehicles = this.createTabButton('tabVehicles', 'V', 2, 'vehicles', '222px');
 
     // ── 电力状态 ──
     this.powerText = new GUI.TextBlock('powerText', '');
     this.powerText.color = '#0f0';
     this.powerText.fontSize = 11;
     this.powerText.height = '18px';
-    this.powerText.top = '72px';
+    this.powerText.top = '258px';
     this.powerText.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
     this.panel.addControl(this.powerText);
 
@@ -241,7 +264,7 @@ export class Sidebar {
     this.creditText.color = '#0f0';
     this.creditText.fontSize = 12;
     this.creditText.height = '20px';
-    this.creditText.top = '92px';
+    this.creditText.top = '278px';
     this.creditText.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
     this.panel.addControl(this.creditText);
 
@@ -250,24 +273,27 @@ export class Sidebar {
     this.statusText.color = '#aaa';
     this.statusText.fontSize = 11;
     this.statusText.height = '18px';
-    this.statusText.top = '112px';
+    this.statusText.top = '298px';
     this.statusText.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
     this.panel.addControl(this.statusText);
 
     // ── 建筑按钮 ──
     const buildingDefs = Object.values(BUILDING_DEFINITIONS).filter((d) => d.techLevel >= 0 && d.cost > 0);
-    buildingDefs.forEach((def, i) => this.createBuildingButton(def, i));
+    buildingDefs.forEach((def, i) => this.createBuildingButton(def, i, '324px'));
 
     // ── 步兵按钮 ──
     const infantryDefs = Object.values(UNIT_DEFINITIONS).filter((d) => d.locomotion === Locomotion.Foot);
-    infantryDefs.forEach((def, i) => this.createUnitButton(def, i, 'infantry'));
+    infantryDefs.forEach((def, i) => this.createUnitButton(def, i, 'infantry', '324px'));
 
     // ── 车辆按钮 ──
     const vehicleDefs = Object.values(UNIT_DEFINITIONS).filter((d) => d.locomotion !== Locomotion.Foot);
-    vehicleDefs.forEach((def, i) => this.createUnitButton(def, i, 'vehicles'));
+    vehicleDefs.forEach((def, i) => this.createUnitButton(def, i, 'vehicles', '324px'));
 
     // 默认显示建筑标签
     this.switchTab('buildings');
+
+    // 初始隐藏：等待 ConstructionYard 建造完成（红警原作行为）
+    this.setVisible(false);
 
     // 防止 GUI 面板本身阻挡场景指针事件
     this.panel.isPointerBlocker = false;
@@ -341,9 +367,103 @@ export class Sidebar {
     }
   }
 
+  // ── 显示控制 ──
+
+  /** 检查玩家是否拥有存活且已放置的 ConstructionYard。 */
+  private hasConstructionYard(): boolean {
+    return GameObjectManager.getInstance()
+      .getBuildings()
+      .some(
+        (b) =>
+          b.type === GameObjectType.Building &&
+          b.isAlive() &&
+          b.house.id === this.house.id &&
+          b.definition.id === 'ConstructionYard'
+      );
+  }
+
+  private setVisible(visible: boolean): void {
+    if (this._visible === visible) return;
+    this._visible = visible;
+    this.panel.isVisible = visible;
+    this.minimapCanvas.style.display = visible ? 'block' : 'none';
+    // 电力条容器是 gui 根层级，需要单独处理
+    const powerContainer = this.gui.getControlByName('powerContainer');
+    if (powerContainer) {
+      powerContainer.isVisible = visible;
+    }
+  }
+
+  /** 绘制 MiniMap：地形底色 + 单位点（按关系着色）。 */
+  private drawMinimap(mapWidth = 64, mapHeight = 64): void {
+    const ctx = this.minimapCtx;
+    const canvas = this.minimapCanvas;
+    if (!ctx || !canvas) return;
+
+    const w = canvas.width;
+    const h = canvas.height;
+
+    // 清空
+    ctx.fillStyle = '#001a00';
+    ctx.fillRect(0, 0, w, h);
+
+    // 绘制网格线（每8格一条）
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    const cellW = w / mapWidth;
+    const cellH = h / mapHeight;
+    for (let x = 0; x <= mapWidth; x += 8) {
+      ctx.beginPath();
+      ctx.moveTo(x * cellW, 0);
+      ctx.lineTo(x * cellW, h);
+      ctx.stroke();
+    }
+    for (let y = 0; y <= mapHeight; y += 8) {
+      ctx.beginPath();
+      ctx.moveTo(0, y * cellH);
+      ctx.lineTo(w, y * cellH);
+      ctx.stroke();
+    }
+
+    // 绘制单位点
+    const units = GameObjectManager.getInstance().getUnits();
+    for (const unit of units) {
+      if (!unit.isAlive()) continue;
+      const mx = ((unit.x + 32) / mapWidth) * w;
+      const my = ((unit.y + 32) / mapHeight) * h;
+      const colorHex = getRelationshipColorForLocalPlayer(unit.house.id);
+      const c3 = hexToColor3(colorHex);
+      const rgb = `rgb(${Math.round(c3.r * 255)},${Math.round(c3.g * 255)},${Math.round(c3.b * 255)})`;
+
+      ctx.fillStyle = rgb;
+      ctx.beginPath();
+      ctx.arc(mx, my, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 绘制建筑点（稍大一点）
+    const buildings = GameObjectManager.getInstance().getBuildings();
+    for (const b of buildings) {
+      if (!b.isAlive()) continue;
+      const mx = ((b.x + 32) / mapWidth) * w;
+      const my = ((b.y + 32) / mapHeight) * h;
+      const colorHex = getRelationshipColorForLocalPlayer(b.house.id);
+      const c3 = hexToColor3(colorHex);
+      const rgb = `rgb(${Math.round(c3.r * 255)},${Math.round(c3.g * 255)},${Math.round(c3.b * 255)})`;
+
+      ctx.fillStyle = rgb;
+      ctx.fillRect(mx - 2, my - 2, 4, 4);
+    }
+  }
+
   // ── 每帧刷新 ──
 
   refresh(deltaTime: number): void {
+    // 红警原作行为：只有拥有 ConstructionYard 时才显示 Sidebar（含 MiniMap）
+    const shouldShow = this.hasConstructionYard();
+    this.setVisible(shouldShow);
+    if (!shouldShow) return;
+
     this.flashTimer += deltaTime;
 
     // 资金
@@ -437,15 +557,18 @@ export class Sidebar {
       const canBuild = TechTree.canBuildUnit(btn.definition, this.house);
       this.setUnitButtonState(btn, canBuild);
     }
+
+    // MiniMap 绘制（每渲染帧更新）
+    this.drawMinimap();
   }
 
   // ── 创建控件 helpers ──
 
-  private createTopButton(name: string, label: string, index: number): GUI.Rectangle {
+  private createTopButton(name: string, label: string, index: number, topOffset = '4px'): GUI.Rectangle {
     const btn = new GUI.Rectangle(name);
     btn.width = '88px';
     btn.height = '26px';
-    btn.top = '4px';
+    btn.top = topOffset;
     btn.left = index === 0 ? '-46px' : '46px';
     btn.background = '#2a2a2a';
     btn.thickness = 2;
@@ -466,11 +589,17 @@ export class Sidebar {
     return btn;
   }
 
-  private createTabButton(name: string, label: string, index: number, tab: ProductionTab): GUI.Rectangle {
+  private createTabButton(
+    name: string,
+    label: string,
+    index: number,
+    tab: ProductionTab,
+    topOffset = '36px'
+  ): GUI.Rectangle {
     const btn = new GUI.Rectangle(name);
     btn.width = '58px';
     btn.height = '24px';
-    btn.top = '36px';
+    btn.top = topOffset;
     btn.left = `${-60 + index * 62}px`;
     btn.background = '#1a1a1a';
     btn.thickness = 1;
@@ -491,8 +620,9 @@ export class Sidebar {
     return btn;
   }
 
-  private createBuildingButton(def: BuildingDefinition, index: number): void {
-    const btnY = 138 + index * 52;
+  private createBuildingButton(def: BuildingDefinition, index: number, topOffset = '138px'): void {
+    const baseY = parseInt(topOffset, 10);
+    const btnY = baseY + index * 52;
 
     const bg = new GUI.Rectangle(`btn_${def.id}`);
     bg.width = '170px';
@@ -557,8 +687,9 @@ export class Sidebar {
     this.buildingButtons.push({ bg, nameText, priceText, progressBar, progressBg, definition: def });
   }
 
-  private createUnitButton(def: UnitDefinition, index: number, tab: ProductionTab): void {
-    const btnY = 138 + index * 40;
+  private createUnitButton(def: UnitDefinition, index: number, tab: ProductionTab, topOffset = '138px'): void {
+    const baseY = parseInt(topOffset, 10);
+    const btnY = baseY + index * 40;
 
     const bg = new GUI.Rectangle(`unitBtn_${def.id}`);
     bg.width = '170px';
@@ -684,5 +815,6 @@ export class Sidebar {
 
   dispose(): void {
     this.gui.dispose();
+    this.minimapCanvas.remove();
   }
 }

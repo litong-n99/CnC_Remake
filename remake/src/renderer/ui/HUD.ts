@@ -6,16 +6,11 @@
 import type { House } from '../../game/house/House';
 import type { Unit } from '../../game/objects/Unit';
 import { ArmorType } from '../../game/rules/UnitDefinitions';
-import { GameObjectManager } from '../../game/objects/GameObjectManager';
-import { getRelationshipColorForLocalPlayer, hexToColor3 } from './RelationshipColors';
 
 export class HUD {
   private container: HTMLDivElement;
   private resourceBar: HTMLDivElement;
   private unitInfoPanel: HTMLDivElement;
-  private minimap: HTMLDivElement;
-  private minimapCanvas: HTMLCanvasElement | null = null;
-  private minimapCtx: CanvasRenderingContext2D | null = null;
 
   private creditsEl!: HTMLSpanElement;
   private powerEl!: HTMLSpanElement;
@@ -40,11 +35,9 @@ export class HUD {
 
     this.resourceBar = this.createResourceBar();
     this.unitInfoPanel = this.createUnitInfoPanel();
-    this.minimap = this.createMinimap();
 
     this.container.appendChild(this.resourceBar);
     this.container.appendChild(this.unitInfoPanel);
-    this.container.appendChild(this.minimap);
   }
 
   private createResourceBar(): HTMLDivElement {
@@ -106,78 +99,6 @@ export class HUD {
     return panel;
   }
 
-  private createMinimap(): HTMLDivElement {
-    const map = document.createElement('div');
-    map.id = 'cnc-minimap';
-    map.style.position = 'absolute';
-    map.style.bottom = '90px';
-    map.style.right = '10px';
-    map.style.width = '160px';
-    map.style.height = '160px';
-    map.style.background = 'rgba(0,32,0,0.85)';
-    map.style.border = '2px solid rgba(255,255,255,0.4)';
-    map.style.overflow = 'hidden';
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 160;
-    canvas.height = 160;
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-    this.minimapCanvas = canvas;
-    this.minimapCtx = canvas.getContext('2d');
-    map.appendChild(canvas);
-
-    return map;
-  }
-
-  /** 绘制小地图：地形底色 + 单位点（按关系着色）。 */
-  drawMinimap(mapWidth = 64, mapHeight = 64): void {
-    const ctx = this.minimapCtx;
-    const canvas = this.minimapCanvas;
-    if (!ctx || !canvas) return;
-
-    const w = canvas.width;
-    const h = canvas.height;
-
-    // 清空
-    ctx.fillStyle = '#001a00';
-    ctx.fillRect(0, 0, w, h);
-
-    // 绘制网格线（每8格一条）
-    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-    ctx.lineWidth = 1;
-    const cellW = w / mapWidth;
-    const cellH = h / mapHeight;
-    for (let x = 0; x <= mapWidth; x += 8) {
-      ctx.beginPath();
-      ctx.moveTo(x * cellW, 0);
-      ctx.lineTo(x * cellW, h);
-      ctx.stroke();
-    }
-    for (let y = 0; y <= mapHeight; y += 8) {
-      ctx.beginPath();
-      ctx.moveTo(0, y * cellH);
-      ctx.lineTo(w, y * cellH);
-      ctx.stroke();
-    }
-
-    // 绘制单位点
-    const units = GameObjectManager.getInstance().getUnits();
-    for (const unit of units) {
-      if (!unit.isAlive()) continue;
-      const mx = ((unit.x + 32) / mapWidth) * w;
-      const my = ((unit.y + 32) / mapHeight) * h;
-      const colorHex = getRelationshipColorForLocalPlayer(unit.house.id);
-      const c3 = hexToColor3(colorHex);
-      const rgb = `rgb(${Math.round(c3.r * 255)},${Math.round(c3.g * 255)},${Math.round(c3.b * 255)})`;
-
-      ctx.fillStyle = rgb;
-      ctx.beginPath();
-      ctx.arc(mx, my, 2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
   /** 更新顶部资源栏（每帧或事件驱动调用）。 */
   updateResourceBar(house: House): void {
     this.creditsEl.textContent = `Credits: ${house.credits}`;
@@ -209,8 +130,6 @@ export class HUD {
 
   dispose(): void {
     this.container.remove();
-    this.minimapCanvas = null;
-    this.minimapCtx = null;
   }
 }
 

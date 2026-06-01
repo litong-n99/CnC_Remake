@@ -809,7 +809,6 @@ const bootstrapGame = async (onReady?: () => void): Promise<void> => {
     sidebar.refresh(_dt);
     particleManager.update();
     hud.updateResourceBar(gdi);
-    hud.drawMinimap();
     healthBarManager.updateAll(GameObjectManager.getInstance().getUnits() as Unit[]);
   });
 
