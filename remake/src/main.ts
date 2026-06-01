@@ -246,7 +246,7 @@ const bootstrapGame = async (onReady?: () => void): Promise<void> => {
   const rtsCamera = new RTSCamera(scene, engineManager.getEngine(), {
     target: Vector3.Zero(),
     initialZoom: 50,
-    alpha: Math.PI, // South-to-North view (camera at south edge looking north)
+    alpha: Math.PI / 2, // South-to-North view (camera at south edge looking north)
     beta: (2 * Math.PI) / 9, // ~40° pitch, matching OpenRA's CameraPitch
     edgeThreshold: 5, // 鼠标贴住边缘 5px 内热区时滚动
     uiRightPanelWidth: 190, // Sidebar 宽度，排除在右边缘滚动区域外
@@ -1194,6 +1194,7 @@ const bootstrapGame = async (onReady?: () => void): Promise<void> => {
               scene,
               terrain,
               gameLoop,
+              fogOfWar,
             });
 
             // 加载并执行战役脚本（allies01.js 末尾包含 WorldLoaded() 自调用）
@@ -1209,6 +1210,10 @@ const bootstrapGame = async (onReady?: () => void): Promise<void> => {
                 console.warn('[Campaign] Failed to load script:', scriptErr);
               }
             }
+
+            // 根据战役地图尺寸限制相机最大缩放（避免看到整张地图）
+            const mapWorldSize = Math.max(terrain.getWidth(), terrain.getHeight()) * 1.5;
+            rtsCamera.setMaxZoom(Math.max(50, mapWorldSize * 0.4));
 
             loadScreen.setProgress(100);
             router.navigate('game');

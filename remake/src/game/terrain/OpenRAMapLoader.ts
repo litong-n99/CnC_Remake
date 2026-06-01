@@ -145,15 +145,25 @@ function convertToGameMap(mapYaml: MapYaml, mapBin: MapBinData): GameMap {
   };
 }
 
-/** 将 OpenRA tile type 映射到本项目的 LandType（简化版）。 */
+/** 将 OpenRA tile type 映射到本项目的 LandType（基于 RA snow tileset 经验映射）。
+ *
+ * OpenRA 的 tile type 是模板 ID（在 tileset 中的索引），不是简单的枚举值。
+ * 255 (clear1.sno) 是最常见的 Clear 地形；1/2 (w1/w2.sno) 是 Water。
+ * 完整映射需解析 TileSet（Task 9.2），此处使用经验规则。
+ */
 function tileTypeToLandType(tileType: number): LandType {
-  if (tileType === 0) return LandType.Water;
-  if (tileType === 1) return LandType.Clear;
-  if (tileType === 2) return LandType.Rock;
-  if (tileType === 3) return LandType.Road;
-  // 其他：按奇偶循环
-  const types = [LandType.Clear, LandType.Road, LandType.Rock, LandType.Water];
-  return types[tileType % types.length];
+  // 边界/填充值 → Clear
+  if (tileType === 255 || tileType === 65535) return LandType.Clear;
+  // Water 模板 (w1, w2)
+  if (tileType === 1 || tileType === 2) return LandType.Water;
+  // Water Cliffs (wc02–wc36) → Rock
+  if (tileType >= 60 && tileType <= 94) return LandType.Rock;
+  // Cliffs (s01–s35) → Rock
+  if (tileType >= 135 && tileType <= 169) return LandType.Rock;
+  // Road (d01–d15) → Road
+  if (tileType >= 173 && tileType <= 187) return LandType.Road;
+  // 其余默认为 Clear（包含 Terrain、Beach、River、Bridge 等）
+  return LandType.Clear;
 }
 
 /** 从 MapYaml 构建 NamedActors 字典。 */

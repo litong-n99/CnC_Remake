@@ -32,6 +32,10 @@ export class UnitMeshFactory {
     let result: { body: Mesh; turret?: TransformNode };
     if (definition.locomotion === Locomotion.Foot) {
       result = { body: this.createInfantry(name, mat, scene, definition) };
+    } else if (definition.locomotion === Locomotion.Winged) {
+      result = { body: this.createAircraft(name, mat, scene, definition) };
+    } else if (definition.locomotion === Locomotion.Float) {
+      result = { body: this.createVessel(name, mat, scene, definition) };
     } else if (definition.locomotion === Locomotion.Track && definition.hasTurret) {
       result = this.createTank(name, mat, scene);
     } else if (definition.locomotion === Locomotion.Track) {
@@ -120,6 +124,67 @@ export class UnitMeshFactory {
     cargo.position = new Vector3(0, 0.38, 0.05);
     cargo.parent = body;
     cargo.material = mat;
+
+    return body;
+  }
+
+  // ── 飞行器（Winged）──
+  private static createAircraft(name: string, mat: StandardMaterial, scene: Scene, definition: UnitDefinition): Mesh {
+    // 机身 — 扁平椭球体
+    const body = MeshBuilder.CreateSphere(`${name}_body`, { diameterX: 0.5, diameterY: 0.25, diameterZ: 0.8 }, scene);
+    body.position.y = 0.2;
+    body.material = mat;
+
+    // 旋翼 / 主翼 — 扁平圆柱表示直升机旋翼或主机翼
+    const wing = MeshBuilder.CreateCylinder(`${name}_wing`, { diameter: 1.0, height: 0.04 }, scene);
+    wing.rotation.x = Math.PI / 2;
+    wing.position.y = 0.15;
+    wing.parent = body;
+    wing.material = mat;
+
+    // 尾翼
+    const tail = MeshBuilder.CreateBox(`${name}_tail`, { width: 0.08, height: 0.15, depth: 0.35 }, scene);
+    tail.position = new Vector3(0, 0.05, -0.45);
+    tail.parent = body;
+    tail.material = mat;
+
+    // 喷气式飞机额外添加侧翼
+    if (definition.speed > 14) {
+      const leftWing = MeshBuilder.CreateBox(`${name}_lwing`, { width: 0.6, height: 0.04, depth: 0.2 }, scene);
+      leftWing.position = new Vector3(-0.4, 0, 0);
+      leftWing.parent = body;
+      leftWing.material = mat;
+      const rightWing = MeshBuilder.CreateBox(`${name}_rwing`, { width: 0.6, height: 0.04, depth: 0.2 }, scene);
+      rightWing.position = new Vector3(0.4, 0, 0);
+      rightWing.parent = body;
+      rightWing.material = mat;
+    }
+
+    return body;
+  }
+
+  // ── 船只（Float）──
+  private static createVessel(name: string, mat: StandardMaterial, scene: Scene, definition: UnitDefinition): Mesh {
+    // 船身 — 扁平长方体
+    const length = definition.id === 'UNIT_CRUISER' || definition.id === 'UNIT_DESTROYER' ? 1.0 : 0.7;
+    const body = MeshBuilder.CreateBox(`${name}_body`, { width: 0.5, height: 0.18, depth: length }, scene);
+    body.position.y = 0.15;
+    body.material = mat;
+
+    // 舰桥
+    const bridge = MeshBuilder.CreateBox(`${name}_bridge`, { width: 0.25, height: 0.15, depth: 0.2 }, scene);
+    bridge.position = new Vector3(0, 0.2, -0.1);
+    bridge.parent = body;
+    bridge.material = mat;
+
+    // 炮塔（巡洋舰/驱逐舰）
+    if (definition.hasTurret) {
+      const turret = MeshBuilder.CreateCylinder(`${name}_turret`, { diameter: 0.25, height: 0.1 }, scene);
+      turret.rotation.x = Math.PI / 2;
+      turret.position = new Vector3(0, 0.12, 0.2);
+      turret.parent = body;
+      turret.material = mat;
+    }
 
     return body;
   }

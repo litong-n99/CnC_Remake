@@ -20,14 +20,15 @@ import { applyMapRules, type MapRules } from '../rules/MapRuleset';
 const UNIT_TYPE_ALIASES: Record<string, string> = {
   // 步兵
   e1: 'RifleInfantry',
-  e2: 'RocketSoldier',
-  e3: 'Engineer',
-  e4: 'Flamethrower',
-  e6: 'Tanya',
+  e2: 'Grenadier',
+  e3: 'RocketSoldier',
+  e4: 'Engineer',
+  e6: 'Flamethrower',
   e7: 'Tanya',
   'e7.noautotarget': 'Tanya',
   dog: 'AttackDog',
   medi: 'Medic',
+  spy: 'Spy',
   shok: 'Flamethrower', // Tesla Trooper placeholder
   c1: 'RifleInfantry', // civilian placeholder
   c2: 'RifleInfantry',
@@ -41,18 +42,24 @@ const UNIT_TYPE_ALIASES: Record<string, string> = {
   c10: 'RifleInfantry',
   // 载具
   jeep: 'Jeep',
-  tran: 'Transport', // transport helicopter
+  tran: 'Transport',
   'tran.extraction': 'Transport',
   'tran.insertion': 'Transport',
-  heli: 'Transport', // attack helicopter placeholder
-  hind: 'Transport',
-  ca: 'Gunboat', // cruiser placeholder
+  heli: 'LongBow',
+  hind: 'Hind',
+  yak: 'Yak',
+  mig: 'MiG',
+  ca: 'Cruiser',
   ss: 'Submarine',
   dd: 'Destroyer',
+  pt: 'Gunboat',
+  mnly: 'MineLayer',
+  ttnk: 'TeslaTank',
+  dtrk: 'DemoTruck',
   // 特殊
-  einstein: 'Tanya', // Einstein as Tanya placeholder
-  camera: 'Tanya', // invisible camera placeholder
-  flare: 'Tanya', // flare placeholder
+  einstein: 'Tanya',
+  camera: 'Tanya',
+  flare: 'Tanya',
 };
 
 /** 建筑类型别名（OpenRA → 内部）。 */

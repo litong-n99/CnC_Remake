@@ -37,8 +37,8 @@ export interface FogOfWarOptions {
  * 维护每个格子的可见性状态，并通过 DynamicTexture 渲染到覆盖整个地图的平面上。
  */
 export class FogOfWar {
-  private readonly width: number;
-  private readonly height: number;
+  private width: number;
+  private height: number;
   private readonly sightRadius: number;
   private readonly heightOffset: number;
 
@@ -61,6 +61,29 @@ export class FogOfWar {
     // 初始全部为 Shroud
     this.visibility = new Uint8Array(this.width * this.height);
     this.visibility.fill(CellVisibility.Shroud);
+  }
+
+  /** 重新调整尺寸（战役地图加载后 terrain resize 时调用）。 */
+  resize(width: number, height: number, scene: Scene): void {
+    if (width === this.width && height === this.height) return;
+
+    // 释放旧资源
+    this.fogMesh?.dispose();
+    this.fogTexture?.dispose();
+    this.fogMaterial?.dispose();
+    this.fogMesh = null;
+    this.fogTexture = null;
+    this.fogMaterial = null;
+    this.ctx = null;
+    this.imageData = null;
+    this.shroudRenderer = null;
+
+    this.width = width;
+    this.height = height;
+    this.visibility = new Uint8Array(this.width * this.height);
+    this.visibility.fill(CellVisibility.Shroud);
+
+    this.create(scene);
   }
 
   /** 获取关联的 ShroudRenderer（Task 9.7）。 */

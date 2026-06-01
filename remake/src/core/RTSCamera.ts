@@ -15,7 +15,7 @@ export interface RTSCameraOptions {
    *  Default: `2π/9` ≈ 40°, matching OpenRA's CameraPitch. */
   beta?: number;
   /** Horizontal orbit angle around the Y axis.
-   *  Default: `π` = South-to-North view (camera at south edge looking north). */
+   *  Default: `π/2` = South-to-North view (camera at south edge looking north). */
   alpha?: number;
   /** Distance from screen edge in pixels that triggers auto-scroll (default: `20`). */
   edgeThreshold?: number;
@@ -124,7 +124,7 @@ export class RTSCamera {
       minZoom: options.minZoom ?? 20,
       maxZoom: options.maxZoom ?? 100,
       beta: options.beta ?? (2 * Math.PI) / 9,
-      alpha: options.alpha ?? Math.PI,
+      alpha: options.alpha ?? Math.PI / 2,
       edgeThreshold: options.edgeThreshold ?? 20,
       uiRightPanelWidth: options.uiRightPanelWidth ?? 0,
       edgeScrollSpeed: options.edgeScrollSpeed ?? 0.5,
@@ -693,6 +693,13 @@ export class RTSCamera {
   /** Zoom by a relative delta (positive = zoom in, negative = zoom out). */
   zoom(delta: number): void {
     this.targetZoom = Math.max(this.options.minZoom, Math.min(this.options.maxZoom, this.targetZoom - delta));
+  }
+
+  /** Dynamically set the maximum zoom distance (e.g. after map resize). */
+  setMaxZoom(maxZoom: number): void {
+    (this.options as unknown as { maxZoom: number }).maxZoom = maxZoom;
+    this.camera.upperRadiusLimit = maxZoom;
+    this.targetZoom = Math.min(this.targetZoom, maxZoom);
   }
 
   /** Release event listeners, render-loop callback and camera resources. */

@@ -1,6 +1,6 @@
 import { Scene, TransformNode } from '@babylonjs/core';
 import { GameObject, GameObjectType } from './GameObject';
-import type { UnitDefinition } from '../rules/UnitDefinitions';
+import { Locomotion, type UnitDefinition } from '../rules/UnitDefinitions';
 import type { House } from '../house/House';
 import { UnitController } from '../unit/Unit';
 import { UnitState } from '../unit/UnitState';
@@ -42,12 +42,19 @@ export class Unit extends GameObject {
     this.lastOccupiedCells = [{ x: cx, y: cy }];
   }
 
+  /** 飞行单位离地高度（世界单位）。 */
+  static readonly AIRCRAFT_ALTITUDE = 3.0;
+
   createMesh(scene: Scene): void {
     const result = UnitMeshFactory.create(this.definition, this.house, scene, `unit_${this.id}`);
     this.mesh = result.body;
     this.turretPivot = result.turret;
     const pos = this.getPosition();
     this.mesh.position = pos;
+    // 飞行单位抬升到天上的固定高度
+    if (this.definition.locomotion === Locomotion.Winged) {
+      this.mesh.position.y += Unit.AIRCRAFT_ALTITUDE;
+    }
   }
 
   /** 每帧同步 logic 状态到视觉表现。 */
@@ -104,6 +111,10 @@ export class Unit extends GameObject {
       // 同步位置
       this.mesh.position.x = this.logic.x - this.worldOffsetX + 0.5;
       this.mesh.position.z = this.logic.y - this.worldOffsetZ + 0.5;
+      // 飞行单位保持天上高度
+      if (this.definition.locomotion === Locomotion.Winged) {
+        this.mesh.position.y = Unit.AIRCRAFT_ALTITUDE;
+      }
       // 同步朝向（C++ DirType 0=北 → Babylon rotation.y=π）
       this.mesh.rotation.y = Math.PI - this.direction;
     }

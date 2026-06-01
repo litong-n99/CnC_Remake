@@ -30,6 +30,7 @@ import { ObjectiveManager } from '../objectives/ObjectiveManager';
 import { World } from '../world/World';
 import { GameLoop } from '../GameLoop';
 import { CampaignRuleLoader } from './CampaignRuleLoader';
+import type { FogOfWar } from '../../renderer/effects/FogOfWar';
 
 /** 玩家名称 → HouseType 映射（Allies-01 专用）。 */
 function playerNameToHouseType(name: string): HouseType {
@@ -78,6 +79,8 @@ export interface CampaignLoaderOptions {
   terrain: TerrainGrid;
   /** 游戏循环（用于注册触发器 tick）。 */
   gameLoop: GameLoop;
+  /** 可选：战争迷雾实例（地图 resize 后同步调整）。 */
+  fogOfWar?: FogOfWar;
   /** 可选：规则覆盖 YAML URL。 */
   rulesUrl?: string;
 }
@@ -103,7 +106,7 @@ export class CampaignLoader {
 
   /** 加载战役关卡。 */
   async load(options: CampaignLoaderOptions): Promise<CampaignLoadResult> {
-    const { mapFolderUrl, scene, terrain, gameLoop } = options;
+    const { mapFolderUrl, scene, terrain, gameLoop, fogOfWar } = options;
 
     // 0. 清理现有游戏对象（避免与默认 skirmish 对象冲突）
     GameObjectManager.getInstance().clear();
@@ -120,6 +123,8 @@ export class CampaignLoader {
         `[CampaignLoader] Resizing terrain from ${terrain.getWidth()}x${terrain.getHeight()} to ${mapResult.gameMap.width}x${mapResult.gameMap.height}`
       );
       terrain.resize(scene, mapResult.gameMap.width, mapResult.gameMap.height);
+      // 同步调整战争迷雾尺寸
+      fogOfWar?.resize(mapResult.gameMap.width, mapResult.gameMap.height, scene);
     }
 
     // 2.5 应用地形
