@@ -219,27 +219,22 @@ import { SaveManager } from './save/SaveManager';
 import { BuildingTools } from './game/building/BuildingTools';
 import { PerformanceMonitor } from './core/PerformanceMonitor';
 import { GuiRouter } from './ui/gui/GuiRouter';
-import { MainMenuGui } from './ui/gui/MainMenuGui';
-import { LoadScreenGui } from './ui/gui/LoadScreenGui';
+import type { GuiScreen } from './ui/gui/GuiScreen';
 import { SettingsMenuGui } from './ui/gui/SettingsMenuGui';
 import { PauseMenuGui } from './ui/gui/PauseMenuGui';
-import { CampaignMenuGui } from './ui/gui/CampaignMenuGui';
-import { BriefingScreenGui } from './ui/gui/BriefingScreenGui';
-import { SkirmishSetupGui } from './ui/gui/SkirmishSetupGui';
-import { MultiplayerLobbyGui } from './ui/gui/MultiplayerLobbyGui';
+import { MenuScene } from './scenes/MenuScene';
 import { loadYamlRulesWithFallback } from './game/rules/YamlLoader';
 
-const bootstrap = async (onReady?: () => void): Promise<void> => {
+const bootstrapGame = async (): Promise<void> => {
   // ── Task 95: YAML 规则解析基础设施 ──
   await loadYamlRulesWithFallback();
 
-  // ── Engine ──
   const engineManager = EngineManager.getInstance();
-  engineManager.initialize('app');
 
   // ── Scene ──
   const sceneManager = SceneManager.getInstance();
-  const scene = sceneManager.initialize();
+  const scene = sceneManager.createScene('game');
+  sceneManager.switchScene('game');
 
   // ── RTS Camera ──
   const rtsCamera = new RTSCamera(scene, engineManager.getEngine(), {
@@ -932,7 +927,6 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
   w._MixLoader = MixLoader;
   w._ShpLoader = ShpLoader;
   w._ShpTextureBuilder = ShpTextureBuilder;
-  w._BriefingScreen = BriefingScreenGui;
   w._CampaignData = {
     getAllCampaigns,
     getCampaignById,
@@ -1092,90 +1086,68 @@ const bootstrap = async (onReady?: () => void): Promise<void> => {
     goManager.getBuildings().length
   );
 
-  onReady?.();
+  // ── Game UI Router ──
+  const gameRouter = new GuiRouter();
+  const pauseMenu = new PauseMenuGui(scene, gameRouter);
+  const gameSettingsMenu = new SettingsMenuGui(scene, gameRouter);
 
-  // ── UI Shell & Router (Babylon.GUI 实现) ──
-  const router = new GuiRouter();
-  const mainMenu = new MainMenuGui(scene, router);
-  const loadScreen = new LoadScreenGui(scene);
-  const settingsMenu = new SettingsMenuGui(scene, router);
-  const pauseMenu = new PauseMenuGui(scene, router);
-  const campaignMenu = new CampaignMenuGui(scene, router);
-  const briefingScreen = new BriefingScreenGui(scene);
-  const skirmishSetup = new SkirmishSetupGui(scene, router);
-  const multiplayerLobby = new MultiplayerLobbyGui(scene, router);
+  gameRouter.registerPage('game', {
+    show: () => {
+      /* game page is the base layer */
+    },
+    hide: () => {},
+  } as unknown as GuiScreen);
+  gameRouter.registerPage('pause', pauseMenu);
+  gameRouter.registerPage('settings', gameSettingsMenu);
 
-  router.registerPage('menu', mainMenu);
-  router.registerPage('loading', loadScreen);
-  router.registerPage('settings', settingsMenu);
-  router.registerPage('pause', pauseMenu);
-  router.registerPage('campaign', campaignMenu);
-  router.registerPage('skirmish', skirmishSetup);
-  router.registerPage('lobby', multiplayerLobby);
-
-  // Default to menu for real users, but game for e2e tests (navigator.webdriver)
-  const isE2E = (navigator as unknown as Record<string, unknown>).webdriver === true;
-  router.navigate(isE2E ? 'game' : 'menu');
-
-  // Start game flow: menu → loading → game
-  mainMenu.setOnStartGame(() => {
-    router.navigate('loading');
-    loadScreen.setProgress(0);
-    loadScreen.setTip('正在初始化战场...');
-
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.random() * 15 + 5;
-      if (progress >= 100) {
-        progress = 100;
-        clearInterval(interval);
-      }
-      loadScreen.setProgress(progress);
-    }, 200);
-
-    setTimeout(() => {
-      clearInterval(interval);
-      loadScreen.setProgress(100);
-      settingsMenu.applyToAudio(audioManager);
-      router.navigate('game');
-    }, 1500);
-  });
+  gameRouter.navigate('game');
 
   // Pause / Resume
-  pauseMenu.setOnResume(() => router.navigate('game'));
+  pauseMenu.setOnResume(() => gameRouter.navigate('game'));
+  pauseMenu.setOnBackToMenu(() => {
+    // Stop game loop and dispose game scene
+    gameLoop.stop();
+    sceneManager.disposeScene('game');
+    HouseManager.getInstance().dispose();
+    GameObjectManager.getInstance().dispose();
+    World.getInstance().dispose();
+    // Switch back to menu
+    sceneManager.switchScene('menu');
+  });
 
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      const current = router.getCurrentPage();
+      const current = gameRouter.getCurrentPage();
       if (current === 'game') {
-        router.navigate('pause');
+        gameRouter.navigate('pause');
       } else if (current === 'pause') {
-        router.navigate('game');
-      } else if (current === 'settings' || current === 'campaign' || current === 'skirmish' || current === 'lobby') {
-        router.navigate('menu');
+        gameRouter.navigate('game');
+      } else if (current === 'settings') {
+        gameRouter.navigate('pause');
       }
     }
   });
 
   // Expose for e2e
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any)._router = router;
+  (window as any)._gameRouter = gameRouter;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any)._settingsMenu = settingsMenu;
+  (window as any)._gameSettingsMenu = gameSettingsMenu;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (window as any)._performanceMonitor = performanceMonitor;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any)._skirmishSetup = skirmishSetup;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (window as any)._rtsCamera = rtsCamera;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any)._briefingScreen = briefingScreen;
 
   // eslint-disable-next-line no-console
-  console.info('C&C Remake — Babylon.GUI Shell initialised');
+  console.info('C&C Remake — Game scene initialised');
 };
 
 // ── Entry Point ──
+const engineManager = EngineManager.getInstance();
+engineManager.initialize('app');
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(window as any)._engineManager = engineManager;
+
 const audioManager = AudioManager.getInstance();
 const performanceMonitor = PerformanceMonitor.getInstance();
 
@@ -1191,5 +1163,25 @@ document.addEventListener(
 // Start performance monitoring
 performanceMonitor.start();
 
-// Bootstrap game immediately (existing e2e tests expect cnc on load)
-bootstrap();
+// Start render loop (will render whichever scene is active)
+const sceneManager = SceneManager.getInstance();
+sceneManager.runRenderLoop();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(window as any)._sceneManager = sceneManager;
+
+// Create menu scene first
+const isE2E = (navigator as unknown as Record<string, unknown>).webdriver === true;
+
+if (isE2E) {
+  // E2E tests expect game scene directly
+  bootstrapGame();
+} else {
+  const menuScene = new MenuScene({
+    onStartGame: () => {
+      // Dispose menu and switch to game
+      menuScene.dispose();
+      bootstrapGame();
+    },
+  });
+  menuScene.show();
+}

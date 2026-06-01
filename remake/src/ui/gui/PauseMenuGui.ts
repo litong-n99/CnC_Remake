@@ -11,6 +11,7 @@ import type { GuiRouter } from './GuiRouter';
 export class PauseMenuGui extends GuiScreen {
   private readonly router: GuiRouter;
   private onResume?: () => void;
+  private onBackToMenu?: () => void;
 
   constructor(scene: Scene, router: GuiRouter) {
     super(scene, 'pauseMenu');
@@ -19,6 +20,10 @@ export class PauseMenuGui extends GuiScreen {
 
   setOnResume(cb: () => void): void {
     this.onResume = cb;
+  }
+
+  setOnBackToMenu(cb: () => void): void {
+    this.onBackToMenu = cb;
   }
 
   protected build(): void {
@@ -46,7 +51,7 @@ export class PauseMenuGui extends GuiScreen {
     buttonPanel.addControl(btnSettings);
 
     const btnMenu = createButton('pause_menu', '返回主菜单');
-    btnMenu.onPointerDownObservable.add(() => this.router.navigate('menu'));
+    btnMenu.onPointerDownObservable.add(() => this.onBackToMenu?.());
     buttonPanel.addControl(btnMenu);
   }
 }

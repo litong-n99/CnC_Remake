@@ -7,14 +7,14 @@
 
 import * as GUI from '@babylonjs/gui';
 import type { Scene } from '@babylonjs/core';
-import { createFullscreenBg } from './GuiFactory';
+import { GuiColors } from './GuiTheme';
 
 /** GUI 页面抽象基类。 */
 export abstract class GuiScreen {
   protected readonly scene: Scene;
   protected readonly gui: GUI.AdvancedDynamicTexture;
   /** 页面根容器，控制显隐。 */
-  protected readonly root: GUI.Container;
+  protected readonly root: GUI.Rectangle;
   /** 内容面板，子类在此添加控件。 */
   protected readonly content: GUI.StackPanel;
   /** 是否已初始化。 */
@@ -22,21 +22,19 @@ export abstract class GuiScreen {
 
   constructor(scene: Scene, name: string) {
     this.scene = scene;
-    // 复用已有全屏 GUI（如果存在）或创建新的
-    this.gui = this.getOrCreateFullscreenGui(scene);
+    // 每个 GuiScreen 拥有独立的 AdvancedDynamicTexture
+    this.gui = GUI.AdvancedDynamicTexture.CreateFullscreenUI(`${name}_ui`, true, scene);
 
-    this.root = new GUI.Container(`${name}_root`);
+    this.root = new GUI.Rectangle(`${name}_root`);
     this.root.width = '100%';
     this.root.height = '100%';
+    this.root.background = GuiColors.bgDark;
+    this.root.thickness = 0;
     this.root.isVisible = false;
     this.root.isHitTestVisible = false;
-    this.root.zIndex = 100; // 确保在 3D 场景之上
+    this.root.zIndex = 100;
 
-    // 背景
-    const bg = createFullscreenBg(`${name}_bg`);
-    this.root.addControl(bg);
-
-    // 内容区（垂直居中，zIndex 确保在最上层）
+    // 内容区（垂直居中）
     this.content = new GUI.StackPanel(`${name}_content`);
     this.content.isVertical = true;
     this.content.width = '520px';
@@ -73,6 +71,7 @@ export abstract class GuiScreen {
   /** 销毁页面，释放 GUI 资源。 */
   dispose(): void {
     this.root.dispose();
+    this.gui.dispose();
   }
 
   /** 是否可见。 */
@@ -81,7 +80,7 @@ export abstract class GuiScreen {
   }
 
   /** 获取页面根容器（供 Router 使用）。 */
-  getRoot(): GUI.Container {
+  getRoot(): GUI.Rectangle {
     return this.root;
   }
 
@@ -96,15 +95,5 @@ export abstract class GuiScreen {
   /** 子类可选：页面隐藏时调用。 */
   protected onHide(): void {
     // override in subclass
-  }
-
-  /** 获取或创建全屏 GUI 纹理。 */
-  private getOrCreateFullscreenGui(scene: Scene): GUI.AdvancedDynamicTexture {
-    // 尝试复用已有的全屏 GUI（如 sidebarUI）
-    const existing = scene.textures.find((t) => t instanceof GUI.AdvancedDynamicTexture && t.name === 'shellUI');
-    if (existing instanceof GUI.AdvancedDynamicTexture) {
-      return existing;
-    }
-    return GUI.AdvancedDynamicTexture.CreateFullscreenUI('shellUI', true, scene);
   }
 }

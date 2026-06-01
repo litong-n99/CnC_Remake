@@ -2,17 +2,17 @@ import { Scene, Color4 } from '@babylonjs/core';
 import { EngineManager } from './EngineManager';
 
 /**
- * Singleton manager for the Babylon.js Scene.
+ * Scene manager supporting multiple scenes with a single engine.
  *
- * Owns the scene graph, the render loop, and provides helpers for
- * bulk cleanup of meshes, lights, cameras and materials.
+ * The active scene is rendered each frame. Call {@link switchScene}
+ * to swap between menu, game, loading, etc.
  */
 export class SceneManager {
   private static instance: SceneManager | null = null;
 
-  private scene: Scene | null = null;
+  private scenes = new Map<string, Scene>();
+  private activeSceneId: string | null = null;
   private renderLoopCallback: (() => void) | null = null;
-  private initialized = false;
 
   private constructor() {}
 
@@ -23,88 +23,76 @@ export class SceneManager {
     return SceneManager.instance;
   }
 
-  /**
-   * Create a new Scene bound to the supplied (or default) engine.
-   *
-   * @param engine - Babylon Engine instance. Defaults to {@link EngineManager#getEngine}.
-   * @returns The newly created Scene.
-   */
-  initialize(engine = EngineManager.getInstance().getEngine()): Scene {
-    if (this.initialized && this.scene) {
-      return this.scene;
-    }
-
-    this.scene = new Scene(engine);
-    this.scene.clearColor = new Color4(0, 0, 0, 1);
-
-    this.initialized = true;
-    return this.scene;
-  }
-
-  /** @throws if called before {@link initialize}. */
-  getScene(): Scene {
-    if (!this.scene) {
-      throw new Error('[SceneManager] Not initialized — call initialize() first');
-    }
-    return this.scene;
-  }
-
-  /** Start the engine render loop tied to this scene. */
-  runRenderLoop(): void {
+  /** Create a new named Scene bound to the default engine. */
+  createScene(id: string, clearColor = new Color4(0, 0, 0, 1)): Scene {
     const engine = EngineManager.getInstance().getEngine();
+    const scene = new Scene(engine);
+    scene.clearColor = clearColor;
+    this.scenes.set(id, scene);
+    return scene;
+  }
 
+  /** Retrieve a previously created scene by id. */
+  getScene(id: string): Scene | undefined {
+    return this.scenes.get(id);
+  }
+
+  /** Get the currently active scene (the one being rendered). */
+  getActiveScene(): Scene | undefined {
+    if (!this.activeSceneId) return undefined;
+    return this.scenes.get(this.activeSceneId);
+  }
+
+  /** Switch the render loop to a different scene. */
+  switchScene(id: string): void {
+    const scene = this.scenes.get(id);
+    if (!scene) {
+      throw new Error(`[SceneManager] Scene "${id}" not found`);
+    }
+    this.activeSceneId = id;
+  }
+
+  /** Start the engine render loop (renders the active scene each frame). */
+  runRenderLoop(): void {
+    if (this.renderLoopCallback) return;
+
+    const engine = EngineManager.getInstance().getEngine();
     this.renderLoopCallback = () => {
-      this.scene?.render();
+      this.getActiveScene()?.render();
     };
     engine.runRenderLoop(this.renderLoopCallback);
   }
 
   /** Stop the render loop registered by this manager. */
   stopRenderLoop(): void {
-    if (!this.renderLoopCallback) {
-      return;
-    }
+    if (!this.renderLoopCallback) return;
 
     const engine = EngineManager.getInstance().getEngine();
     engine.stopRenderLoop(this.renderLoopCallback);
     this.renderLoopCallback = null;
   }
 
-  /**
-   * Dispose every mesh, light, camera, material and texture in the scene
-   * while keeping the Scene itself alive. Useful when switching levels
-   * without tearing down the engine.
-   */
-  clear(): void {
-    if (!this.scene) {
-      return;
+  /** Dispose a specific scene and remove it from the manager. */
+  disposeScene(id: string): void {
+    const scene = this.scenes.get(id);
+    if (scene) {
+      scene.dispose();
+      this.scenes.delete(id);
     }
-
-    // Copy arrays before iterating because disposal mutates the original lists.
-    [...this.scene.meshes].forEach((mesh) => mesh.dispose(false, true));
-    [...this.scene.lights].forEach((light) => light.dispose());
-    [...this.scene.cameras].forEach((camera) => camera.dispose());
-    [...this.scene.materials].forEach((material) => material.dispose());
-    [...this.scene.textures].forEach((texture) => texture.dispose());
+    if (this.activeSceneId === id) {
+      this.activeSceneId = null;
+    }
   }
 
-  /**
-   * Halt the render loop, dispose the scene, and release the singleton.
-   * The Engine is **not** disposed here — that is {@link EngineManager}'s responsibility.
-   */
+  /** Dispose every scene and release the singleton. */
   dispose(): void {
-    if (!this.initialized) {
-      return;
-    }
-
     this.stopRenderLoop();
 
-    if (this.scene) {
-      this.scene.dispose();
-      this.scene = null;
+    for (const [, scene] of this.scenes) {
+      scene.dispose();
     }
-
-    this.initialized = false;
+    this.scenes.clear();
+    this.activeSceneId = null;
     SceneManager.instance = null;
   }
 }

@@ -7,7 +7,16 @@
 
 import type { GuiScreen } from './GuiScreen';
 
-export type GuiPage = 'menu' | 'loading' | 'game' | 'settings' | 'pause' | 'campaign' | 'skirmish' | 'lobby';
+export type GuiPage =
+  | 'menu'
+  | 'loading'
+  | 'game'
+  | 'settings'
+  | 'pause'
+  | 'campaign'
+  | 'skirmish'
+  | 'lobby'
+  | 'briefing';
 
 export class GuiRouter {
   /** 初始为 'game'，确保第一次 navigate('menu') 能正确触发 show()。 */
