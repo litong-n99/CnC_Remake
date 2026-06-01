@@ -151,6 +151,9 @@ export class CampaignLoader {
 
     // 4. 创建初始 Actor（跳过 Waypoint）
     const scriptActors = new Map<string, ScriptActor>();
+    let createdCount = 0;
+    let failedCount = 0;
+    let skippedCount = 0;
 
     for (const actor of mapResult.mapYaml.Actors) {
       const scriptActor: ScriptActor = {
@@ -173,11 +176,23 @@ export class CampaignLoader {
         if (gameObjectId) {
           scriptActor.gameObjectId = gameObjectId;
           scriptActor.isInWorld = true;
+          createdCount++;
+        } else {
+          failedCount++;
         }
+      } else {
+        skippedCount++;
       }
 
       scriptActors.set(actor.id, scriptActor);
     }
+
+    console.warn(
+      `[CampaignLoader] Actor creation summary: ${createdCount} created, ${failedCount} failed, ${skippedCount} waypoints skipped (total: ${mapResult.mapYaml.Actors.length})`
+    );
+    console.warn(
+      `[CampaignLoader] Final state: ${GameObjectManager.getInstance().getUnits().length} units, ${GameObjectManager.getInstance().getBuildings().length} buildings in GOM`
+    );
 
     // 5. 初始化 ScriptRuntime
     const scriptRuntime = new ScriptRuntime();
@@ -234,7 +249,8 @@ export class CampaignLoader {
           scene,
         });
         return obj?.id ?? null;
-      } catch {
+      } catch (err) {
+        console.error(`[CampaignLoader] Failed to create unit "${actor.type}" (${actor.id}):`, err);
         return null;
       }
     } else {
@@ -247,7 +263,8 @@ export class CampaignLoader {
           scene,
         });
         return obj?.id ?? null;
-      } catch {
+      } catch (err) {
+        console.error(`[CampaignLoader] Failed to create building "${actor.type}" (${actor.id}):`, err);
         return null;
       }
     }
